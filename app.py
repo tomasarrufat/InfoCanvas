@@ -26,8 +26,8 @@ PROJECT_IMAGES_DIRNAME = "images"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 # --- Z-Values for Item Stacking ---
-Z_VALUE_INFO_RECT = 0
-Z_VALUE_IMAGE = 1
+Z_VALUE_INFO_RECT = 1 # Ensure info rects are on top
+Z_VALUE_IMAGE = 0 # Ensure images are below info rects
 
 
 # --- Helper Functions ---
@@ -76,7 +76,7 @@ class DraggableImageItem(QGraphicsObject):
                       QGraphicsItem.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
         self.initial_pos = self.pos()
-        self.setZValue(Z_VALUE_IMAGE) # Ensure images are on top
+        self.setZValue(Z_VALUE_IMAGE) # Ensure images are below info rects
 
     def pixmap(self):
         return self._pixmap
@@ -161,7 +161,7 @@ class InfoRectangleItem(QGraphicsObject):
                       QGraphicsItem.ItemIsMovable | 
                       QGraphicsItem.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
-        self.setZValue(Z_VALUE_INFO_RECT) # Ensure info rects are below images
+        self.setZValue(Z_VALUE_INFO_RECT) # Ensure info rects are on top
 
         self.text_item = QGraphicsTextItem('', self)
         self.text_item.setDefaultTextColor(QColor("#000000"))
