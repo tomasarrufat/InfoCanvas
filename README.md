@@ -51,12 +51,12 @@ The project follows this basic structure:
     - On Windows: `venv\Scripts\activate`
     - On macOS/Linux: `source venv/bin/activate`
     
-4.  **Install Requirements:** Install the necessary Python packages using pip and the `requirements.txt` file. This will include PyQt5 and other dependencies.
+4.  **Install Requirements:** Install the necessary Python packages using pip and the `requirements.txt` file. This will install PyQt5 and any other dependencies.
     
     ```bash
     pip install -r requirements.txt
     ```
-    *(Note: Ensure `PyQt5` is listed in your `requirements.txt` file.)*
+    *(The repository's `requirements.txt` already includes PyQt5.)*
 
 ## Usage
 
