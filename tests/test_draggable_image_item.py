@@ -44,3 +44,20 @@ def test_item_position_updates_config(qtbot):
     scene.addItem(item)
     item.setPos(5, 5)
     assert cfg['center_x'] == 5 + 10/2 and cfg['center_y'] == 5 + 10/2
+
+def test_item_moved_signal_emitted(qtbot):
+    item, cfg = create_item(10, 10)
+    scene = QGraphicsScene()
+    scene.addItem(item)
+    moved = []
+    item.item_moved.connect(lambda obj: moved.append(True))
+    item.setPos(3, 4)
+    assert moved and cfg['center_x'] == 3 + 5 and cfg['center_y'] == 4 + 5
+
+def test_item_position_scaled_update(qtbot):
+    item, cfg = create_item(10, 10)
+    cfg['scale'] = 2.0
+    scene = QGraphicsScene()
+    scene.addItem(item)
+    item.setPos(1, 1)
+    assert cfg['center_x'] == 1 + 20/2 and cfg['center_y'] == 1 + 20/2

@@ -59,3 +59,24 @@ def test_item_change_updates_config(qtbot):
     item.setPos(10, 15)
     assert item.config_data['center_x'] == 10 + item.boundingRect().width() / 2
     assert item.config_data['center_y'] == 15 + item.boundingRect().height() / 2
+
+def test_update_appearance_view_mode(qtbot):
+    item = create_item()
+    item.update_appearance(is_view_mode=True)
+    assert not item.text_item.isVisible()
+    assert item._pen.color() == QColor(0, 0, 0, 0)
+
+def test_center_text_respects_padding(qtbot):
+    item = create_item()
+    item.config_data['defaults']['info_rectangle_text_display']['padding'] = '20px'
+    item.set_display_text('multi\nline text')
+    assert item.text_item.y() >= 20
+
+def test_item_moved_signal_emitted(qtbot):
+    item = create_item()
+    scene = QGraphicsScene()
+    scene.addItem(item)
+    moved = []
+    item.item_moved.connect(lambda obj: moved.append(True))
+    item.setPos(5, 5)
+    assert moved and item.config_data['center_x'] == 5 + item.boundingRect().width() / 2
