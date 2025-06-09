@@ -124,3 +124,15 @@ This application supports managing multiple distinct interactive image projects.
 ## Stopping the Application
 
 -   To stop the application, simply close the main application window (e.g., by clicking the 'X' button in the window's title bar or using File > Exit / Ctrl+Q).
+
+## Running Tests
+
+The project includes a suite of logic and GUI tests using `pytest` and `pytest-qt`.
+After installing the dependencies from `requirements.txt`, execute the following
+command in the project root to run all tests:
+
+```bash
+pytest -q
+```
+
+All tests should pass in an offscreen environment.
