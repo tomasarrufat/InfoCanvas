@@ -2,11 +2,7 @@ from PyQt5.QtWidgets import QGraphicsObject, QGraphicsItem, QGraphicsTextItem, Q
 from PyQt5.QtCore import Qt, QRectF, QPointF, pyqtSignal, QRect
 from PyQt5.QtGui import QColor, QBrush, QPen, QFontMetrics, QCursor
 
-from . import utils # Assuming utils.py is in the same directory (src)
-# Or from src import utils if running from parent directory
-
-# Placeholder for Z_VALUE_INFO_RECT, will be utils.Z_VALUE_INFO_RECT
-# Z_VALUE_INFO_RECT = 0
+from . import utils
 
 
 class InfoRectangleItem(QGraphicsObject):
@@ -41,7 +37,8 @@ class InfoRectangleItem(QGraphicsObject):
                       QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
-        self.setZValue(utils.Z_VALUE_INFO_RECT) # Ensure info rects are below images
+        # Info rectangles should appear above images
+        self.setZValue(utils.Z_VALUE_INFO_RECT)
 
         self.text_item = QGraphicsTextItem('', self)
         self.text_item.setDefaultTextColor(QColor("#000000"))

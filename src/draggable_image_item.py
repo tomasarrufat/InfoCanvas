@@ -2,11 +2,7 @@ from PyQt5.QtWidgets import QGraphicsObject, QGraphicsItem, QApplication
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QPixmap # Added QPixmap as it's likely used
 
-from . import utils # Assuming utils.py is in the same directory (src)
-# Or from src import utils if running from parent directory
-
-# --- Z-Values for Item Stacking --- (This line might be removed if Z_VALUE_IMAGE is directly used from utils)
-# Z_VALUE_IMAGE = 1 # Placeholder, will be replaced by utils.Z_VALUE_IMAGE
+from . import utils
 
 
 class DraggableImageItem(QGraphicsObject):
@@ -22,7 +18,8 @@ class DraggableImageItem(QGraphicsObject):
                       QGraphicsItem.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
         self.initial_pos = self.pos()
-        self.setZValue(utils.Z_VALUE_IMAGE) # Ensure images are on top
+        # Images should appear beneath info rectangles
+        self.setZValue(utils.Z_VALUE_IMAGE)
 
     def pixmap(self):
         return self._pixmap
