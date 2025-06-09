@@ -17,6 +17,13 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtCore import Qt, QRectF, QPointF, pyqtSignal, QObject, QRect, QTimer
 
+from src import utils
+from src.draggable_image_item import DraggableImageItem
+from src.info_rectangle_item import InfoRectangleItem
+from src.project_manager_dialog import ProjectManagerDialog
+
+# --- Custom Graphics Items ---
+
 # --- Project Structure Constants ---
 BASE_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECTS_ROOT_DIR_NAME = "static"  # Main directory for all projects
@@ -527,7 +534,7 @@ class InteractiveToolApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setGeometry(100, 100, 1200, 700)
-        ensure_base_projects_directory_exists()
+        utils.ensure_base_projects_directory_exists()
         self.current_project_name = None
         self.current_project_path = None
         self.config = {}
@@ -549,15 +556,15 @@ class InteractiveToolApp(QMainWindow):
         if os.path.isabs(project_name_or_path) and os.path.isdir(project_name_or_path):
              path = project_name_or_path
         else:
-             path = os.path.join(PROJECTS_BASE_DIR, project_name_or_path)
-        return os.path.join(path, PROJECT_CONFIG_FILENAME)
+             path = os.path.join(utils.PROJECTS_BASE_DIR, project_name_or_path)
+        return os.path.join(path, utils.PROJECT_CONFIG_FILENAME)
 
     def _get_project_images_folder(self, project_name_or_path):
         if os.path.isabs(project_name_or_path) and os.path.isdir(project_name_or_path):
              path = project_name_or_path
         else:
-             path = os.path.join(PROJECTS_BASE_DIR, project_name_or_path)
-        return os.path.join(path, PROJECT_IMAGES_DIRNAME)
+             path = os.path.join(utils.PROJECTS_BASE_DIR, project_name_or_path)
+        return os.path.join(path, utils.PROJECT_IMAGES_DIRNAME)
 
     def _ensure_project_structure_exists(self, project_path):
         if not project_path: return False
@@ -622,7 +629,7 @@ class InteractiveToolApp(QMainWindow):
         dialog.project_deleted_signal.connect(self._handle_deleted_current_project)
         if dialog.exec_() == QDialog.Accepted and dialog.selected_project_name:
             project_name = dialog.selected_project_name
-            project_path = os.path.join(PROJECTS_BASE_DIR, project_name)
+            project_path = os.path.join(utils.PROJECTS_BASE_DIR, project_name)
             is_new = not os.path.exists(project_path)
             return self._switch_to_project(project_name, is_new_project=is_new)
         return False
@@ -638,7 +645,7 @@ class InteractiveToolApp(QMainWindow):
                 self.statusBar().showMessage(f"Project '{project_name}' is already loaded.", 2000)
                 return
 
-            is_new = not os.path.exists(os.path.join(PROJECTS_BASE_DIR, project_name))
+            is_new = not os.path.exists(os.path.join(utils.PROJECTS_BASE_DIR, project_name))
             
             if self._switch_to_project(project_name, is_new_project=is_new):
                 if hasattr(self, 'scene') and self.scene:
@@ -657,13 +664,13 @@ class InteractiveToolApp(QMainWindow):
 
     def _switch_to_project(self, project_name, is_new_project=False):
         self.current_project_name = project_name
-        self.current_project_path = os.path.join(PROJECTS_BASE_DIR, self.current_project_name)
+        self.current_project_path = os.path.join(utils.PROJECTS_BASE_DIR, self.current_project_name)
         if not self._ensure_project_structure_exists(self.current_project_path):
             self.current_project_name = None
             self.current_project_path = None
             return False
         if is_new_project:
-            self.config = get_default_config()
+            self.config = utils.get_default_config()
             self.config["project_name"] = self.current_project_name
             if not self.save_config():
                  QMessageBox.warning(self, "Save Error", f"Could not save initial configuration for new project '{project_name}'.")
@@ -710,7 +717,7 @@ class InteractiveToolApp(QMainWindow):
             # Allow saving default config if creating a new project even if path isn't fully set by user yet
             # This is handled by _switch_to_project which calls save_config for new projects
             if config_data_to_save and "project_name" in config_data_to_save: # Likely a new project default config
-                temp_project_path = os.path.join(PROJECTS_BASE_DIR, config_data_to_save["project_name"])
+                temp_project_path = os.path.join(utils.PROJECTS_BASE_DIR, config_data_to_save["project_name"])
                 if not self._ensure_project_structure_exists(temp_project_path): return False
                 config_file_path = self._get_project_config_path(temp_project_path)
             else:
@@ -974,7 +981,7 @@ class InteractiveToolApp(QMainWindow):
                     break
         self.scene.clear()
         self.item_map.clear()
-        bg_conf = self.config.get('background', get_default_config()['background'])
+        bg_conf = self.config.get('background', utils.get_default_config()['background'])
         self.scene.setBackgroundBrush(QBrush(QColor(bg_conf['color'])))
         self.scene.setSceneRect(0, 0, bg_conf['width'], bg_conf['height'])
         current_project_images_folder = self._get_project_images_folder(self.current_project_path)
@@ -1122,12 +1129,12 @@ class InteractiveToolApp(QMainWindow):
         current_project_images_folder = self._get_project_images_folder(self.current_project_path)
         filepath, _ = QFileDialog.getOpenFileName(
             self, "Upload Image", current_project_images_folder,
-            f"Images ({' '.join(['*.' + ext for ext in ALLOWED_EXTENSIONS])})"
+            f"Images ({' '.join(['*.' + ext for ext in utils.ALLOWED_EXTENSIONS])})"
         )
         if not filepath:
             return
         filename = os.path.basename(filepath)
-        if not allowed_file(filename):
+        if not utils.allowed_file(filename):
             QMessageBox.warning(self, "Upload Error", "Selected file type is not allowed.")
             return
         base, ext = os.path.splitext(filename)
@@ -1220,7 +1227,7 @@ class InteractiveToolApp(QMainWindow):
 
     def add_info_rectangle(self):
         rect_id = f"rect_{datetime.datetime.now().timestamp()}"
-        default_display_conf = self.config.get("defaults", {}).get("info_rectangle_text_display", get_default_config()["defaults"]["info_rectangle_text_display"])
+        default_display_conf = self.config.get("defaults", {}).get("info_rectangle_text_display", utils.get_default_config()["defaults"]["info_rectangle_text_display"])
         new_rect_config = {
             "id": rect_id,
             "center_x": self.scene.width() / 2, "center_y": self.scene.height() / 2,
