@@ -38,7 +38,7 @@ class InfoRectangleItem(QGraphicsObject):
         self._brush = QBrush(Qt.NoBrush)
 
         self.setFlags(QGraphicsItem.ItemIsSelectable |
-                      QGraphicsItem.ItemIsMovable | 
+                      QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
         self.setZValue(utils.Z_VALUE_INFO_RECT) # Ensure info rects are below images
@@ -48,12 +48,12 @@ class InfoRectangleItem(QGraphicsObject):
 
         self._current_resize_handle = self.ResizeHandle.NONE
         self._resizing_initial_mouse_pos = QPointF()
-        self._resizing_initial_rect = QRectF() 
+        self._resizing_initial_rect = QRectF()
         self._is_resizing = False
-        self._was_movable = self.flags() & QGraphicsItem.ItemIsMovable 
+        self._was_movable = self.flags() & QGraphicsItem.ItemIsMovable
 
         self.update_geometry_from_config()
-        self.update_text_from_config() 
+        self.update_text_from_config()
         self.update_appearance()
         self.initial_pos = self.pos()
 
@@ -65,7 +65,7 @@ class InfoRectangleItem(QGraphicsObject):
         painter.setBrush(self._brush)
         painter.drawRect(self.boundingRect())
 
-    def _get_resize_handle_at(self, pos): 
+    def _get_resize_handle_at(self, pos):
         r = self.boundingRect()
         m = self.RESIZE_MARGIN
         on_left = abs(pos.x() - r.left()) < m
@@ -102,10 +102,10 @@ class InfoRectangleItem(QGraphicsObject):
                     cursor_shape = Qt.SizeHorCursor
             elif self.flags() & QGraphicsItem.ItemIsMovable:
                  cursor_shape = Qt.PointingHandCursor
-            
+
             if self.cursor().shape() != cursor_shape:
                 self.setCursor(QCursor(cursor_shape))
-        elif not self._is_resizing: 
+        elif not self._is_resizing:
             default_cursor_shape = Qt.ArrowCursor
             if parent_win and parent_win.current_mode == "edit" and (self.flags() & QGraphicsItem.ItemIsMovable):
                  default_cursor_shape = Qt.PointingHandCursor
@@ -114,7 +114,7 @@ class InfoRectangleItem(QGraphicsObject):
         super().hoverMoveEvent(event)
 
     def hoverLeaveEvent(self, event):
-        if not self._is_resizing: 
+        if not self._is_resizing:
             default_cursor_shape = Qt.ArrowCursor
             if self.scene() and hasattr(self.scene(), 'parent_window') and self.scene().parent_window.current_mode == "edit" and (self.flags() & QGraphicsItem.ItemIsMovable):
                 default_cursor_shape = Qt.PointingHandCursor
@@ -130,13 +130,13 @@ class InfoRectangleItem(QGraphicsObject):
             self._current_resize_handle = self._get_resize_handle_at(event.pos())
             if self._current_resize_handle != self.ResizeHandle.NONE:
                 self._is_resizing = True
-                self._resizing_initial_mouse_pos = event.scenePos() 
-                self._resizing_initial_rect = self.sceneBoundingRect() 
-                
-                self._was_movable = self.flags() & QGraphicsItem.ItemIsMovable
-                self.setFlag(QGraphicsItem.ItemIsMovable, False) 
+                self._resizing_initial_mouse_pos = event.scenePos()
+                self._resizing_initial_rect = self.sceneBoundingRect()
 
-                cursor_shape = Qt.ArrowCursor 
+                self._was_movable = self.flags() & QGraphicsItem.ItemIsMovable
+                self.setFlag(QGraphicsItem.ItemIsMovable, False)
+
+                cursor_shape = Qt.ArrowCursor
                 if self._current_resize_handle == self.ResizeHandle.TOP_LEFT or self._current_resize_handle == self.ResizeHandle.BOTTOM_RIGHT:
                     cursor_shape = Qt.SizeFDiagCursor
                 elif self._current_resize_handle == self.ResizeHandle.TOP_RIGHT or self._current_resize_handle == self.ResizeHandle.BOTTOM_LEFT:
@@ -150,9 +150,9 @@ class InfoRectangleItem(QGraphicsObject):
                 event.accept()
                 return
 
-        super().mousePressEvent(event) 
-        if event.button() == Qt.LeftButton: 
-            self.item_selected.emit(self) 
+        super().mousePressEvent(event)
+        if event.button() == Qt.LeftButton:
+            self.item_selected.emit(self)
             self.initial_pos = self.pos()
 
 
@@ -160,8 +160,8 @@ class InfoRectangleItem(QGraphicsObject):
         if self._is_resizing and self._current_resize_handle != self.ResizeHandle.NONE:
             current_mouse_pos = event.scenePos()
             delta = current_mouse_pos - self._resizing_initial_mouse_pos
-            
-            new_rect = QRectF(self._resizing_initial_rect) 
+
+            new_rect = QRectF(self._resizing_initial_rect)
 
             if self._current_resize_handle in [self.ResizeHandle.TOP_LEFT, self.ResizeHandle.LEFT, self.ResizeHandle.BOTTOM_LEFT]:
                 new_rect.setLeft(self._resizing_initial_rect.left() + delta.x())
@@ -175,24 +175,24 @@ class InfoRectangleItem(QGraphicsObject):
             if new_rect.width() < self.MIN_WIDTH:
                 if self._current_resize_handle in [self.ResizeHandle.TOP_LEFT, self.ResizeHandle.LEFT, self.ResizeHandle.BOTTOM_LEFT]:
                     new_rect.setLeft(new_rect.right() - self.MIN_WIDTH)
-                else: 
+                else:
                     new_rect.setRight(new_rect.left() + self.MIN_WIDTH)
-            
+
             if new_rect.height() < self.MIN_HEIGHT:
                 if self._current_resize_handle in [self.ResizeHandle.TOP_LEFT, self.ResizeHandle.TOP, self.ResizeHandle.TOP_RIGHT]:
                     new_rect.setTop(new_rect.bottom() - self.MIN_HEIGHT)
-                else: 
+                else:
                     new_rect.setBottom(new_rect.top() + self.MIN_HEIGHT)
-            
+
             self.prepareGeometryChange()
 
             self._w = new_rect.width()
             self._h = new_rect.height()
-            self.text_item.setTextWidth(self._w) 
-            self.setPos(new_rect.topLeft()) 
-            self._center_text() 
-            
-            self.update() 
+            self.text_item.setTextWidth(self._w)
+            self.setPos(new_rect.topLeft())
+            self._center_text()
+
+            self.update()
             event.accept()
         else:
             super().mouseMoveEvent(event)
@@ -200,35 +200,35 @@ class InfoRectangleItem(QGraphicsObject):
     def mouseReleaseEvent(self, event):
         if self._is_resizing and event.button() == Qt.LeftButton:
             self._is_resizing = False
-            
-            self.setFlag(QGraphicsItem.ItemIsMovable, self._was_movable) 
 
-            current_top_left_scene = self.scenePos() 
+            self.setFlag(QGraphicsItem.ItemIsMovable, self._was_movable)
+
+            current_top_left_scene = self.scenePos()
             self.config_data['width'] = self._w
             self.config_data['height'] = self._h
             self.config_data['center_x'] = current_top_left_scene.x() + self._w / 2
             self.config_data['center_y'] = current_top_left_scene.y() + self._h / 2
-            
+
             self.properties_changed.emit(self)
-            
+
             default_cursor_shape = Qt.ArrowCursor
             if self.scene() and hasattr(self.scene(), 'parent_window') and self.scene().parent_window.current_mode == "edit":
                 if self.flags() & QGraphicsItem.ItemIsMovable:
                      default_cursor_shape = Qt.PointingHandCursor
             self.setCursor(QCursor(default_cursor_shape))
-            
+
             event.accept()
         else:
-            super().mouseReleaseEvent(event) 
+            super().mouseReleaseEvent(event)
 
-    def update_geometry_from_config(self): 
+    def update_geometry_from_config(self):
         self.prepareGeometryChange()
         self._w = self.config_data.get('width', 100)
         self._h = self.config_data.get('height', 50)
         center_x = self.config_data.get('center_x', 0)
         center_y = self.config_data.get('center_y', 0)
         self.setPos(center_x - self._w / 2, center_y - self._h / 2)
-        
+
         self.text_item.setTextWidth(self._w)
         self._center_text()
         self.update()
@@ -239,9 +239,7 @@ class InfoRectangleItem(QGraphicsObject):
         # Use QFontMetrics to calculate the actual height of the text block
         font_metrics = QFontMetrics(self.text_item.font())
         # Need to use a QRect that respects the width of the text item for word wrapping
-        text_bounding_rect = font_metrics.boundingRect(QRectF(0, 0, self._w, 10000), # Large height for calculation
-                                                       Qt.TextWordWrap | Qt.AlignLeft, # Flags similar to how QGraphicsTextItem might render
-                                                       self.text_item.toPlainText())
+        text_bounding_rect = font_metrics.boundingRect(QRect(0, 0, int(self._w), 10000), Qt.TextWordWrap | Qt.AlignLeft, self.text_item.toPlainText()) # Large height for calculation
         text_height = text_bounding_rect.height()
 
         # Get padding from config, default to 5 if not found or invalid
@@ -262,7 +260,7 @@ class InfoRectangleItem(QGraphicsObject):
         self._center_text() # Recenter after text change
         self.update() # Ensure repaint
 
-    def update_text_from_config(self): 
+    def update_text_from_config(self):
         """Updates the text content from config_data (e.g., on load) and adjusts text centering."""
         self.text_item.setPlainText(self.config_data.get('text', ''))
         self._center_text() # Recenter after text change

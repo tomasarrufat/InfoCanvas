@@ -16,7 +16,7 @@ from . import utils # Assuming utils.py is in the same directory (src)
 
 class ProjectManagerDialog(QDialog):
     # Signal to indicate a project might need to be reloaded or UI reset in main window
-    project_deleted_signal = pyqtSignal(str) 
+    project_deleted_signal = pyqtSignal(str)
 
     def __init__(self, parent=None, current_project_name=None):
         super().__init__(parent)
@@ -44,16 +44,16 @@ class ProjectManagerDialog(QDialog):
         self.new_button = QPushButton("Create New Project")
         self.new_button.clicked.connect(self.create_new_project)
         buttons_layout.addWidget(self.new_button)
-        
+
         self.delete_button = QPushButton("Delete Selected Project")
         self.delete_button.setStyleSheet("background-color: #dc3545; color: white;")
         self.delete_button.clicked.connect(self.confirm_delete_project)
         buttons_layout.addWidget(self.delete_button)
 
         layout.addLayout(buttons_layout)
-        
+
         self.cancel_button = QPushButton("Close Manager")
-        self.cancel_button.clicked.connect(self.reject) 
+        self.cancel_button.clicked.connect(self.reject)
         layout.addWidget(self.cancel_button, 0, Qt.AlignRight)
 
 
@@ -72,7 +72,7 @@ class ProjectManagerDialog(QDialog):
         current_item = self.project_list_widget.currentItem()
         if current_item:
             self.selected_project_name = current_item.text()
-            self.accept() 
+            self.accept()
         else:
             QMessageBox.warning(self, "No Project Selected", "Please select a project from the list to load.")
 
@@ -83,7 +83,7 @@ class ProjectManagerDialog(QDialog):
             if not project_name:
                 QMessageBox.warning(self, "Invalid Name", "Project name cannot be empty.")
                 return
-            
+
             # Basic validation for project name (avoid special chars that are bad for dir names)
             if not all(c.isalnum() or c in (' ', '_', '-') for c in project_name):
                 QMessageBox.warning(self, "Invalid Name", "Project name can only contain letters, numbers, spaces, underscores, or hyphens.")
@@ -93,12 +93,12 @@ class ProjectManagerDialog(QDialog):
             if os.path.exists(new_project_path):
                 QMessageBox.warning(self, "Project Exists", f"A project named '{project_name}' already exists.")
                 return
-            
+
             self.selected_project_name = project_name
-            self.accept() 
+            self.accept()
         elif ok and not project_name:
              QMessageBox.warning(self, "Invalid Name", "Project name cannot be empty.")
-    
+
     def confirm_delete_project(self):
         current_item = self.project_list_widget.currentItem()
         if not current_item:
@@ -109,7 +109,7 @@ class ProjectManagerDialog(QDialog):
         reply = QMessageBox.question(self, "Confirm Delete",
                                      f"Are you sure you want to permanently delete the project '{project_name_to_delete}'?\nThis action cannot be undone.",
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        
+
         if reply == QMessageBox.Yes:
             self.delete_project(project_name_to_delete)
 
@@ -124,7 +124,7 @@ class ProjectManagerDialog(QDialog):
             if project_name == self.current_project_name_on_open:
                 self.project_deleted_signal.emit(project_name)
                 # self.accept() # Close dialog after deleting current project to force main window reset
-                # Or, keep dialog open if user might want to do more. 
+                # Or, keep dialog open if user might want to do more.
                 # For now, let main window handle reset via signal.
 
         except Exception as e:
