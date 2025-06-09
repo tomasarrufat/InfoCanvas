@@ -1354,9 +1354,7 @@ class InteractiveToolApp(QMainWindow):
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    if not QApplication.instance(): 
-        app = QApplication(sys.argv) 
+    app = QApplication.instance() or QApplication(sys.argv)
     
     main_window = InteractiveToolApp()
     if main_window.current_project_name: 
