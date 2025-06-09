@@ -2,14 +2,16 @@ import os
 import json
 from datetime import datetime
 
-BASE_SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+# Path to the repository root
+BASE_SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJECTS_ROOT_DIR_NAME = "static"  # Main directory for all projects
 PROJECTS_BASE_DIR = os.path.join(BASE_SCRIPT_DIR, PROJECTS_ROOT_DIR_NAME)
 PROJECT_CONFIG_FILENAME = "config.json"
 PROJECT_IMAGES_DIRNAME = "images"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-Z_VALUE_INFO_RECT = 0
-Z_VALUE_IMAGE = 1
+# Z-values used for stacking graphics items
+Z_VALUE_INFO_RECT = 1  # Info rectangles on top
+Z_VALUE_IMAGE = 0      # Images below
 
 
 # --- Helper Functions ---
