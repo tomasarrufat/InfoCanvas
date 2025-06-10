@@ -26,7 +26,7 @@ This document outlines the requirements for a web-based Python tool designed for
     * **EM3.4. Image Repositioning:** Users must be able to interactively drag and drop images to change their position on the canvas. The new center coordinates (x, y) of the image must be recorded.
     * **EM3.5. Image Scaling:** Users must be able to resize (scale) images using the controls panel when an image is selected. The scaling factor must be recorded.
     * **EM3.6. Image Deletion:** Upon image deletion from the canvas (via button click), the corresponding image file must be permanently deleted from the `/images` folder (relative to the application's root directory), and its reference removed from the project's configuration. The system should clearly inform the user that this action is permanent before proceeding.
-    * **EM3.7. Image Layering (Z-index) (Optional):** If images can overlap, users might need to control which image appears on top. (Note: Not implemented in current code).
+    * **EM3.7. Image Layering (Z-index):** When images overlap, users can control their order using "Bring to Front", "Send to Back", "Bring Forward", and "Send Backward" buttons.
 * **EM4. Info Rectangle Management:**
     * **EM4.1. Add Info Rectangle:** Users must be able to add new rectangular areas onto the canvas via a button click. New rectangles appear centered.
     * **EM4.2. Info Rectangle Sizing (Manual Input):** Users must be able to define the width and height of each info rectangle using input fields in the controls panel when a rectangle is selected.
@@ -43,6 +43,7 @@ This document outlines the requirements for a web-based Python tool designed for
     * **EM4.7. Info Rectangle Deletion (Button):** Users must be able to delete the selected info rectangle using a button in the controls panel (with confirmation).
     * **EM4.8. Info Rectangle Deletion (Key):** Users must be able to delete the selected info rectangle by pressing the 'Delete' key (with confirmation), provided an input field is not currently focused.
     * **EM4.9. Info Rectangle Copy/Paste:** Users must be able to copy the selected info rectangle's data using Ctrl+C and paste it using Ctrl+V. The pasted rectangle should appear centered on the canvas with a new unique ID but otherwise identical properties (text, dimensions). Copy/paste should not interfere with text copy/paste within input fields.
+    * **EM4.10. Info Rectangle Layering:** Rectangles can be reordered in the same way as images using the layering buttons.
 * **EM5. Configuration Auto-Saving:**
     * **EM5.1. Automatic Save on Change:** Any modification made by the user in Edit Mode (e.g., moving/scaling an image, moving/resizing/editing text of an info rectangle, changing background) should trigger an automatic save of the current configuration to the JSON file in the `/config` folder.
     * **EM5.2. Save Throttling:** To prevent excessive write operations, the auto-save mechanism should be throttled (e.g., maximum rate of once per second).

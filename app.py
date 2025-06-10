@@ -58,6 +58,11 @@ class InteractiveToolApp(QMainWindow):
              path = os.path.join(utils.PROJECTS_BASE_DIR, project_name_or_path)
         return os.path.join(path, utils.PROJECT_IMAGES_DIRNAME)
 
+    def _get_next_z_index(self):
+         if hasattr(self, 'scene') and self.scene and self.scene.items():
+             return max(item.zValue() for item in self.scene.items()) + 1
+         return 0
+
     def _ensure_project_structure_exists(self, project_path):
         if not project_path: return False
         try:
@@ -339,6 +344,20 @@ class InteractiveToolApp(QMainWindow):
         self.delete_image_button.setStyleSheet("background-color: #dc3545; color: white;")
         self.delete_image_button.clicked.connect(self.delete_selected_image)
         img_props_layout.addWidget(self.delete_image_button)
+        img_layer_layout = QHBoxLayout()
+        self.img_to_front = QPushButton("Bring to Front")
+        self.img_to_front.clicked.connect(self.bring_to_front)
+        img_layer_layout.addWidget(self.img_to_front)
+        self.img_forward = QPushButton("Bring Forward")
+        self.img_forward.clicked.connect(self.bring_forward)
+        img_layer_layout.addWidget(self.img_forward)
+        self.img_backward = QPushButton("Send Backward")
+        self.img_backward.clicked.connect(self.send_backward)
+        img_layer_layout.addWidget(self.img_backward)
+        self.img_to_back = QPushButton("Send to Back")
+        self.img_to_back.clicked.connect(self.send_to_back)
+        img_layer_layout.addWidget(self.img_to_back)
+        img_props_layout.addLayout(img_layer_layout)
         self.image_properties_widget.setVisible(False)
         img_layout.addWidget(self.image_properties_widget)
         edit_mode_layout.addWidget(img_group)
@@ -374,6 +393,20 @@ class InteractiveToolApp(QMainWindow):
         self.delete_info_rect_button.setStyleSheet("background-color: #dc3545; color: white;")
         self.delete_info_rect_button.clicked.connect(self.delete_selected_info_rect)
         rect_props_layout.addWidget(self.delete_info_rect_button)
+        rect_layer_layout = QHBoxLayout()
+        self.rect_to_front = QPushButton("Bring to Front")
+        self.rect_to_front.clicked.connect(self.bring_to_front)
+        rect_layer_layout.addWidget(self.rect_to_front)
+        self.rect_forward = QPushButton("Bring Forward")
+        self.rect_forward.clicked.connect(self.bring_forward)
+        rect_layer_layout.addWidget(self.rect_forward)
+        self.rect_backward = QPushButton("Send Backward")
+        self.rect_backward.clicked.connect(self.send_backward)
+        rect_layer_layout.addWidget(self.rect_backward)
+        self.rect_to_back = QPushButton("Send to Back")
+        self.rect_to_back.clicked.connect(self.send_to_back)
+        rect_layer_layout.addWidget(self.rect_to_back)
+        rect_props_layout.addLayout(rect_layer_layout)
         self.info_rect_properties_widget.setVisible(False)
         rect_layout.addWidget(self.info_rect_properties_widget)
         edit_mode_layout.addWidget(rect_group)
@@ -650,9 +683,14 @@ class InteractiveToolApp(QMainWindow):
             QMessageBox.warning(self, "Image Error", f"Could not read valid dimensions for image: {unique_filename}. Using fallback 100x100.")
             original_width, original_height = 100, 100
         new_image_config = {
-            "id": img_id, "path": unique_filename,
-            "center_x": self.scene.width() / 2, "center_y": self.scene.height() / 2,
-            "scale": 1.0, "original_width": original_width, "original_height": original_height
+            "id": img_id,
+            "path": unique_filename,
+            "center_x": self.scene.width() / 2,
+            "center_y": self.scene.height() / 2,
+            "scale": 1.0,
+            "original_width": original_width,
+            "original_height": original_height,
+            "z_index": self._get_next_z_index(),
         }
         if 'images' not in self.config: self.config['images'] = []
         self.config['images'].append(new_image_config)
@@ -723,8 +761,10 @@ class InteractiveToolApp(QMainWindow):
         new_rect_config = {
             "id": rect_id,
             "center_x": self.scene.width() / 2, "center_y": self.scene.height() / 2,
-            "width": default_display_conf.get("box_width", 150), "height": 50,
-            "text": "New Information"
+            "width": default_display_conf.get("box_width", 150),
+            "height": 50,
+            "text": "New Information",
+            "z_index": self._get_next_z_index(),
         }
         if 'info_rectangles' not in self.config: self.config['info_rectangles'] = []
         self.config['info_rectangles'].append(new_rect_config)
@@ -794,6 +834,7 @@ class InteractiveToolApp(QMainWindow):
         new_rect_config['id'] = f"rect_{datetime.datetime.now().timestamp()}"
         new_rect_config['center_x'] = new_rect_config.get('center_x', self.scene.width() / 2) + 20
         new_rect_config['center_y'] = new_rect_config.get('center_y', self.scene.height() / 2) + 20
+        new_rect_config['z_index'] = self._get_next_z_index()
 
         if 'info_rectangles' not in self.config:
             self.config['info_rectangles'] = []
@@ -810,8 +851,29 @@ class InteractiveToolApp(QMainWindow):
         self.save_config()
         self.statusBar().showMessage("Info rectangle pasted.", 2000)
         
-        self.scene.clearSelection() 
-        item.setSelected(True) 
+        self.scene.clearSelection()
+        item.setSelected(True)
+
+    # --- Z-order manipulation ---
+    def bring_to_front(self):
+        if self.selected_item:
+            utils.bring_to_front(self.selected_item)
+            self.save_config()
+
+    def send_to_back(self):
+        if self.selected_item:
+            utils.send_to_back(self.selected_item)
+            self.save_config()
+
+    def bring_forward(self):
+        if self.selected_item:
+            utils.bring_forward(self.selected_item)
+            self.save_config()
+
+    def send_backward(self):
+        if self.selected_item:
+            utils.send_backward(self.selected_item)
+            self.save_config()
 
 
     def keyPressEvent(self, event):

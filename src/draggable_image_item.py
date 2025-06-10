@@ -18,8 +18,8 @@ class DraggableImageItem(QGraphicsObject):
                       QGraphicsItem.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
         self.initial_pos = self.pos()
-        # Images should appear beneath info rectangles
-        self.setZValue(utils.Z_VALUE_IMAGE)
+        # Set initial stacking value
+        self.setZValue(self.config_data.get('z_index', utils.Z_VALUE_IMAGE))
 
     def pixmap(self):
         return self._pixmap

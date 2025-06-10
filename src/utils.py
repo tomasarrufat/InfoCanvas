@@ -10,8 +10,8 @@ PROJECT_CONFIG_FILENAME = "config.json"
 PROJECT_IMAGES_DIRNAME = "images"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 # Z-values used for stacking graphics items
-Z_VALUE_INFO_RECT = 1  # Info rectangles on top
-Z_VALUE_IMAGE = 0      # Images below
+Z_VALUE_INFO_RECT = 1  # Default z for info rectangles
+Z_VALUE_IMAGE = 0      # Default z for images
 
 
 # --- Helper Functions ---
@@ -44,3 +44,41 @@ def get_default_config():
         "images": [],
         "info_rectangles": []
     }
+
+# --- Z-index Management Helpers ---
+def bring_to_front(item):
+    """Moves item above all others in its scene."""
+    scene = item.scene() if hasattr(item, "scene") else None
+    if scene:
+        max_z = max((obj.zValue() for obj in scene.items()), default=0)
+        new_z = max_z + 1
+        item.setZValue(new_z)
+        if hasattr(item, "config_data"):
+            item.config_data["z_index"] = new_z
+
+
+def send_to_back(item):
+    """Moves item below all others in its scene."""
+    scene = item.scene() if hasattr(item, "scene") else None
+    if scene:
+        min_z = min((obj.zValue() for obj in scene.items()), default=0)
+        new_z = min_z - 1
+        item.setZValue(new_z)
+        if hasattr(item, "config_data"):
+            item.config_data["z_index"] = new_z
+
+
+def bring_forward(item):
+    """Raises item one layer up."""
+    new_z = item.zValue() + 1
+    item.setZValue(new_z)
+    if hasattr(item, "config_data"):
+        item.config_data["z_index"] = new_z
+
+
+def send_backward(item):
+    """Lowers item one layer down."""
+    new_z = item.zValue() - 1
+    item.setZValue(new_z)
+    if hasattr(item, "config_data"):
+        item.config_data["z_index"] = new_z

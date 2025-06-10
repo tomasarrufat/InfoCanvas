@@ -37,8 +37,8 @@ class InfoRectangleItem(QGraphicsObject):
                       QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemSendsGeometryChanges)
         self.setAcceptHoverEvents(True)
-        # Info rectangles should appear above images
-        self.setZValue(utils.Z_VALUE_INFO_RECT)
+        # Set initial stacking value
+        self.setZValue(self.config_data.get('z_index', utils.Z_VALUE_INFO_RECT))
 
         self.text_item = QGraphicsTextItem('', self)
         self.text_item.setDefaultTextColor(QColor("#000000"))
