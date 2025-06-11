@@ -1,6 +1,7 @@
 import os
 from unittest.mock import MagicMock
 from PyQt5.QtWidgets import QMessageBox
+from unittest.mock import patch
 from tests.test_app import base_app_fixture, mock_project_manager_dialog
 
 
@@ -32,3 +33,24 @@ def test_export_to_html_write_error(base_app_fixture, monkeypatch):
     monkeypatch.setattr('builtins.open', failing_open)
     app.export_to_html('/tmp/fail.html')
     mock_critical.assert_called_once()
+
+
+@patch('app.QFileDialog.getSaveFileName')
+def test_export_to_html_uses_dialog(mock_get_save, base_app_fixture, tmp_path, monkeypatch):
+    app = base_app_fixture
+    out_file = tmp_path / "dialog_export.html"
+    mock_get_save.return_value = (str(out_file), 'HTML Files (*.html)')
+    info_mock = MagicMock()
+    monkeypatch.setattr(QMessageBox, 'information', info_mock)
+    app.export_to_html()
+    assert out_file.exists()
+    info_mock.assert_called_once_with(app, "Export Complete", f"Exported to {str(out_file)}")
+
+
+@patch('app.QFileDialog.getSaveFileName', return_value=('', ''))
+def test_export_to_html_dialog_cancel(mock_get_save, base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    info_mock = MagicMock()
+    monkeypatch.setattr(QMessageBox, 'information', info_mock)
+    app.export_to_html()
+    info_mock.assert_not_called()

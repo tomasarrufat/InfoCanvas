@@ -947,8 +947,15 @@ class InteractiveToolApp(QMainWindow):
             QMessageBox.warning(self, "Export Error", "No project loaded to export.")
             return
         if filepath is None:
-            filepath, _ = QFileDialog.getSaveFileName(self, "Export to HTML", f"{self.current_project_name}.html", "HTML Files (*.html)")
-            if not filepath:
+            default_name = f"{self.current_project_name or 'project'}.html"
+            filepath, _ = QFileDialog.getSaveFileName(
+                self,
+                "Export to HTML",
+                default_name,
+                "HTML Files (*.html)",
+                options=QFileDialog.Options()
+            )
+            if not filepath or filepath is False:
                 return
         html = self._generate_view_html()
         try:
