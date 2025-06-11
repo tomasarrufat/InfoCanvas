@@ -179,6 +179,7 @@ class InteractiveToolApp(QMainWindow):
                 # self.config = get_default_config() # Already handled in _load_config
                 # self.config["project_name"] = self.current_project_name
                 # Forcing a default config might hide underlying issues. Better to signal failure.
+                self.config = None # Explicitly set config to None
                 return False # Indicate failure if config load fails
             self.config = loaded_config
         
