@@ -46,6 +46,21 @@ def get_default_config():
     }
 
 # --- Z-index Management Helpers ---
+
+def normalize_z_indices(scene):
+    """Ensures that all top-level items in the scene have consecutive z-values."""
+    if not scene:
+        return
+    # Consider only top-level items to avoid modifying child items like text fields
+    top_items = [obj for obj in scene.items() if obj.parentItem() is None]
+    sorted_items = sorted(top_items, key=lambda obj: obj.zValue())
+    for idx, obj in enumerate(sorted_items):
+        if obj.zValue() != idx:
+            obj.setZValue(idx)
+            if hasattr(obj, "config_data"):
+                obj.config_data["z_index"] = idx
+
+
 def bring_to_front(item):
     """Moves item above all others in its scene."""
     scene = item.scene() if hasattr(item, "scene") else None
@@ -55,6 +70,7 @@ def bring_to_front(item):
         item.setZValue(new_z)
         if hasattr(item, "config_data"):
             item.config_data["z_index"] = new_z
+        normalize_z_indices(scene)
 
 
 def send_to_back(item):
@@ -66,6 +82,7 @@ def send_to_back(item):
         item.setZValue(new_z)
         if hasattr(item, "config_data"):
             item.config_data["z_index"] = new_z
+        normalize_z_indices(scene)
 
 
 def bring_forward(item):
@@ -74,6 +91,9 @@ def bring_forward(item):
     item.setZValue(new_z)
     if hasattr(item, "config_data"):
         item.config_data["z_index"] = new_z
+    scene = item.scene() if hasattr(item, "scene") else None
+    if scene:
+        normalize_z_indices(scene)
 
 
 def send_backward(item):
@@ -82,3 +102,6 @@ def send_backward(item):
     item.setZValue(new_z)
     if hasattr(item, "config_data"):
         item.config_data["z_index"] = new_z
+    scene = item.scene() if hasattr(item, "scene") else None
+    if scene:
+        normalize_z_indices(scene)
