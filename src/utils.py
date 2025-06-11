@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+from PyQt5.QtCore import Qt
 
 # Path to the repository root
 BASE_SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,8 +58,8 @@ def normalize_z_indices(scene):
     for idx, obj in enumerate(sorted_items):
         if obj.zValue() != idx:
             obj.setZValue(idx)
-            if hasattr(obj, "config_data"):
-                obj.config_data["z_index"] = idx
+        if hasattr(obj, "config_data"):
+            obj.config_data["z_index"] = idx
 
 
 def bring_to_front(item):
@@ -87,21 +88,49 @@ def send_to_back(item):
 
 def bring_forward(item):
     """Raises item one layer up."""
-    new_z = item.zValue() + 1
-    item.setZValue(new_z)
-    if hasattr(item, "config_data"):
-        item.config_data["z_index"] = new_z
     scene = item.scene() if hasattr(item, "scene") else None
     if scene:
+        top_items = [obj for obj in scene.items(Qt.AscendingOrder) if obj.parentItem() is None]
+        if item in top_items:
+            idx = top_items.index(item)
+            if idx < len(top_items) - 1:
+                above = top_items[idx + 1]
+                current_z = item.zValue()
+                item.setZValue(above.zValue())
+                above.setZValue(current_z)
+                if hasattr(above, "config_data"):
+                    above.config_data["z_index"] = above.zValue()
+        new_z = item.zValue()
+        if hasattr(item, "config_data"):
+            item.config_data["z_index"] = new_z
         normalize_z_indices(scene)
+    else:
+        new_z = item.zValue() + 1
+        item.setZValue(new_z)
+        if hasattr(item, "config_data"):
+            item.config_data["z_index"] = new_z
 
 
 def send_backward(item):
     """Lowers item one layer down."""
-    new_z = item.zValue() - 1
-    item.setZValue(new_z)
-    if hasattr(item, "config_data"):
-        item.config_data["z_index"] = new_z
     scene = item.scene() if hasattr(item, "scene") else None
     if scene:
+        top_items = [obj for obj in scene.items(Qt.AscendingOrder) if obj.parentItem() is None]
+        if item in top_items:
+            idx = top_items.index(item)
+            if idx > 0:
+                below = top_items[idx - 1]
+                current_z = item.zValue()
+                item.setZValue(below.zValue())
+                below.setZValue(current_z)
+                if hasattr(below, "config_data"):
+                    below.config_data["z_index"] = below.zValue()
+        new_z = item.zValue()
+        if hasattr(item, "config_data"):
+            item.config_data["z_index"] = new_z
         normalize_z_indices(scene)
+    else:
+        new_z = item.zValue() - 1
+        item.setZValue(new_z)
+        if hasattr(item, "config_data"):
+            item.config_data["z_index"] = new_z
