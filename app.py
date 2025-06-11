@@ -952,7 +952,7 @@ class InteractiveToolApp(QMainWindow):
                 return
         html = self._generate_view_html()
         try:
-            with open(filepath, 'w') as f:
+            with open(str(filepath), 'w', encoding='utf-8') as f:
                 f.write(html)
             QMessageBox.information(self, "Export Complete", f"Exported to {filepath}")
         except Exception as e:
