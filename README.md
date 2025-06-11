@@ -80,10 +80,12 @@ The project follows this basic structure:
             -   Click "Upload Image" to add an image to the current project's canvas. Images are stored within the project's dedicated `images` folder.
             -   Select an image on the canvas to enable its properties in the control panel (scale, delete).
             -   Drag selected images to reposition them.
+            -   Use the layering buttons to adjust their stacking order (Bring to Front/Back or step forward/backward).
         -   **Info Rectangles (Hotspots):**
             -   Click "Add Info Rectangle" to create a new hotspot on the canvas.
             -   Select a hotspot to edit its properties (text content, width, height) in the control panel.
             -   Drag selected hotspots to reposition them.
+            -   Adjust layering using the same buttons available for images.
             -   Resize selected hotspots by dragging their handles.
             -   Copy (Ctrl+C) and Paste (Ctrl+V) selected hotspots (when an input field is not focused).
             -   Delete selected hotspots or images using the 'Delete' key (when an input field is not focused) or the respective delete buttons in the control panel (confirmation may be required).
