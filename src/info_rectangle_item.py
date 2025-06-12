@@ -306,9 +306,15 @@ class InfoRectangleItem(QGraphicsObject):
         font_size_str = self._get_style_value('font_size', text_format_defaults['font_size'])
 
         try:
-            font_size = int(font_size_str.lower().replace("px", ""))
+            # Ensure font_size_str is treated as a string before string methods are called
+            font_size = int(str(font_size_str).lower().replace("px", ""))
         except ValueError:
-            font_size = 14 # Default font size
+            # Fallback to parsing the default font_size from text_format_defaults
+            try:
+                default_font_size_val = int(str(text_format_defaults['font_size']).lower().replace("px",""))
+                font_size = default_font_size_val
+            except ValueError:
+                font_size = 14 # Ultimate fallback default font size if default config is also bad
 
         font = self.text_item.font()
         font.setPointSize(font_size)
