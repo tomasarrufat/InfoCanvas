@@ -1909,3 +1909,359 @@ def test_ctrl_multi_select_info_rectangles(base_app_fixture, monkeypatch):
 
     assert item1.isSelected() and item2.isSelected()
     assert app.selected_item is item2
+
+
+# --- Tests for Alignment Features --- #
+
+class TestAlignmentFeatures:
+
+    def _add_and_select_rects(self, app_window, rect_details_list, monkeypatch):
+        """
+        Helper method to add InfoRectangleItems to the scene and select them.
+        rect_details_list: List of tuples (center_x, center_y, width, height, text)
+        Returns a list of the created InfoRectangleItem objects.
+        """
+        created_rect_items = []
+        if 'info_rectangles' not in app_window.config:
+            app_window.config['info_rectangles'] = []
+
+        # Mock _get_next_z_index to ensure predictable z_index values if needed
+        # For alignment tests, z_index might not be critical, but good for consistency.
+        # current_z = len(app_window.scene.items()) # Simple starting z_index
+        # monkeypatch.setattr(app_window, '_get_next_z_index', lambda: current_z)
+
+
+        for i, (cx, cy, w, h, txt) in enumerate(rect_details_list):
+            rect_id = f"align_test_rect_{i}_{datetime.datetime.now().timestamp()}"
+            # Use a direct call to app_window._get_next_z_index() if not mocking per item
+            next_z = app_window._get_next_z_index()
+
+            rect_config = {
+                "id": rect_id, "text": txt,
+                "center_x": cx, "center_y": cy,
+                "width": w, "height": h,
+                "z_index": next_z,
+                # Add other default text properties if InfoRectangleItem constructor needs them
+                # or if they are accessed before apply_style can set them.
+                "font_color": "#000000", "font_size": "10px", "font_style": "normal",
+                "horizontal_alignment": "center", "vertical_alignment": "middle",
+                "padding": "2px", "background_color": "rgba(255, 255, 0, 128)"
+            }
+            app_window.config['info_rectangles'].append(rect_config)
+
+            # Create the item. InfoRectangleItem's __init__ should set up its geometry.
+            item = InfoRectangleItem(rect_config)
+            # Connect signals if necessary for general app behavior, though not strictly for alignment logic testing
+            item.item_selected.connect(app_window.on_graphics_item_selected)
+            item.item_moved.connect(app_window.on_graphics_item_moved)
+            item.properties_changed.connect(app_window.on_graphics_item_properties_changed)
+
+            app_window.scene.addItem(item)
+            app_window.item_map[rect_id] = item
+            created_rect_items.append(item)
+
+        # Select all newly created items
+        # Must clear previous selections first if scene.selectedItems() is used by app logic
+        app_window.scene.clearSelection()
+        for item in created_rect_items:
+            item.setSelected(True)
+            # Ensure the item's internal selected state matches, though setSelected should handle this.
+            # item.is_selected = True # If InfoRectangleItem has such a direct flag
+
+        # Manually trigger selection change processing
+        # This is important for update_properties_panel to reflect the new selection.
+        app_window.on_scene_selection_changed()
+        # Or, if on_scene_selection_changed is problematic, call update_properties_panel directly:
+        # app_window.update_properties_panel()
+
+        return created_rect_items
+
+    def test_horizontal_alignment_logic(self, base_app_fixture, monkeypatch):
+        app_window = base_app_fixture
+        # Ensure clean state for specific items for this test
+        app_window.config['info_rectangles'] = []
+        app_window.item_map.clear()
+        app_window.scene.clear() # Clear actual scene items
+        app_window.render_canvas_from_config() # To reset based on empty config
+
+        # Horizontal alignment now sets all selected items to the center_x of the chronologically_first_selected_item.
+        rect_details = [
+            (50, 100, 80, 40, "R1_h"),
+            (120, 110, 80, 40, "R2_h"),
+            (180, 120, 80, 40, "R3_h")
+        ]
+        # Manually add and select items to control chronological order
+        app_window.scene.clearSelection()
+        app_window.chronologically_first_selected_item = None
+
+        item_instances = []
+        for i, (cx, cy, w, h, name_part) in enumerate(rect_details):
+            rect_id = f"{name_part}_{datetime.datetime.now().timestamp()}_{i}"
+            rect_config = {"id": rect_id, "text": name_part, "center_x": cx, "center_y": cy, "width": w, "height": h, "z_index": i}
+            app_window.config['info_rectangles'].append(rect_config) # Add to config first
+            item = InfoRectangleItem(rect_config)
+            app_window.scene.addItem(item)
+            app_window.item_map[rect_id] = item
+            item_instances.append(item)
+
+        rect_a, rect_b, rect_c = item_instances
+
+        # Simulate selection: A, then A+B, then A+B+C
+        rect_a.setSelected(True)
+        app_window.on_scene_selection_changed() # A selected
+        assert app_window.chronologically_first_selected_item is rect_a
+
+        rect_b.setSelected(True) # A and B selected
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_a
+
+        rect_c.setSelected(True) # A, B, C selected
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_a
+
+        created_rects = [rect_a, rect_b, rect_c]
+        assert len(app_window.scene.selectedItems()) == 3
+
+        target_x = app_window.chronologically_first_selected_item.config_data['center_x']
+        assert target_x == rect_details[0][0] # R1_h's center_x
+
+        initial_props = {r.config_data['id']: dict(r.config_data) for r in created_rects}
+
+        app_window.align_selected_rects_horizontally()
+
+        for rect_item in created_rects:
+            updated_config = rect_item.config_data
+            original_config = initial_props[rect_item.config_data['id']]
+            assert updated_config['center_x'] == pytest.approx(target_x)
+            assert updated_config['center_y'] == original_config['center_y']
+            assert updated_config['width'] == original_config['width']
+            assert updated_config['height'] == original_config['height']
+
+        # Test graceful failure
+        # Deselect all, then select two items (chronological_first will be one of them)
+        # Then manually set chronological_first_selected_item to None
+        app_window.scene.clearSelection()
+        rect_a.setSelected(True); rect_b.setSelected(True)
+        app_window.on_scene_selection_changed() # Now B might be first if IDs are sorted, or A if selection order was preserved by on_graphics_item_selected for self.selected_item
+                                                # The important part is that one of them IS the chronological_first.
+
+        app_window.chronologically_first_selected_item = None # Simulate invalid state
+        monkeypatch.setattr(app_window.statusBar(), 'showMessage', MagicMock())
+
+        rect_a_conf_before = dict(rect_a.config_data) # Store state before potential modification
+        rect_b_conf_before = dict(rect_b.config_data)
+
+        app_window.align_selected_rects_horizontally()
+
+        assert rect_a.config_data == rect_a_conf_before # No change
+        assert rect_b.config_data == rect_b_conf_before # No change
+        app_window.statusBar().showMessage.assert_called_with("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
+
+
+    def test_vertical_alignment_logic(self, base_app_fixture, monkeypatch):
+        app_window = base_app_fixture
+        app_window.config['info_rectangles'] = []
+        app_window.item_map.clear()
+        app_window.scene.clear()
+        app_window.render_canvas_from_config()
+
+        rect_details = [
+            (100, 50, 80, 40, "R1_v"),
+            (110, 120, 80, 40, "R2_v"),
+            (120, 180, 80, 40, "R3_v")
+        ]
+        # Manually add and select items
+        app_window.scene.clearSelection()
+        app_window.chronologically_first_selected_item = None
+        item_instances = []
+        for i, (cx, cy, w, h, name_part) in enumerate(rect_details):
+            rect_id = f"{name_part}_{datetime.datetime.now().timestamp()}_{i}"
+            rect_config = {"id": rect_id, "text": name_part, "center_x": cx, "center_y": cy, "width": w, "height": h, "z_index": i}
+            app_window.config['info_rectangles'].append(rect_config)
+            item = InfoRectangleItem(rect_config)
+            app_window.scene.addItem(item)
+            app_window.item_map[rect_id] = item
+            item_instances.append(item)
+
+        rect_a, rect_b, rect_c = item_instances
+
+        rect_a.setSelected(True)
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_a
+
+        rect_b.setSelected(True)
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_a
+
+        rect_c.setSelected(True)
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_a
+
+        created_rects = [rect_a, rect_b, rect_c]
+        assert len(app_window.scene.selectedItems()) == 3
+
+        target_y = app_window.chronologically_first_selected_item.config_data['center_y']
+        assert target_y == rect_details[0][1] # R1_v's center_y
+
+        initial_props = {r.config_data['id']: dict(r.config_data) for r in created_rects}
+
+        app_window.align_selected_rects_vertically()
+
+        for rect_item in created_rects:
+            updated_config = rect_item.config_data
+            original_config = initial_props[rect_item.config_data['id']]
+            assert updated_config['center_y'] == pytest.approx(target_y)
+            assert updated_config['center_x'] == original_config['center_x']
+            assert updated_config['width'] == original_config['width']
+            assert updated_config['height'] == original_config['height']
+
+        # Test graceful failure
+        app_window.scene.clearSelection()
+        rect_a.setSelected(True); rect_b.setSelected(True)
+        app_window.on_scene_selection_changed()
+
+        app_window.chronologically_first_selected_item = None
+        monkeypatch.setattr(app_window.statusBar(), 'showMessage', MagicMock())
+
+        rect_a_conf_before = dict(rect_a.config_data)
+        rect_b_conf_before = dict(rect_b.config_data)
+
+        app_window.align_selected_rects_vertically()
+
+        assert rect_a.config_data == rect_a_conf_before
+        assert rect_b.config_data == rect_b_conf_before
+        app_window.statusBar().showMessage.assert_called_with("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
+
+    def test_alignment_buttons_visibility(self, base_app_fixture, monkeypatch):
+        app_window = base_app_fixture
+
+        # Helper to clear items and config for this specific test
+        def clear_rects_and_update_panel():
+            app_window.config['info_rectangles'] = []
+            # Clear items from scene and map that might be InfoRectangles
+            ids_to_remove = [item_id for item_id, item_obj in app_window.item_map.items() if isinstance(item_obj, InfoRectangleItem)]
+            for item_id in ids_to_remove:
+                app_window.scene.removeItem(app_window.item_map[item_id])
+                del app_window.item_map[item_id]
+            app_window.scene.clearSelection() # Important
+            app_window.selected_item = None # Ensure no single item is 'the' selected_item
+            app_window.update_properties_panel()
+
+
+        # Initial state: 0 items
+        clear_rects_and_update_panel()
+        assert app_window.align_horizontal_button.isVisible() is False
+        assert app_window.align_vertical_button.isVisible() is False
+
+        # 1 item selected
+        clear_rects_and_update_panel()
+        self._add_and_select_rects(app_window, [(50, 50, 60, 30, "R1")], monkeypatch)
+        # _add_and_select_rects calls update_properties_panel via on_scene_selection_changed
+        assert app_window.align_horizontal_button.isVisible() is False
+        assert app_window.align_vertical_button.isVisible() is False
+
+        # 2 items selected
+        clear_rects_and_update_panel()
+        rects_2 = self._add_and_select_rects(app_window, [(50,50,60,30,"R1_2"),(100,50,60,30,"R2_2")], monkeypatch)
+        assert len(app_window.scene.selectedItems()) == 2
+        app_window.update_properties_panel() # Ensure it's called after selection is confirmed
+        assert app_window.align_horizontal_button.isVisible() is True # Should be visible for 2 or more
+        assert app_window.align_vertical_button.isVisible() is True # Should be visible for 2 or more
+
+        # 3 items selected
+        clear_rects_and_update_panel()
+        rects_3 = self._add_and_select_rects(app_window, [(50,50,60,30,"R1_3"),(100,50,60,30,"R2_3"),(150,50,60,30,"R3_3")], monkeypatch)
+        assert len(app_window.scene.selectedItems()) == 3
+        app_window.update_properties_panel()
+        assert app_window.align_horizontal_button.isVisible() is True
+        assert app_window.align_vertical_button.isVisible() is True
+
+        # Deselect one item (now 2 selected)
+        if rects_3: # Ensure rects_3 is not empty before trying to access its elements
+            rects_3[0].setSelected(False) # Deselect the first one
+            app_window.on_scene_selection_changed() # Trigger panel update
+
+        assert len(app_window.scene.selectedItems()) == 2
+        app_window.update_properties_panel() # Call again to be sure after deselection
+        assert app_window.align_horizontal_button.isVisible() is True # Should still be visible for 2
+        assert app_window.align_vertical_button.isVisible() is True # Should still be visible for 2
+
+
+    def test_chronological_first_item_tracking(self, base_app_fixture, monkeypatch):
+        app_window = base_app_fixture
+
+        # Clear initial state from base_app_fixture if any
+        app_window.config['info_rectangles'] = []
+        app_window.item_map.clear()
+        app_window.scene.clear()
+        app_window.chronologically_first_selected_item = None
+        app_window.render_canvas_from_config() # Reset based on empty config
+
+        # Add three items. Helper adds them one by one if list has one item.
+        # The _add_and_select_rects helper selects the item and calls on_scene_selection_changed.
+        # We need to manage selection more granularly here.
+
+        # Create items without immediate selection by helper
+        rect_details = [
+            (50, 50, 60, 30, "rect_a"),
+            (100, 100, 60, 30, "rect_b"), # rect_b's ID will be "later" than rect_a's
+            (150, 150, 60, 30, "rect_c")  # rect_c's ID will be "later" than rect_b's
+        ]
+        # Manually add items to config and map for test control
+        item_instances = {}
+        for i, (cx, cy, w, h, name_part) in enumerate(rect_details):
+            rect_id = f"{name_part}_{datetime.datetime.now().timestamp()}_{i}" # Ensure unique and sortable IDs
+            rect_config = {"id": rect_id, "text": name_part, "center_x": cx, "center_y": cy, "width": w, "height": h, "z_index": i}
+            app_window.config['info_rectangles'].append(rect_config)
+            item = InfoRectangleItem(rect_config)
+            app_window.scene.addItem(item)
+            app_window.item_map[rect_id] = item
+            item_instances[name_part] = item
+
+        rect_a = item_instances["rect_a"]
+        rect_b = item_instances["rect_b"]
+        rect_c = item_instances["rect_c"]
+
+        # Scenario 1: Select A (0 -> 1)
+        app_window.scene.clearSelection()
+        rect_a.setSelected(True)
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_a
+
+        # Scenario 2: Select B, then C (A already selected: 1 -> 2 -> 3)
+        # A is first, then B is added to selection
+        rect_b.setSelected(True) # A is already selected
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_a
+
+        # A and B are first, then C is added
+        rect_c.setSelected(True) # A and B are already selected
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_a
+
+        # Scenario 3: Deselect A (original first is gone, B and C remain)
+        rect_a.setSelected(False) # B and C remain selected
+        app_window.on_scene_selection_changed()
+        # Assuming IDs are sortable chronologically (rect_b's ID < rect_c's ID)
+        # The helper creates IDs like "align_test_rect_0_timestamp", "align_test_rect_1_timestamp"
+        # Our manual creation is "rect_a_ts_0", "rect_b_ts_1", "rect_c_ts_2"
+        # So rect_b should be chosen if its ID string is smaller than rect_c's
+        assert app_window.chronologically_first_selected_item is rect_b, \
+            f"Expected rect_b (ID: {rect_b.config_data['id']}) to be first, but got {app_window.chronologically_first_selected_item.config_data['id'] if app_window.chronologically_first_selected_item else 'None'}"
+
+
+        # Scenario 4: Deselect all (-> 0)
+        rect_b.setSelected(False)
+        rect_c.setSelected(False)
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is None
+
+        # Scenario 5: Select B then A (0 -> 1 (B) -> 2 (B,A))
+        app_window.scene.clearSelection() # Ensure clean start
+        rect_b.setSelected(True)
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_b
+
+        rect_a.setSelected(True) # B is already selected
+        app_window.on_scene_selection_changed()
+        assert app_window.chronologically_first_selected_item is rect_b
