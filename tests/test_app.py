@@ -1762,6 +1762,25 @@ def test_project_load_style_application_and_update(qtbot, monkeypatch, tmp_path)
     assert item2._style_config_ref is shared_style_object
     assert item1.config_data.get('text_style_ref') == 'TestStyle1'
 
+    # Simulate selecting item1 to update the properties panel, including rect_style_combo
+    app_instance.scene.clearSelection()
+    item1.setSelected(True)
+    # Call on_graphics_item_selected to ensure app.selected_item is updated and update_properties_panel is called.
+    app_instance.on_graphics_item_selected(item1)
+
+    # Assertions for rect_style_combo state
+    assert app_instance.rect_style_combo.isEnabled()
+
+    expected_styles_in_combo = ["Default", "Custom", "TestStyle1"] # Based on mock_config
+    combo_items = [app_instance.rect_style_combo.itemText(i) for i in range(app_instance.rect_style_combo.count())]
+    for style_name_expected in expected_styles_in_combo:
+        assert style_name_expected in combo_items
+
+    # Assert that the current text of the combo box matches the item's style reference name
+    assert app_instance.rect_style_combo.currentText() == item1.config_data.get('text_style_ref')
+    # This is a redundant check for item1's config but confirms the basis for combo text
+    assert item1.config_data.get('text_style_ref') == "TestStyle1"
+
 
     # 4. Modify Shared Style and Trigger Refresh
     style1_updated_color = '#222222'

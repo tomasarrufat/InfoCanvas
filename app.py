@@ -41,6 +41,7 @@ class InteractiveToolApp(QMainWindow):
         self.selected_item = None
         self.item_map = {}
         self.setup_ui()
+        self._load_text_styles_into_dropdown() # Ensure dropdown is populated early
         self.populate_controls_from_config()
         self.render_canvas_from_config()
         self.update_mode_ui()
