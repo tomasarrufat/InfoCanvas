@@ -31,7 +31,8 @@ class InteractiveToolApp(QMainWindow):
         self.current_project_name = None
         self.current_project_path = None
         self.config = {}
-        self.clipboard_data = None 
+        self.clipboard_data = None
+        self.chronologically_first_selected_item = None
 
         if not self._initial_project_setup():
             QTimer.singleShot(0, self.close)
@@ -703,17 +704,57 @@ class InteractiveToolApp(QMainWindow):
 
     def on_scene_selection_changed(self):
         if not hasattr(self, 'scene') or not self.scene:
+            self.chronologically_first_selected_item = None
+            self.selected_item = None
+            self.update_properties_panel()
             return
 
-        selected_items = self.scene.selectedItems()
+        selected_items_from_scene = self.scene.selectedItems()
+        current_selected_info_rects = [
+            item for item in selected_items_from_scene if isinstance(item, InfoRectangleItem)
+        ]
+        num_selected = len(current_selected_info_rects)
+
+        if num_selected == 0:
+            self.chronologically_first_selected_item = None
+        elif num_selected == 1:
+            self.chronologically_first_selected_item = current_selected_info_rects[0]
+        elif num_selected > 1:
+            # If a chronologically_first_selected_item was already set and is still selected, keep it.
+            # Otherwise, pick a new one based on sorting by ID (oldest).
+            if self.chronologically_first_selected_item is None or \
+               self.chronologically_first_selected_item not in current_selected_info_rects:
+                # Sort by 'id' string. Assuming 'id' format is like 'rect_timestamp'.
+                sorted_rects = sorted(current_selected_info_rects, key=lambda r: r.config_data.get('id', ''))
+                if sorted_rects:
+                    self.chronologically_first_selected_item = sorted_rects[0]
+                else: # Should not happen if num_selected > 1
+                    self.chronologically_first_selected_item = None
+            # Else, if self.chronologically_first_selected_item is still valid and in the selection, do nothing to it.
 
         # Update appearance for all InfoRectangleItems based on their selection state
-        for item in self.scene.items():
-            if isinstance(item, InfoRectangleItem):
-                item.update_appearance(item.isSelected(), self.current_mode == "view")
+        # This should ideally happen after updating chronologically_first_selected_item and self.selected_item
+        for item_in_scene_list in self.scene.items(): # Iterate over all items in scene to update appearance
+            if isinstance(item_in_scene_list, InfoRectangleItem):
+                item_in_scene_list.update_appearance(item_in_scene_list.isSelected(), self.current_mode == "view")
 
-        if self.selected_item not in selected_items:
-            self.selected_item = selected_items[-1] if selected_items else None
+        # Update self.selected_item (potentially the last item clicked or primary selected item)
+        # This logic might need adjustment based on how primary selection vs. multi-selection is handled.
+        # The original logic was:
+        if self.selected_item not in selected_items_from_scene: # If the old primary selected is no longer selected at all
+            self.selected_item = selected_items_from_scene[-1] if selected_items_from_scene else None
+        # If the old self.selected_item is still in selected_items_from_scene, it remains self.selected_item.
+        # If there are multiple items and the old self.selected_item was deselected,
+        # the last item in the current selection becomes the new self.selected_item.
+        # This part might need to be harmonized with chronologically_first_selected_item if they are intended
+        # to be the same under certain multi-selection scenarios (e.g., if only one item ends up being "active" for properties).
+        # For now, keeping original logic for self.selected_item update mostly intact.
+        # If selected_items_from_scene is not empty, and self.selected_item is not in it, update self.selected_item
+        if selected_items_from_scene and self.selected_item not in selected_items_from_scene:
+             self.selected_item = selected_items_from_scene[-1]
+        elif not selected_items_from_scene: # No items selected
+             self.selected_item = None
+
 
         self.update_properties_panel()
 
@@ -1678,15 +1719,19 @@ class InteractiveToolApp(QMainWindow):
             if isinstance(item, InfoRectangleItem):
                 selected_info_rects.append(item)
 
-        if len(selected_info_rects) < 2: # Condition changed to < 2
+        if len(selected_info_rects) < 2:
             return
 
-        # Get the first selected item's center_x as the target
-        first_selected_rect = selected_info_rects[0]
-        target_x = first_selected_rect.config_data.get('center_x', 0) # Default if somehow missing
+        if self.chronologically_first_selected_item is None or \
+           self.chronologically_first_selected_item not in selected_info_rects:
+            self.statusBar().showMessage("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
+            return
+
+        source_rect = self.chronologically_first_selected_item
+        target_x = source_rect.config_data.get('center_x', 0)
 
         for rect in selected_info_rects:
-            rect.config_data['center_x'] = target_x # Align to the first item's center_x
+            rect.config_data['center_x'] = target_x
             # rect.config_data['center_y'] remains unchanged
             rect.update_geometry_from_config()
             # Ensure properties_changed is emitted so save_config and UI updates are triggered
@@ -1710,16 +1755,20 @@ class InteractiveToolApp(QMainWindow):
             if isinstance(item, InfoRectangleItem):
                 selected_info_rects.append(item)
 
-        if len(selected_info_rects) < 2: # Condition changed to < 2
+        if len(selected_info_rects) < 2:
             return
 
-        # Get the first selected item's center_y as the target
-        first_selected_rect = selected_info_rects[0]
-        target_y = first_selected_rect.config_data.get('center_y', 0) # Default if somehow missing
+        if self.chronologically_first_selected_item is None or \
+           self.chronologically_first_selected_item not in selected_info_rects:
+            self.statusBar().showMessage("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
+            return
+
+        source_rect = self.chronologically_first_selected_item
+        target_y = source_rect.config_data.get('center_y', 0)
 
         for rect in selected_info_rects:
             # rect.config_data['center_x'] remains unchanged
-            rect.config_data['center_y'] = target_y # Align to the first item's center_y
+            rect.config_data['center_y'] = target_y
             rect.update_geometry_from_config()
             # Ensure properties_changed is emitted so save_config and UI updates are triggered
             if hasattr(rect, 'properties_changed') and hasattr(rect.properties_changed, 'emit'):
