@@ -5,3 +5,9 @@ venv/
 .venv/
 env/
 .env/
+*.html
+*.json
+.coverage
+*.jpeg
+*.jpg
+*.png
