@@ -22,6 +22,8 @@ def test_export_to_html_writes_file(base_app_fixture, tmp_path, monkeypatch):
     content = out_file.read_text()
     assert '<html>' in content
     assert 'hello' in content
+    assert 'hotspot' in content
+    assert 'tooltip' in content
 
 
 def test_export_to_html_write_error(base_app_fixture, monkeypatch):
@@ -72,6 +74,27 @@ def test_export_to_html_ignores_bool(mock_get_save, base_app_fixture, tmp_path, 
 def test_export_button_visibility_changes(base_app_fixture):
     app = base_app_fixture
     assert not app.export_html_button.isVisible()
+    app.on_mode_changed('View Mode')
+    assert app.export_html_button.isVisible()
+    app.on_mode_changed('Edit Mode')
+    assert not app.export_html_button.isVisible()
+
+
+def test_export_to_html_copies_images(base_app_fixture, tmp_path, monkeypatch):
+    app = base_app_fixture
+    img_dir = app._get_project_images_folder(app.current_project_path)
+    img_path = os.path.join(img_dir, 'pic.png')
+    with open(img_path, 'wb') as f:
+        f.write(b'123')
+    app.config['images'] = [{
+        'id': 'img1', 'path': 'pic.png', 'center_x': 10, 'center_y': 10,
+        'scale': 1.0, 'original_width': 1, 'original_height': 1
+    }]
+    out_file = tmp_path / 'with_images.html'
+    monkeypatch.setattr(QMessageBox, 'information', lambda *a, **k: None)
+    app.export_to_html(str(out_file))
+    copied = tmp_path / 'images' / 'pic.png'
+    assert copied.exists()
     app.on_mode_changed('View Mode')
     assert app.export_html_button.isVisible()
     app.on_mode_changed('Edit Mode')

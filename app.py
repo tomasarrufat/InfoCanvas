@@ -2,8 +2,9 @@ import sys
 import os
 import json
 import datetime
-import shutil # For copying files
-import copy # For deep copying objects
+import shutil  # For copying files
+import copy  # For deep copying objects
+import html
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
@@ -904,18 +905,18 @@ class InteractiveToolApp(QMainWindow):
 
     # --- Export functionality ---
     def _generate_view_html(self):
-        """Create an HTML representation of the current view configuration."""
+        """Create an interactive HTML representation of the current view."""
         bg = self.config.get('background', {}) if self.config else {}
         lines = [
             "<!DOCTYPE html>",
             "<html>",
             "<head>",
             "<meta charset='utf-8'>",
-            f"<title>{self.current_project_name or 'Project'}</title>",
-            "<style>.hotspot{position:absolute;border:1px solid #333;padding:2px;background:rgba(255,255,255,0.8);}</style>",
+            f"<title>{html.escape(self.current_project_name or 'Project')}</title>",
+            "<style>#canvas{position:relative;}\n.hotspot{position:absolute;}\n.tooltip{position:absolute;border:1px solid #333;padding:2px;background:rgba(255,255,255,0.9);display:none;z-index:1000;}\n</style>",
             "</head>",
             "<body>",
-            f"<div id='canvas' style='position:relative;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;background-color:{bg.get('color','#FFFFFF')};'>"
+            f"<div id='canvas' style='width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;background-color:{bg.get('color','#FFFFFF')};'>",
         ]
 
         for img_conf in self.config.get('images', []):
@@ -934,12 +935,14 @@ class InteractiveToolApp(QMainWindow):
             height = rect_conf.get('height', 0)
             left = rect_conf.get('center_x', 0) - width / 2
             top = rect_conf.get('center_y', 0) - height / 2
-            text = rect_conf.get('text', '').replace('\n', '<br>')
+            text = html.escape(rect_conf.get('text', '').replace('\n', '<br>'), quote=True)
             lines.append(
-                f"<div class='hotspot' style='left:{left}px;top:{top}px;width:{width}px;height:{height}px;'>{text}</div>"
+                f"<div class='hotspot' data-text='{text}' style='left:{left}px;top:{top}px;width:{width}px;height:{height}px;'></div>"
             )
 
         lines.append("</div>")
+        lines.append("<div id='tooltip' class='tooltip'></div>")
+        lines.append("<script>document.querySelectorAll('.hotspot').forEach(function(h){h.addEventListener('mouseenter',function(e){var t=document.getElementById('tooltip');t.innerHTML=h.dataset.text;t.style.display='block';t.style.left=(e.pageX+10)+'px';t.style.top=(e.pageY+10)+'px';});h.addEventListener('mousemove',function(e){var t=document.getElementById('tooltip');t.style.left=(e.pageX+10)+'px';t.style.top=(e.pageY+10)+'px';});h.addEventListener('mouseleave',function(){var t=document.getElementById('tooltip');t.style.display='none';});});</script>")
         lines.append("</body></html>")
         return "\n".join(lines)
 
@@ -962,6 +965,19 @@ class InteractiveToolApp(QMainWindow):
             if not filepath or filepath is False:
                 return
         html = self._generate_view_html()
+        dest_dir = os.path.dirname(str(filepath))
+        dest_images = os.path.join(dest_dir, 'images')
+        src_images = self._get_project_images_folder(self.current_project_path)
+        os.makedirs(dest_images, exist_ok=True)
+        for img_conf in self.config.get('images', []):
+            rel = img_conf.get('path', '')
+            if not rel:
+                continue
+            src_file = os.path.join(src_images, rel)
+            dest_file = os.path.join(dest_images, rel)
+            os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+            if os.path.exists(src_file):
+                shutil.copy2(src_file, dest_file)
         try:
             with open(str(filepath), 'w', encoding='utf-8') as f:
                 f.write(html)
