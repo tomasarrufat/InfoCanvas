@@ -291,7 +291,10 @@ class InfoRectangleItem(QGraphicsObject):
 
     def update_text_from_config(self):
         """Updates the text content and formatting from config_data."""
-        self.text_item.setPlainText(self.config_data.get('text', ''))
+        # If a style is applied, 'text' should also come from it if specified.
+        # Fallback to an empty string if not in style or config_data.
+        default_text = self.config_data.get('text', '') # Original text from item's own config as ultimate fallback.
+        self.text_item.setPlainText(self._get_style_value('text', default_text))
 
         # Update formatting options from config_data, falling back to defaults if necessary
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
@@ -373,16 +376,24 @@ class InfoRectangleItem(QGraphicsObject):
             self.item_moved.emit(self)
         return super().itemChange(change, value)
 
-    def apply_style(self, style_config):
-        """Applies a style configuration to the item."""
-        self._style_config_ref = style_config
-        # Update relevant parts of config_data with the style_config
-        # Only update keys that are present in style_config
-        for key, value in style_config.items():
-            if key in self.config_data or key in ["vertical_alignment", "horizontal_alignment", "font_style", "font_color", "font_size", "padding"]: # include new keys
-                self.config_data[key] = value
+    def apply_style(self, style_config_object):
+        """
+        Applies a style configuration object to the item.
+        The item will hold a reference to this object.
+        """
+        self._style_config_ref = style_config_object
 
-        # Re-apply text and appearance based on updated config
-        self.update_text_from_config() # This will also call _center_text
+        if style_config_object and 'name' in style_config_object:
+            self.config_data['text_style_ref'] = style_config_object['name']
+        else:
+            # If the applied style has no name (e.g., default settings or a custom ad-hoc dict),
+            # remove any existing style reference name from config_data.
+            self.config_data.pop('text_style_ref', None)
+
+        # The loop that copied style values into self.config_data has been removed
+        # as per the new design to prioritize reading from _style_config_ref.
+
+        # Re-apply text and appearance based on the newly referenced style (or defaults if ref is None)
+        self.update_text_from_config() # This will use _get_style_value, which reads from _style_config_ref
         self.update_appearance(self.isSelected()) # Keep current selection state
         self.properties_changed.emit(self) # Notify that properties have changed

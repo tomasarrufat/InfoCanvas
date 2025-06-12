@@ -242,15 +242,14 @@ def test_apply_style_method(qtbot, create_item):
 
     item.apply_style(style_config)
 
-    # Check item.config_data
-    assert item.config_data['font_color'] == "#112233"
-    assert item.config_data['font_size'] == "18px"
-    assert item.config_data['font_style'] == "bold"
-    assert item.config_data['horizontal_alignment'] == "center"
-    assert item.config_data['vertical_alignment'] == "bottom"
-    assert item.config_data['padding'] == "8px"
+    # After apply_style, item._style_config_ref points to style_config.
+    # item.config_data is NOT updated with style_config values directly anymore for most keys.
+    # 'text_style_ref' would be managed, but style_config here is anonymous.
+    # So, we assert that 'text_style_ref' is not in config_data or is None.
+    assert item.config_data.get('text_style_ref') is None
 
-    # Check item's direct attributes if they are set by apply_style/update_text_from_config
+    # The item's direct attributes (like self.font_style) ARE updated by update_text_from_config
+    # which is called by apply_style and reads from _style_config_ref via _get_style_value.
     assert item.font_style == "bold"
     assert item.horizontal_alignment == "center"
     assert item.vertical_alignment == "bottom"

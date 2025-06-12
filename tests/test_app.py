@@ -1687,3 +1687,103 @@ def test_font_color_change_updates_item_and_ui(mock_get_color, base_app_fixture,
     if not app._does_current_rect_match_default_style(selected_item_config) and \
        not app._find_matching_style_name(selected_item_config):
         assert app.rect_style_combo.currentText() == "Custom"
+
+
+def test_project_load_style_application_and_update(qtbot, monkeypatch, tmp_path):
+    """
+    Tests loading a project with items referencing text styles,
+    verifies style application, and then tests update propagation
+    when the shared style object is modified directly in app.config.
+    """
+    # 1. Setup Mock Project/Config
+    mock_projects_base_dir = tmp_path / "mock_projects"
+    mock_projects_base_dir.mkdir()
+    monkeypatch.setattr(utils, 'PROJECTS_BASE_DIR', str(mock_projects_base_dir))
+
+    project_name = "StyleRefTestProject"
+    tmpproject_path = mock_projects_base_dir / project_name
+    tmpproject_path.mkdir()
+    tmpproject_images_path = tmpproject_path / utils.PROJECT_IMAGES_DIRNAME
+    tmpproject_images_path.mkdir()
+
+    style1_initial_color = '#111111'
+    style1_initial_font_size = '11px'
+    style1_initial_font_size_int = 11
+
+    mock_config = {
+        "project_name": project_name,
+        "background": {"color": "#FFFFFF", "width": 800, "height": 600},
+        "text_styles": [
+            {'name': 'TestStyle1', 'font_color': style1_initial_color, 'font_size': style1_initial_font_size, 'font_style': 'normal', 'horizontal_alignment': 'left', 'vertical_alignment': 'top', 'padding': '5px'}
+        ],
+        "info_rectangles": [
+            {'id': 'rect1', 'text': 'Rect 1', 'center_x': 100, 'center_y': 100, 'width': 100, 'height': 50, 'text_style_ref': 'TestStyle1'},
+            {'id': 'rect2', 'text': 'Rect 2', 'center_x': 200, 'center_y': 200, 'width': 120, 'height': 60, 'text_style_ref': 'TestStyle1'}
+        ],
+        "images": []
+    }
+    config_file_path = tmpproject_path / utils.PROJECT_CONFIG_FILENAME
+    with open(config_file_path, 'w') as f:
+        json.dump(mock_config, f)
+
+    # 2. Initialize Application (mocking ProjectManagerDialog)
+    mock_dialog_instance = MockProjectManagerDialog(None) # Using the class defined in test_app.py
+    mock_dialog_instance.set_outcome(QDialog.Accepted, project_name)
+    monkeypatch.setattr('app.ProjectManagerDialog', lambda *args, **kwargs: mock_dialog_instance)
+
+    # Prevent UI methods not relevant to this test from causing issues if they rely on more setup
+    # monkeypatch.setattr(InteractiveToolApp, '_update_window_title', lambda self: None)
+    # monkeypatch.setattr(InteractiveToolApp, 'populate_controls_from_config', lambda self: None) # This might be needed for style dropdown if not loaded by render
+
+    app_instance = InteractiveToolApp()
+    qtbot.addWidget(app_instance)
+    app_instance.show() # Ensure window is shown and event loop processes if needed
+
+    # Verify project loaded
+    assert app_instance.current_project_name == project_name
+    assert len(app_instance.item_map) == 2 # rect1 and rect2
+
+    # 3. Initial Assertions (After Load)
+    item1 = app_instance.item_map.get('rect1')
+    item2 = app_instance.item_map.get('rect2')
+    assert isinstance(item1, InfoRectangleItem)
+    assert isinstance(item2, InfoRectangleItem)
+
+    # Check that items reflect 'TestStyle1'
+    assert item1.text_item.defaultTextColor() == QColor(style1_initial_color)
+    assert item1.text_item.font().pointSize() == style1_initial_font_size_int
+    assert item2.text_item.defaultTextColor() == QColor(style1_initial_color)
+    assert item2.text_item.font().pointSize() == style1_initial_font_size_int
+
+    # Verify _style_config_ref points to the shared style object in app.config
+    # This assumes 'TestStyle1' is the first (and only) style in app.config['text_styles']
+    shared_style_object = app_instance.config['text_styles'][0]
+    assert item1._style_config_ref is shared_style_object
+    assert item2._style_config_ref is shared_style_object
+    assert item1.config_data.get('text_style_ref') == 'TestStyle1'
+
+
+    # 4. Modify Shared Style and Trigger Refresh
+    style1_updated_color = '#222222'
+    style1_updated_font_size = '22px'
+    style1_updated_font_size_int = 22
+
+    # Directly modify the style object in app.config (which is the one items reference)
+    shared_style_object['font_color'] = style1_updated_color
+    shared_style_object['font_size'] = style1_updated_font_size
+
+    # Trigger refresh on items
+    # In a real scenario, _save_current_text_style would loop through items.
+    # Here, we simulate the item's own refresh mechanism.
+    item1.update_text_from_config()
+    item2.update_text_from_config()
+
+    # 5. Final Assertions (After Style Update)
+    assert item1.text_item.defaultTextColor() == QColor(style1_updated_color)
+    assert item1.text_item.font().pointSize() == style1_updated_font_size_int
+    assert item2.text_item.defaultTextColor() == QColor(style1_updated_color)
+    assert item2.text_item.font().pointSize() == style1_updated_font_size_int
+
+    # Ensure the reference is still the same (mutated) object
+    assert item1._style_config_ref is shared_style_object
+    assert item2._style_config_ref is shared_style_object
