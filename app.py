@@ -385,17 +385,19 @@ class InteractiveToolApp(QMainWindow):
         rect_props_layout = QVBoxLayout(self.info_rect_properties_widget)
 
         # Horizontal and Vertical Alignment Buttons
-        align_buttons_layout = QHBoxLayout()
+        # align_buttons_layout = QHBoxLayout() # Removed QHBoxLayout
         self.align_horizontal_button = QPushButton("Align Items Horizontally")
         self.align_horizontal_button.clicked.connect(self.align_selected_rects_horizontally)
         self.align_horizontal_button.setVisible(False)
-        align_buttons_layout.addWidget(self.align_horizontal_button)
+        # align_buttons_layout.addWidget(self.align_horizontal_button) # Removed from QHBoxLayout
+        rect_props_layout.addWidget(self.align_horizontal_button) # Added directly
 
         self.align_vertical_button = QPushButton("Align Items Vertically")
         self.align_vertical_button.clicked.connect(self.align_selected_rects_vertically)
         self.align_vertical_button.setVisible(False)
-        align_buttons_layout.addWidget(self.align_vertical_button)
-        rect_props_layout.addLayout(align_buttons_layout)
+        # align_buttons_layout.addWidget(self.align_vertical_button) # Removed from QHBoxLayout
+        rect_props_layout.addWidget(self.align_vertical_button) # Added directly
+        # rect_props_layout.addLayout(align_buttons_layout) # Removed QHBoxLayout
         
         self.info_rect_text_input = QTextEdit()
         self.info_rect_text_input.setPlaceholderText("Enter information here...")
@@ -887,7 +889,7 @@ class InteractiveToolApp(QMainWindow):
                 if isinstance(item, InfoRectangleItem):
                     selected_info_rect_count += 1
 
-            if selected_info_rect_count > 2:
+            if selected_info_rect_count >= 2: # Changed condition from > 2 to >= 2
                 self.align_horizontal_button.setVisible(True)
                 self.align_vertical_button.setVisible(True)
             else:
@@ -1676,17 +1678,16 @@ class InteractiveToolApp(QMainWindow):
             if isinstance(item, InfoRectangleItem):
                 selected_info_rects.append(item)
 
-        if len(selected_info_rects) <= 2:
+        if len(selected_info_rects) < 2: # Condition changed to < 2
             return
 
-        sum_x = 0
-        for rect in selected_info_rects:
-            sum_x += rect.config_data.get('center_x', 0) # Default to 0 if somehow missing
-
-        average_x = sum_x / len(selected_info_rects)
+        # Get the first selected item's center_x as the target
+        first_selected_rect = selected_info_rects[0]
+        target_x = first_selected_rect.config_data.get('center_x', 0) # Default if somehow missing
 
         for rect in selected_info_rects:
-            rect.config_data['center_x'] = average_x # Corrected: set center_x
+            rect.config_data['center_x'] = target_x # Align to the first item's center_x
+            # rect.config_data['center_y'] remains unchanged
             rect.update_geometry_from_config()
             # Ensure properties_changed is emitted so save_config and UI updates are triggered
             # if rect has such a signal and it's connected to on_graphics_item_properties_changed
@@ -1709,17 +1710,16 @@ class InteractiveToolApp(QMainWindow):
             if isinstance(item, InfoRectangleItem):
                 selected_info_rects.append(item)
 
-        if len(selected_info_rects) <= 2:
+        if len(selected_info_rects) < 2: # Condition changed to < 2
             return
 
-        sum_y = 0
-        for rect in selected_info_rects:
-            sum_y += rect.config_data.get('center_y', 0) # Default to 0 if somehow missing
-
-        average_y = sum_y / len(selected_info_rects)
+        # Get the first selected item's center_y as the target
+        first_selected_rect = selected_info_rects[0]
+        target_y = first_selected_rect.config_data.get('center_y', 0) # Default if somehow missing
 
         for rect in selected_info_rects:
-            rect.config_data['center_y'] = average_y # Corrected: set center_y
+            # rect.config_data['center_x'] remains unchanged
+            rect.config_data['center_y'] = target_y # Align to the first item's center_y
             rect.update_geometry_from_config()
             # Ensure properties_changed is emitted so save_config and UI updates are triggered
             if hasattr(rect, 'properties_changed') and hasattr(rect.properties_changed, 'emit'):

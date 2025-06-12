@@ -1984,11 +1984,11 @@ class TestAlignmentFeatures:
         app_window.scene.clear() # Clear actual scene items
         app_window.render_canvas_from_config() # To reset based on empty config
 
-        # Horizontal alignment (as per corrected app logic) now averages center_x
+        # Horizontal alignment now sets all selected items to the center_x of the first selected.
         rect_details = [
-            (50, 100, 80, 40, "R1"),  # cx, cy, w, h, text
-            (100, 100, 80, 40, "R2"),
-            (150, 100, 80, 40, "R3")
+            (50, 100, 80, 40, "R1"),  # First item
+            (120, 110, 80, 40, "R2"), # Different cx, cy
+            (180, 120, 80, 40, "R3")  # Different cx, cy
         ]
         created_rects = self._add_and_select_rects(app_window, rect_details, monkeypatch)
 
@@ -1997,13 +1997,11 @@ class TestAlignmentFeatures:
              assert item.isSelected(), f"Item {item.config_data['id']} was not selected."
         assert len(app_window.scene.selectedItems()) == 3, "Scene selection count mismatch."
 
-        sum_x = sum(r.config_data['center_x'] for r in created_rects)
-        expected_average_x = sum_x / len(created_rects)
+        target_x = created_rects[0].config_data['center_x']
 
-        # Store initial other properties to ensure they don't change
         initial_other_props = [{
             'id': r.config_data['id'],
-            'center_y': r.config_data['center_y'], # Ensure center_y is checked
+            'center_y': r.config_data['center_y'], # Store initial center_y
             'width': r.config_data['width'],
             'height': r.config_data['height']
         } for r in created_rects]
@@ -2013,8 +2011,8 @@ class TestAlignmentFeatures:
         for i, rect_item in enumerate(created_rects):
             updated_config_in_app = next(c for c in app_window.config['info_rectangles'] if c['id'] == rect_item.config_data['id'])
 
-            assert updated_config_in_app['center_x'] == pytest.approx(expected_average_x)
-            assert rect_item.config_data['center_x'] == pytest.approx(expected_average_x)
+            assert updated_config_in_app['center_x'] == pytest.approx(target_x) # Check against first item's original center_x
+            assert rect_item.config_data['center_x'] == pytest.approx(target_x)
 
             original_props = next(p for p in initial_other_props if p['id'] == updated_config_in_app['id'])
             assert updated_config_in_app['center_y'] == original_props['center_y'] # Should not change
@@ -2028,21 +2026,20 @@ class TestAlignmentFeatures:
         app_window.scene.clear()
         app_window.render_canvas_from_config()
 
-        # Vertical alignment (as per corrected app logic) now averages center_y
+        # Vertical alignment now sets all selected items to the center_y of the first selected.
         rect_details = [
-            (100, 50, 80, 40, "R1"),
-            (100, 100, 80, 40, "R2"),
-            (100, 150, 80, 40, "R3")
+            (100, 50, 80, 40, "R1"),  # First item
+            (110, 120, 80, 40, "R2"), # Different cx, cy
+            (120, 180, 80, 40, "R3")  # Different cx, cy
         ]
         created_rects = self._add_and_select_rects(app_window, rect_details, monkeypatch)
         assert len(app_window.scene.selectedItems()) == 3
 
-        sum_y = sum(r.config_data['center_y'] for r in created_rects)
-        expected_average_y = sum_y / len(created_rects)
+        target_y = created_rects[0].config_data['center_y']
 
         initial_other_props = [{
             'id': r.config_data['id'],
-            'center_x': r.config_data['center_x'], # Ensure center_x is checked
+            'center_x': r.config_data['center_x'], # Store initial center_x
             'width': r.config_data['width'],
             'height': r.config_data['height']
         } for r in created_rects]
@@ -2051,8 +2048,8 @@ class TestAlignmentFeatures:
 
         for i, rect_item in enumerate(created_rects):
             updated_config_in_app = next(c for c in app_window.config['info_rectangles'] if c['id'] == rect_item.config_data['id'])
-            assert updated_config_in_app['center_y'] == pytest.approx(expected_average_y)
-            assert rect_item.config_data['center_y'] == pytest.approx(expected_average_y)
+            assert updated_config_in_app['center_y'] == pytest.approx(target_y) # Check against first item's original center_y
+            assert rect_item.config_data['center_y'] == pytest.approx(target_y)
 
             original_props = next(p for p in initial_other_props if p['id'] == updated_config_in_app['id'])
             assert updated_config_in_app['center_x'] == original_props['center_x'] # Should not change
@@ -2092,8 +2089,8 @@ class TestAlignmentFeatures:
         rects_2 = self._add_and_select_rects(app_window, [(50,50,60,30,"R1_2"),(100,50,60,30,"R2_2")], monkeypatch)
         assert len(app_window.scene.selectedItems()) == 2
         app_window.update_properties_panel() # Ensure it's called after selection is confirmed
-        assert app_window.align_horizontal_button.isVisible() is False
-        assert app_window.align_vertical_button.isVisible() is False
+        assert app_window.align_horizontal_button.isVisible() is True # Should be visible for 2 or more
+        assert app_window.align_vertical_button.isVisible() is True # Should be visible for 2 or more
 
         # 3 items selected
         clear_rects_and_update_panel()
@@ -2103,15 +2100,12 @@ class TestAlignmentFeatures:
         assert app_window.align_horizontal_button.isVisible() is True
         assert app_window.align_vertical_button.isVisible() is True
 
-        # Deselect one item (2 selected)
-        if rects_3:
+        # Deselect one item (now 2 selected)
+        if rects_3: # Ensure rects_3 is not empty before trying to access its elements
             rects_3[0].setSelected(False) # Deselect the first one
-            # Manually update selected_item if needed, though scene.selectedItems() is key
-            # app_window.selected_item = rects_3[1] if len(rects_3) > 1 else None
             app_window.on_scene_selection_changed() # Trigger panel update
-            # Or app_window.update_properties_panel() directly
 
         assert len(app_window.scene.selectedItems()) == 2
         app_window.update_properties_panel() # Call again to be sure after deselection
-        assert app_window.align_horizontal_button.isVisible() is False
-        assert app_window.align_vertical_button.isVisible() is False
+        assert app_window.align_horizontal_button.isVisible() is True # Should still be visible for 2
+        assert app_window.align_vertical_button.isVisible() is True # Should still be visible for 2
