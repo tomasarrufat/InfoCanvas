@@ -28,6 +28,7 @@ class InfoRectangleItem(QGraphicsObject):
     def __init__(self, rect_config, parent_item=None):
         super().__init__(parent_item)
         self.config_data = rect_config
+        self._style_config_ref = None
         self._w = self.config_data.get('width', 100)
         self._h = self.config_data.get('height', 50)
         self._pen = QPen(Qt.NoPen)
@@ -237,6 +238,11 @@ class InfoRectangleItem(QGraphicsObject):
         self._center_text()
         self.update()
 
+    def _get_style_value(self, key, default_value):
+        if self._style_config_ref and key in self._style_config_ref:
+            return self._style_config_ref[key]
+        return self.config_data.get(key, default_value)
+
     def _center_text(self):
         if not self.text_item: return
         self.text_item.setPos(0,0) # Ensure text_item origin is top-left of InfoRectangleItem
@@ -254,7 +260,7 @@ class InfoRectangleItem(QGraphicsObject):
 
         # Get padding from config, default to 5 if not found or invalid
         # Use the actual config_data for padding, not defaults, as it might be styled
-        padding_str = self.config_data.get("padding", "5px")
+        padding_str = self._get_style_value("padding", "5px")
         try:
             padding_val = int(padding_str.lower().replace("px", "")) if "px" in padding_str.lower() else 5
         except ValueError:
@@ -290,11 +296,11 @@ class InfoRectangleItem(QGraphicsObject):
         # Update formatting options from config_data, falling back to defaults if necessary
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
-        self.vertical_alignment = self.config_data.get('vertical_alignment', text_format_defaults['vertical_alignment'])
-        self.horizontal_alignment = self.config_data.get('horizontal_alignment', text_format_defaults['horizontal_alignment'])
-        self.font_style = self.config_data.get('font_style', text_format_defaults['font_style'])
-        font_color = self.config_data.get('font_color', text_format_defaults['font_color'])
-        font_size_str = self.config_data.get('font_size', text_format_defaults['font_size'])
+        self.vertical_alignment = self._get_style_value('vertical_alignment', text_format_defaults['vertical_alignment'])
+        self.horizontal_alignment = self._get_style_value('horizontal_alignment', text_format_defaults['horizontal_alignment'])
+        self.font_style = self._get_style_value('font_style', text_format_defaults['font_style'])
+        font_color = self._get_style_value('font_color', text_format_defaults['font_color'])
+        font_size_str = self._get_style_value('font_size', text_format_defaults['font_size'])
 
         try:
             font_size = int(font_size_str.lower().replace("px", ""))
@@ -369,6 +375,7 @@ class InfoRectangleItem(QGraphicsObject):
 
     def apply_style(self, style_config):
         """Applies a style configuration to the item."""
+        self._style_config_ref = style_config
         # Update relevant parts of config_data with the style_config
         # Only update keys that are present in style_config
         for key, value in style_config.items():

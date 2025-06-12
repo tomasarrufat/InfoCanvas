@@ -264,3 +264,59 @@ def test_apply_style_method(qtbot, create_item):
     # Vertical alignment check for text_item.y() would be similar to test_apply_vertical_alignment
     # and depends on item height and text block height.
     # For now, checking the internal attribute is sufficient for apply_style coverage.
+
+
+def test_style_updates_reflect_on_items(qtbot, create_item_with_scene):
+    """
+    Tests that if the style dictionary held by _style_config_ref is modified externally,
+    the item reflects these changes after its update methods are called.
+    """
+    # 1. Create two InfoRectangleItem instances with minimal config
+    item1_config = {'id': 'item1', 'width': 100, 'height': 50, 'center_x': 50, 'center_y': 25, 'text': 'Initial1'}
+    item2_config = {'id': 'item2', 'width': 120, 'height': 60, 'center_x': 60, 'center_y': 30, 'text': 'Initial2'}
+    item1 = create_item_with_scene(item1_config)
+    item2 = create_item_with_scene(item2_config)
+
+    # 2. Define and apply original_style
+    original_style = {
+        'font_color': '#FF0000',  # Red
+        'font_size': '12px',
+        'text': 'Styled Text'  # Style can also set text
+    }
+    item1.apply_style(original_style)
+    item2.apply_style(original_style)
+    # apply_style calls update_text_from_config, so properties should be set
+
+    # 3. Initial Assertions
+    assert item1.text_item.defaultTextColor() == QColor('#FF0000')
+    assert item1.text_item.font().pointSize() == 12
+    assert item1.text_item.toPlainText() == 'Styled Text'
+
+    assert item2.text_item.defaultTextColor() == QColor('#FF0000')
+    assert item2.text_item.font().pointSize() == 12
+    assert item2.text_item.toPlainText() == 'Styled Text'
+
+    # 4. Modify the original_style dictionary
+    # This simulates a scenario where a style manager updates the style object
+    # that items are referencing.
+    original_style['font_color'] = '#00FF00'  # Green
+    original_style['font_size'] = '15px'
+    # 'text' remains 'Styled Text'
+
+    # 5. Trigger Refresh
+    # Items need to be told to re-read their style config.
+    # In a real app, this might be part of a style update notification system.
+    item1.update_text_from_config()
+    item2.update_text_from_config()
+
+    # 6. Final Assertions
+    # Both items should now reflect the modified style because they hold a reference
+    # to the 'original_style' dictionary via _style_config_ref, and _get_style_value
+    # reads from it.
+    assert item1.text_item.defaultTextColor() == QColor('#00FF00')
+    assert item1.text_item.font().pointSize() == 15
+    assert item1.text_item.toPlainText() == 'Styled Text' # Text content from style is still the same
+
+    assert item2.text_item.defaultTextColor() == QColor('#00FF00')
+    assert item2.text_item.font().pointSize() == 15
+    assert item2.text_item.toPlainText() == 'Styled Text'
