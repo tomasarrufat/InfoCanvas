@@ -1903,6 +1903,8 @@ def test_ctrl_multi_select_info_rectangles(base_app_fixture, monkeypatch):
     assert not item2.isSelected()
 
     monkeypatch.setattr(QApplication, 'keyboardModifiers', lambda: Qt.ControlModifier)
+    # Simulate Qt selecting the second item when Ctrl is held
+    item2.setSelected(True)
     app.on_graphics_item_selected(item2)
 
     assert item1.isSelected() and item2.isSelected()

@@ -687,15 +687,19 @@ class InteractiveToolApp(QMainWindow):
         self.update_properties_panel()
 
     def on_scene_selection_changed(self):
-        if not hasattr(self, 'scene') or not self.scene: return
+        if not hasattr(self, 'scene') or not self.scene:
+            return
+
         selected_items = self.scene.selectedItems()
-        newly_selected_item = selected_items[0] if selected_items else None
-        if self.selected_item is not newly_selected_item:
-            if self.selected_item and isinstance(self.selected_item, InfoRectangleItem):
-                self.selected_item.update_appearance(False, self.current_mode == "view")
-            self.selected_item = newly_selected_item
-            if self.selected_item and isinstance(self.selected_item, InfoRectangleItem):
-                self.selected_item.update_appearance(True, self.current_mode == "view")
+
+        # Update appearance for all InfoRectangleItems based on their selection state
+        for item in self.scene.items():
+            if isinstance(item, InfoRectangleItem):
+                item.update_appearance(item.isSelected(), self.current_mode == "view")
+
+        if self.selected_item not in selected_items:
+            self.selected_item = selected_items[-1] if selected_items else None
+
         self.update_properties_panel()
 
     def on_graphics_item_selected(self, graphics_item):
@@ -708,16 +712,14 @@ class InteractiveToolApp(QMainWindow):
         ctrl_pressed = QApplication.keyboardModifiers() & Qt.ControlModifier
 
         if ctrl_pressed and isinstance(graphics_item, InfoRectangleItem):
+            # Let Qt handle the selection toggle. Just update selected_item to
+            # the item under the cursor if it ends up selected, otherwise fall
+            # back to another selected item if any remain.
             if graphics_item.isSelected():
-                graphics_item.setSelected(False)
-                graphics_item.update_appearance(False, self.current_mode == "view")
-                if self.selected_item is graphics_item:
-                    remaining = self.scene.selectedItems() if hasattr(self, 'scene') else []
-                    self.selected_item = remaining[0] if remaining else None
-            else:
-                graphics_item.setSelected(True)
-                graphics_item.update_appearance(True, self.current_mode == "view")
                 self.selected_item = graphics_item
+            else:
+                remaining = self.scene.selectedItems() if hasattr(self, 'scene') else []
+                self.selected_item = remaining[-1] if remaining else None
             self.update_properties_panel()
             return
         
