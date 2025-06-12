@@ -434,7 +434,7 @@ class InteractiveToolApp(QMainWindow):
         self.view_mode_message_label.setWordWrap(True)
         self.controls_layout.addWidget(self.view_mode_message_label)
         self.export_html_button = QPushButton("Export to HTML")
-        self.export_html_button.clicked.connect(self.export_to_html)
+        self.export_html_button.clicked.connect(lambda checked=False: self.export_to_html())
         self.controls_layout.addWidget(self.export_html_button)
         self.controls_layout.addStretch()
         menubar = self.menuBar()
@@ -448,7 +448,7 @@ class InteractiveToolApp(QMainWindow):
         save_action.triggered.connect(lambda: self.save_config())
         file_menu.addAction(save_action)
         export_action = QAction('&Export to HTML', self)
-        export_action.triggered.connect(self.export_to_html)
+        export_action.triggered.connect(lambda checked=False: self.export_to_html())
         file_menu.addAction(export_action)
         exit_action = QAction('&Exit', self)
         exit_action.setShortcut('Ctrl+Q')
@@ -479,6 +479,8 @@ class InteractiveToolApp(QMainWindow):
         is_edit_mode = self.current_mode == "edit"
         self.edit_mode_controls_widget.setVisible(is_edit_mode)
         self.view_mode_message_label.setVisible(not is_edit_mode)
+        if hasattr(self, 'export_html_button'):
+            self.export_html_button.setVisible(not is_edit_mode)
         for item_id, graphics_item in self.item_map.items():
             if isinstance(graphics_item, (DraggableImageItem, InfoRectangleItem)):
                 graphics_item.setEnabled(is_edit_mode) 
@@ -943,6 +945,8 @@ class InteractiveToolApp(QMainWindow):
 
     def export_to_html(self, filepath=None):
         """Export the current project view to an HTML file."""
+        if isinstance(filepath, bool):
+            filepath = None
         if not self.config:
             QMessageBox.warning(self, "Export Error", "No project loaded to export.")
             return

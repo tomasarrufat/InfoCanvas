@@ -54,3 +54,25 @@ def test_export_to_html_dialog_cancel(mock_get_save, base_app_fixture, monkeypat
     monkeypatch.setattr(QMessageBox, 'information', info_mock)
     app.export_to_html()
     info_mock.assert_not_called()
+
+
+@patch('app.QFileDialog.getSaveFileName')
+def test_export_to_html_ignores_bool(mock_get_save, base_app_fixture, tmp_path, monkeypatch):
+    app = base_app_fixture
+    out_file = tmp_path / "bool_export.html"
+    mock_get_save.return_value = (str(out_file), 'HTML Files (*.html)')
+    info_mock = MagicMock()
+    monkeypatch.setattr(QMessageBox, 'information', info_mock)
+    # Simulate QAction.triggered(bool)
+    app.export_to_html(False)
+    assert out_file.exists()
+    info_mock.assert_called_once_with(app, "Export Complete", f"Exported to {str(out_file)}")
+
+
+def test_export_button_visibility_changes(base_app_fixture):
+    app = base_app_fixture
+    assert not app.export_html_button.isVisible()
+    app.on_mode_changed('View Mode')
+    assert app.export_html_button.isVisible()
+    app.on_mode_changed('Edit Mode')
+    assert not app.export_html_button.isVisible()
