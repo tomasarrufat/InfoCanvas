@@ -668,21 +668,39 @@ class InteractiveToolApp(QMainWindow):
         self.update_properties_panel()
 
     def on_scene_selection_changed(self):
-        if not hasattr(self, 'scene') or not self.scene: return
+        if not hasattr(self, 'scene') or not self.scene:
+            return
+
         selected_items = self.scene.selectedItems()
-        newly_selected_item = selected_items[0] if selected_items else None
-        if self.selected_item is not newly_selected_item:
-            if self.selected_item and isinstance(self.selected_item, InfoRectangleItem):
-                self.selected_item.update_appearance(False, self.current_mode == "view")
-            self.selected_item = newly_selected_item
-            if self.selected_item and isinstance(self.selected_item, InfoRectangleItem):
-                self.selected_item.update_appearance(True, self.current_mode == "view")
+
+        # Update appearance for all info rectangles based on selection state
+        for item in self.scene.items():
+            if isinstance(item, InfoRectangleItem):
+                item.update_appearance(item in selected_items, self.current_mode == "view")
+
+        # Track the last selected item for the properties panel
+        self.selected_item = selected_items[-1] if selected_items else None
         self.update_properties_panel()
 
     def on_graphics_item_selected(self, graphics_item):
         if self.current_mode == "view":
             if hasattr(self, 'scene') and self.scene: self.scene.clearSelection()
             self.selected_item = None
+            self.update_properties_panel()
+            return
+
+        ctrl_pressed = QApplication.keyboardModifiers() & Qt.ControlModifier
+
+        if ctrl_pressed:
+            # Toggle selection without affecting other selected items
+            if isinstance(graphics_item, InfoRectangleItem):
+                graphics_item.update_appearance(graphics_item.isSelected(), self.current_mode == "view")
+
+            if graphics_item.isSelected():
+                self.selected_item = graphics_item
+            else:
+                selected_items = self.scene.selectedItems() if self.scene else []
+                self.selected_item = selected_items[-1] if selected_items else None
             self.update_properties_panel()
             return
         

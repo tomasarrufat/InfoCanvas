@@ -1687,3 +1687,30 @@ def test_font_color_change_updates_item_and_ui(mock_get_color, base_app_fixture,
     if not app._does_current_rect_match_default_style(selected_item_config) and \
        not app._find_matching_style_name(selected_item_config):
         assert app.rect_style_combo.currentText() == "Custom"
+
+
+def test_multi_select_with_ctrl(monkeypatch, base_app_fixture):
+    app = base_app_fixture
+    app.config['info_rectangles'] = [
+        {"id": "rect1", "text": "", "width": 40, "height": 20, "center_x": 30, "center_y": 30, "z_index": 1},
+        {"id": "rect2", "text": "", "width": 40, "height": 20, "center_x": 100, "center_y": 30, "z_index": 2},
+    ]
+
+    app.scene.clear()
+    app.item_map.clear()
+    app.render_canvas_from_config()
+
+    rect1 = app.item_map['rect1']
+    rect2 = app.item_map['rect2']
+
+    # Click first rectangle normally
+    app.on_graphics_item_selected(rect1)
+    assert rect1.isSelected() and not rect2.isSelected()
+
+    # Ctrl-click second rectangle
+    monkeypatch.setattr(QApplication, 'keyboardModifiers', lambda: Qt.ControlModifier)
+    rect2.setSelected(True)
+    app.on_graphics_item_selected(rect2)
+    monkeypatch.setattr(QApplication, 'keyboardModifiers', lambda: Qt.NoModifier)
+
+    assert rect1.isSelected() and rect2.isSelected()
