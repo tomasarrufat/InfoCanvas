@@ -704,6 +704,22 @@ class InteractiveToolApp(QMainWindow):
             self.selected_item = None
             self.update_properties_panel()
             return
+
+        ctrl_pressed = QApplication.keyboardModifiers() & Qt.ControlModifier
+
+        if ctrl_pressed and isinstance(graphics_item, InfoRectangleItem):
+            if graphics_item.isSelected():
+                graphics_item.setSelected(False)
+                graphics_item.update_appearance(False, self.current_mode == "view")
+                if self.selected_item is graphics_item:
+                    remaining = self.scene.selectedItems() if hasattr(self, 'scene') else []
+                    self.selected_item = remaining[0] if remaining else None
+            else:
+                graphics_item.setSelected(True)
+                graphics_item.update_appearance(True, self.current_mode == "view")
+                self.selected_item = graphics_item
+            self.update_properties_panel()
+            return
         
         if self.selected_item is graphics_item and isinstance(self.selected_item, InfoRectangleItem):
             self.selected_item.update_appearance(True, self.current_mode == "view")

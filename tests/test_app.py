@@ -1876,3 +1876,34 @@ def test_project_load_style_application_and_update(qtbot, monkeypatch, tmp_path)
     # Ensure the reference is still the same (mutated) object
     assert item1._style_config_ref is shared_style_object
     assert item2._style_config_ref is shared_style_object
+
+def test_ctrl_multi_select_info_rectangles(base_app_fixture, monkeypatch):
+    app = base_app_fixture
+
+    rect1 = {
+        'id': 'rect1', 'width': 50, 'height': 40,
+        'center_x': 60, 'center_y': 50, 'text': 'A'
+    }
+    rect2 = {
+        'id': 'rect2', 'width': 50, 'height': 40,
+        'center_x': 150, 'center_y': 50, 'text': 'B'
+    }
+
+    app.config['info_rectangles'] = [rect1, rect2]
+    app.render_canvas_from_config()
+
+    item1 = app.item_map['rect1']
+    item2 = app.item_map['rect2']
+
+    app.scene.clearSelection()
+
+    monkeypatch.setattr(QApplication, 'keyboardModifiers', lambda: Qt.NoModifier)
+    app.on_graphics_item_selected(item1)
+    assert item1.isSelected()
+    assert not item2.isSelected()
+
+    monkeypatch.setattr(QApplication, 'keyboardModifiers', lambda: Qt.ControlModifier)
+    app.on_graphics_item_selected(item2)
+
+    assert item1.isSelected() and item2.isSelected()
+    assert app.selected_item is item2
