@@ -1361,7 +1361,7 @@ class InteractiveToolApp(QMainWindow):
 
             if v_align == "top":
                 outer_style += "align-items:flex-start;"
-            elif v_align == "center":
+            elif v_align == "center" or v_align == "middle": # Handle "middle" as center
                 outer_style += "align-items:center;"
             elif v_align == "bottom":
                 outer_style += "align-items:flex-end;"

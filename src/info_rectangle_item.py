@@ -318,14 +318,24 @@ class InfoRectangleItem(QGraphicsObject):
         self.text_item.setDefaultTextColor(QColor(font_color))
 
         # Set horizontal alignment for the text item
-        option = QTextOption(self.text_item.defaultTextOption().alignment())
-        if self.horizontal_alignment == "left":
-            option.setAlignment(Qt.AlignLeft)
-        elif self.horizontal_alignment == "center":
-            option.setAlignment(Qt.AlignCenter)
-        elif self.horizontal_alignment == "right":
-            option.setAlignment(Qt.AlignRight)
-        self.text_item.document().setDefaultTextOption(option)
+        # Get the document's current default text option
+        current_doc_option = self.text_item.document().defaultTextOption()
+
+        # Create a mapping for alignment strings to Qt alignment flags
+        h_align_map = {
+            "left": Qt.AlignLeft,
+            "center": Qt.AlignCenter, # Use Qt.AlignCenter for QTextOption horizontal centering
+            "right": Qt.AlignRight
+        }
+        # Get the appropriate flag, defaulting to AlignLeft
+        alignment_flag = h_align_map.get(self.horizontal_alignment, Qt.AlignLeft)
+
+        # Set its alignment
+        current_doc_option.setAlignment(alignment_flag)
+
+        # Apply the modified option back to the document
+        self.text_item.document().setDefaultTextOption(current_doc_option)
+
         # Setting text width is important for alignment to work correctly with wrapped text
         self.text_item.setTextWidth(self._w)
 

@@ -11,12 +11,12 @@ def default_text_config():
     return utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
 @pytest.fixture
-def create_item(default_text_config):
-    def _create_item(custom_config=None):
+def create_item_with_scene(default_text_config, qtbot): # qtbot can manage scene lifetime
+    def _create_item_with_scene(custom_config=None):
         base_config = {
             'id': 'rect1',
             'width': 100,
-            'height': 80, # Increased height for better vertical alignment testing
+            'height': 80,
             'center_x': 50,
             'center_y': 40,
             'text': 'hello world',
@@ -27,16 +27,27 @@ def create_item(default_text_config):
             'vertical_alignment': default_text_config['vertical_alignment'],
             'horizontal_alignment': default_text_config['horizontal_alignment'],
             'font_style': default_text_config['font_style'],
-            # 'defaults' key seems to be from an older structure, actual item uses direct keys
         }
         if custom_config:
             base_config.update(custom_config)
-        item = InfoRectangleItem(base_config)
-        # Ensure item has a scene for some operations if needed, though not always required for property tests
+
+        # Scene managed by test scope or qtbot if possible. Here, let's ensure it's returned.
         scene = QGraphicsScene()
+        item = InfoRectangleItem(base_config)
         scene.addItem(item)
+        # Keep the scene alive by making it an attribute of the item for test duration
+        # This is a common workaround for tests to prevent premature garbage collection.
+        item._test_scene_ref = scene
         return item
-    return _create_item
+    return _create_item_with_scene
+
+# Old fixture name, updated to use the new one that returns item with scene ref
+@pytest.fixture
+def create_item(create_item_with_scene): # create_item_with_scene now just returns item
+    def _create_item_wrapper(custom_config=None):
+        item = create_item_with_scene(custom_config)
+        return item
+    return _create_item_wrapper
 
 
 def test_update_geometry_from_config(qtbot, create_item):
