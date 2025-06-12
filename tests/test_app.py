@@ -1687,3 +1687,192 @@ def test_font_color_change_updates_item_and_ui(mock_get_color, base_app_fixture,
     if not app._does_current_rect_match_default_style(selected_item_config) and \
        not app._find_matching_style_name(selected_item_config):
         assert app.rect_style_combo.currentText() == "Custom"
+
+
+def test_project_load_style_application_and_update(qtbot, monkeypatch, tmp_path):
+    """
+    Tests loading a project with items referencing text styles,
+    verifies style application, and then tests update propagation
+    when the shared style object is modified directly in app.config.
+    """
+    # 1. Setup Mock Project/Config
+    mock_projects_base_dir = tmp_path / "mock_projects"
+    mock_projects_base_dir.mkdir()
+    monkeypatch.setattr(utils, 'PROJECTS_BASE_DIR', str(mock_projects_base_dir))
+
+    project_name = "StyleRefTestProject"
+    tmpproject_path = mock_projects_base_dir / project_name
+    tmpproject_path.mkdir()
+    tmpproject_images_path = tmpproject_path / utils.PROJECT_IMAGES_DIRNAME
+    tmpproject_images_path.mkdir()
+
+    style1_initial_color = '#111111'
+    style1_initial_font_size = '12px' # Changed for clarity
+    style1_initial_font_size_int = 12
+    style1_initial_v_align = 'top'
+    style1_initial_h_align = 'left'
+    style1_initial_font_style = 'normal'
+    style1_initial_padding = '4px'
+
+
+    mock_config = {
+        "project_name": project_name,
+        "background": {"color": "#FFFFFF", "width": 800, "height": 600},
+        "text_styles": [
+            {
+                'name': 'TestStyle1',
+                'font_color': style1_initial_color,
+                'font_size': style1_initial_font_size,
+                'vertical_alignment': style1_initial_v_align,
+                'horizontal_alignment': style1_initial_h_align,
+                'font_style': style1_initial_font_style,
+                'padding': style1_initial_padding
+            }
+        ],
+        "info_rectangles": [
+            {'id': 'rect1', 'text': 'Rect 1', 'center_x': 100, 'center_y': 100, 'width': 100, 'height': 50, 'text_style_ref': 'TestStyle1'},
+            {'id': 'rect2', 'text': 'Rect 2', 'center_x': 200, 'center_y': 200, 'width': 120, 'height': 60, 'text_style_ref': 'TestStyle1'}
+        ],
+        "images": []
+    }
+    config_file_path = tmpproject_path / utils.PROJECT_CONFIG_FILENAME
+    with open(config_file_path, 'w') as f:
+        json.dump(mock_config, f)
+
+    # 2. Initialize Application (mocking ProjectManagerDialog)
+    mock_dialog_instance = MockProjectManagerDialog(None) # Using the class defined in test_app.py
+    mock_dialog_instance.set_outcome(QDialog.Accepted, project_name)
+    monkeypatch.setattr('app.ProjectManagerDialog', lambda *args, **kwargs: mock_dialog_instance)
+
+    # Prevent UI methods not relevant to this test from causing issues if they rely on more setup
+    # monkeypatch.setattr(InteractiveToolApp, '_update_window_title', lambda self: None)
+    # monkeypatch.setattr(InteractiveToolApp, 'populate_controls_from_config', lambda self: None) # This might be needed for style dropdown if not loaded by render
+
+    app_instance = InteractiveToolApp()
+    qtbot.addWidget(app_instance)
+    app_instance.show() # Ensure window is shown and event loop processes if needed
+
+    # Verify project loaded
+    assert app_instance.current_project_name == project_name
+    assert len(app_instance.item_map) == 2 # rect1 and rect2
+
+    # 3. Initial Assertions (After Load)
+    item1 = app_instance.item_map.get('rect1')
+    item2 = app_instance.item_map.get('rect2')
+    assert isinstance(item1, InfoRectangleItem)
+    assert isinstance(item2, InfoRectangleItem)
+
+    # Check that items reflect 'TestStyle1' visually and that config_data is flattened
+    # Item 1 - Visual properties
+    assert item1.text_item.defaultTextColor() == QColor(style1_initial_color)
+    assert item1.text_item.font().pointSize() == style1_initial_font_size_int
+    assert item1.vertical_alignment == style1_initial_v_align
+    assert item1.horizontal_alignment == style1_initial_h_align
+    assert item1.font_style == style1_initial_font_style
+    # Item 1 - Flattened config_data
+    assert item1.config_data['font_color'] == style1_initial_color
+    assert item1.config_data['font_size'] == style1_initial_font_size
+    assert item1.config_data['vertical_alignment'] == style1_initial_v_align
+    assert item1.config_data['horizontal_alignment'] == style1_initial_h_align
+    assert item1.config_data['font_style'] == style1_initial_font_style
+    assert item1.config_data['padding'] == style1_initial_padding
+    assert item1.config_data.get('text_style_ref') == 'TestStyle1'
+
+    # Item 2 - Visual properties
+    assert item2.text_item.defaultTextColor() == QColor(style1_initial_color)
+    assert item2.text_item.font().pointSize() == style1_initial_font_size_int
+    assert item2.vertical_alignment == style1_initial_v_align
+    assert item2.horizontal_alignment == style1_initial_h_align
+    assert item2.font_style == style1_initial_font_style
+    # Item 2 - Flattened config_data
+    assert item2.config_data['font_color'] == style1_initial_color
+    assert item2.config_data['font_size'] == style1_initial_font_size
+    assert item2.config_data['vertical_alignment'] == style1_initial_v_align
+    assert item2.config_data['horizontal_alignment'] == style1_initial_h_align
+    assert item2.config_data['font_style'] == style1_initial_font_style
+    assert item2.config_data['padding'] == style1_initial_padding
+    assert item2.config_data.get('text_style_ref') == 'TestStyle1'
+
+    # Verify _style_config_ref points to the shared style object in app.config
+    shared_style_object = app_instance.config['text_styles'][0]
+    assert item1._style_config_ref is shared_style_object
+    assert item2._style_config_ref is shared_style_object
+
+    # Simulate selecting item1 to update the properties panel, including rect_style_combo
+    app_instance.scene.clearSelection()
+    item1.setSelected(True)
+    # Call on_graphics_item_selected to ensure app.selected_item is updated and update_properties_panel is called.
+    app_instance.on_graphics_item_selected(item1)
+
+    # Assertions for rect_style_combo state
+    assert app_instance.rect_style_combo.isEnabled()
+
+    expected_styles_in_combo = ["Default", "Custom", "TestStyle1"] # Based on mock_config
+    combo_items = [app_instance.rect_style_combo.itemText(i) for i in range(app_instance.rect_style_combo.count())]
+    for style_name_expected in expected_styles_in_combo:
+        assert style_name_expected in combo_items
+
+    # Assert that the current text of the combo box matches the item's style reference name
+    assert app_instance.rect_style_combo.currentText() == item1.config_data.get('text_style_ref')
+    # This is a redundant check for item1's config but confirms the basis for combo text
+    assert item1.config_data.get('text_style_ref') == "TestStyle1"
+
+
+    # 4. Modify Shared Style and Trigger Refresh
+    style1_updated_color = '#222222'
+    style1_updated_font_size = '18px' # Changed for clarity
+    style1_updated_font_size_int = 18
+    style1_updated_v_align = 'bottom'
+    style1_updated_h_align = 'center'
+    style1_updated_font_style = 'bold'
+    style1_updated_padding = '10px'
+
+    # Directly modify the style object in app.config (which is the one items reference)
+    shared_style_object['font_color'] = style1_updated_color
+    shared_style_object['font_size'] = style1_updated_font_size
+    shared_style_object['vertical_alignment'] = style1_updated_v_align
+    shared_style_object['horizontal_alignment'] = style1_updated_h_align
+    shared_style_object['font_style'] = style1_updated_font_style
+    shared_style_object['padding'] = style1_updated_padding
+
+
+    # Trigger refresh by re-applying the modified style object.
+    # This simulates how _save_current_text_style would propagate changes
+    # and ensures the item's config_data is updated by the flattening logic in apply_style.
+    item1.apply_style(shared_style_object)
+    item2.apply_style(shared_style_object)
+
+    # 5. Final Assertions (After Style Update)
+    # Visual properties for Item 1
+    assert item1.text_item.defaultTextColor() == QColor(style1_updated_color)
+    assert item1.text_item.font().pointSize() == style1_updated_font_size_int
+    assert item1.vertical_alignment == style1_updated_v_align
+    assert item1.horizontal_alignment == style1_updated_h_align
+    assert item1.font_style == style1_updated_font_style
+    # Flattened config_data for Item 1
+    assert item1.config_data['font_color'] == style1_updated_color
+    assert item1.config_data['font_size'] == style1_updated_font_size
+    assert item1.config_data['vertical_alignment'] == style1_updated_v_align
+    assert item1.config_data['horizontal_alignment'] == style1_updated_h_align
+    assert item1.config_data['font_style'] == style1_updated_font_style
+    assert item1.config_data['padding'] == style1_updated_padding
+    assert item1.config_data.get('text_style_ref') == 'TestStyle1' # Name ref should persist
+
+    # Visual properties for Item 2
+    assert item2.text_item.defaultTextColor() == QColor(style1_updated_color)
+    assert item2.text_item.font().pointSize() == style1_updated_font_size_int
+    assert item2.vertical_alignment == style1_updated_v_align
+    assert item2.horizontal_alignment == style1_updated_h_align
+    assert item2.font_style == style1_updated_font_style
+    # Flattened config_data for Item 2
+    assert item2.config_data['font_color'] == style1_updated_color
+    assert item2.config_data['font_size'] == style1_updated_font_size
+    assert item2.config_data['vertical_alignment'] == style1_updated_v_align
+    assert item2.config_data['horizontal_alignment'] == style1_updated_h_align
+    assert item2.config_data['font_style'] == style1_updated_font_style
+    assert item2.config_data['padding'] == style1_updated_padding
+    assert item2.config_data.get('text_style_ref') == 'TestStyle1'
+
+    # Ensure the reference is still the same (mutated) object
+    assert item1._style_config_ref is shared_style_object
+    assert item2._style_config_ref is shared_style_object

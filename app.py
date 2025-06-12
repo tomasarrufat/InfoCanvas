@@ -41,6 +41,7 @@ class InteractiveToolApp(QMainWindow):
         self.selected_item = None
         self.item_map = {}
         self.setup_ui()
+        self._load_text_styles_into_dropdown() # Ensure dropdown is populated early
         self.populate_controls_from_config()
         self.render_canvas_from_config()
         self.update_mode_ui()
@@ -658,6 +659,24 @@ class InteractiveToolApp(QMainWindow):
             item.properties_changed.connect(self.on_graphics_item_properties_changed)
             self.scene.addItem(item)
             self.item_map[rect_conf['id']] = item
+
+            # Apply referenced text style if it exists
+            if 'text_style_ref' in rect_conf:
+                style_name_to_apply = rect_conf['text_style_ref']
+                found_style_object = None
+                for style_obj in self.config.get('text_styles', []):
+                    if style_obj.get('name') == style_name_to_apply:
+                        found_style_object = style_obj
+                        break
+
+                if found_style_object:
+                    item.apply_style(found_style_object) # This sets _style_config_ref and updates appearance
+                else:
+                    # Style reference exists but the style itself is not found.
+                    print(f"Warning: InfoRectangle {rect_conf.get('id')} references style '{style_name_to_apply}' which was not found in text_styles.")
+                    # Item will use its own rect_conf properties as fallback.
+                    # InfoRectangleItem.__init__ already called update_text_from_config based on its own config.
+
         if selected_item_id and selected_item_id in self.item_map:
             self.selected_item = self.item_map[selected_item_id]
             if self.selected_item:
@@ -1013,48 +1032,76 @@ class InteractiveToolApp(QMainWindow):
             return
 
         item_config = self.selected_item.config_data
-        # Use default text display config as a base for all style properties
         default_display_conf = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
         style_name, ok = QInputDialog.getText(self, "Save Text Style", "Enter style name:")
-        if ok and style_name:
-            # Check if style name already exists
-            existing_styles = self.config.get('text_styles', [])
-            for s in existing_styles:
-                if s['name'] == style_name:
-                    reply = QMessageBox.question(self, "Overwrite Style",
-                                                 f"Style '{style_name}' already exists. Overwrite it?",
-                                                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                    if reply == QMessageBox.No:
-                        return
-                    else: # Overwrite: remove existing
-                        existing_styles.remove(s)
-                        break
+        if not ok or not style_name:
+            if ok and not style_name: # Only show warning if OK was pressed with empty name
+                QMessageBox.warning(self, "Save Style", "Style name cannot be empty.")
+            return
 
-            current_style_dict = {
-                "name": style_name,
-                "font_color": item_config.get('font_color', default_display_conf['font_color']),
-                "font_size": item_config.get('font_size', default_display_conf['font_size']),
-                "font_style": item_config.get('font_style', default_display_conf['font_style']),
-                "horizontal_alignment": item_config.get('horizontal_alignment', default_display_conf['horizontal_alignment']),
-                "vertical_alignment": item_config.get('vertical_alignment', default_display_conf['vertical_alignment']),
-                "padding": item_config.get('padding', default_display_conf['padding']),
-                # Not including background_color or box_width from defaults as they are not text specific
-            }
+        current_style_dict = {
+            "name": style_name, # Ensure name is part of the dict to be saved/updated
+            "font_color": item_config.get('font_color', default_display_conf['font_color']),
+            "font_size": item_config.get('font_size', default_display_conf['font_size']),
+            "font_style": item_config.get('font_style', default_display_conf['font_style']),
+            "horizontal_alignment": item_config.get('horizontal_alignment', default_display_conf['horizontal_alignment']),
+            "vertical_alignment": item_config.get('vertical_alignment', default_display_conf['vertical_alignment']),
+            "padding": item_config.get('padding', default_display_conf['padding']),
+        }
 
-            self.config.setdefault('text_styles', []).append(current_style_dict)
-            self.save_config()
-            self._load_text_styles_into_dropdown() # Refresh dropdown
+        existing_styles = self.config.setdefault('text_styles', [])
+        style_object_updated = None # To hold the reference to the updated or new style object
 
-            # Set the current item's style reference and update dropdown to new style
-            item_config['text_style_ref'] = style_name
-            self.rect_style_combo.blockSignals(True)
-            self.rect_style_combo.setCurrentText(style_name)
-            self.rect_style_combo.blockSignals(False)
-            self.statusBar().showMessage(f"Text style '{style_name}' saved.", 2000)
-            # No need to call update_properties_panel here as setCurrentText will reflect the change.
-        elif ok and not style_name:
-            QMessageBox.warning(self, "Save Style", "Style name cannot be empty.")
+        found_existing_style_for_update = False
+        for s in existing_styles:
+            if s['name'] == style_name:
+                reply = QMessageBox.question(self, "Overwrite Style",
+                                             f"Style '{style_name}' already exists. Overwrite it?",
+                                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if reply == QMessageBox.No:
+                    return
+                else: # Overwrite: UPDATE the existing dictionary in place
+                    s.clear() # Remove all old keys
+                    s.update(current_style_dict) # Add all new keys from current_style_dict
+                    # s['name'] = style_name # Ensured by current_style_dict having 'name'
+                    style_object_updated = s # Keep a reference to the updated style object
+                    found_existing_style_for_update = True
+                    break
+
+        if not found_existing_style_for_update: # Style name not found, so append new
+            existing_styles.append(current_style_dict)
+            style_object_updated = current_style_dict # The newly added style object
+
+        if style_object_updated is None: # Should not happen if logic is correct (e.g. user hit No and returned)
+            return
+
+        self.save_config() # Save changes to project config file
+        self._load_text_styles_into_dropdown() # Refresh dropdown
+
+        # Update all InfoRectangleItems that reference this style by name
+        for item_in_map in self.item_map.values(): # Iterate directly over values
+            if isinstance(item_in_map, InfoRectangleItem):
+                if item_in_map.config_data.get('text_style_ref') == style_name:
+                    # Force apply the canonical, possibly updated, style object
+                    # This ensures the item uses the canonical style object and refreshes.
+                    item_in_map.apply_style(style_object_updated)
+
+        # Ensure the selected item (which was the source of the style)
+        # is correctly referencing the potentially new style object and its UI is updated.
+        # This also updates its internal text_style_ref name.
+        # The loop above would have already handled self.selected_item if its text_style_ref matched.
+        # However, explicitly calling apply_style on self.selected_item ensures it's updated,
+        # particularly if its text_style_ref was just set or if it was a new style.
+        # This also updates its internal text_style_ref name.
+        self.selected_item.apply_style(style_object_updated)
+
+        self.rect_style_combo.blockSignals(True)
+        self.rect_style_combo.setCurrentText(style_name)
+        self.rect_style_combo.blockSignals(False)
+
+        self.statusBar().showMessage(f"Text style '{style_name}' saved and applied.", 2000)
+        # update_properties_panel will be called because selected_item.apply_style emits properties_changed.
 
 
     def _on_rect_style_selected(self, style_name):
@@ -1090,9 +1137,9 @@ class InteractiveToolApp(QMainWindow):
                     found_style = s
                     break
             if found_style:
-                style_to_apply = found_style.copy()
-                # Don't remove 'name' from style_to_apply, apply_style in item should ignore it.
-                item_config['text_style_ref'] = style_name
+                # Pass the direct reference to the style, not a copy.
+                style_to_apply = found_style
+                # item_config['text_style_ref'] = style_name # This is now handled by InfoRectangleItem.apply_style
                 self.selected_item.apply_style(style_to_apply)
                 style_applied_or_defaulted = True
             else: # Style not found (e.g. if list got corrupted, or "Custom" was somehow passed here)

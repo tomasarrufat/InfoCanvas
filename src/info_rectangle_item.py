@@ -28,6 +28,7 @@ class InfoRectangleItem(QGraphicsObject):
     def __init__(self, rect_config, parent_item=None):
         super().__init__(parent_item)
         self.config_data = rect_config
+        self._style_config_ref = None
         self._w = self.config_data.get('width', 100)
         self._h = self.config_data.get('height', 50)
         self._pen = QPen(Qt.NoPen)
@@ -237,6 +238,11 @@ class InfoRectangleItem(QGraphicsObject):
         self._center_text()
         self.update()
 
+    def _get_style_value(self, key, default_value):
+        if self._style_config_ref and key in self._style_config_ref:
+            return self._style_config_ref[key]
+        return self.config_data.get(key, default_value)
+
     def _center_text(self):
         if not self.text_item: return
         self.text_item.setPos(0,0) # Ensure text_item origin is top-left of InfoRectangleItem
@@ -254,7 +260,7 @@ class InfoRectangleItem(QGraphicsObject):
 
         # Get padding from config, default to 5 if not found or invalid
         # Use the actual config_data for padding, not defaults, as it might be styled
-        padding_str = self.config_data.get("padding", "5px")
+        padding_str = self._get_style_value("padding", "5px")
         try:
             padding_val = int(padding_str.lower().replace("px", "")) if "px" in padding_str.lower() else 5
         except ValueError:
@@ -285,21 +291,30 @@ class InfoRectangleItem(QGraphicsObject):
 
     def update_text_from_config(self):
         """Updates the text content and formatting from config_data."""
-        self.text_item.setPlainText(self.config_data.get('text', ''))
+        # If a style is applied, 'text' should also come from it if specified.
+        # Fallback to an empty string if not in style or config_data.
+        default_text = self.config_data.get('text', '') # Original text from item's own config as ultimate fallback.
+        self.text_item.setPlainText(self._get_style_value('text', default_text))
 
         # Update formatting options from config_data, falling back to defaults if necessary
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
-        self.vertical_alignment = self.config_data.get('vertical_alignment', text_format_defaults['vertical_alignment'])
-        self.horizontal_alignment = self.config_data.get('horizontal_alignment', text_format_defaults['horizontal_alignment'])
-        self.font_style = self.config_data.get('font_style', text_format_defaults['font_style'])
-        font_color = self.config_data.get('font_color', text_format_defaults['font_color'])
-        font_size_str = self.config_data.get('font_size', text_format_defaults['font_size'])
+        self.vertical_alignment = self._get_style_value('vertical_alignment', text_format_defaults['vertical_alignment'])
+        self.horizontal_alignment = self._get_style_value('horizontal_alignment', text_format_defaults['horizontal_alignment'])
+        self.font_style = self._get_style_value('font_style', text_format_defaults['font_style'])
+        font_color = self._get_style_value('font_color', text_format_defaults['font_color'])
+        font_size_str = self._get_style_value('font_size', text_format_defaults['font_size'])
 
         try:
-            font_size = int(font_size_str.lower().replace("px", ""))
+            # Ensure font_size_str is treated as a string before string methods are called
+            font_size = int(str(font_size_str).lower().replace("px", ""))
         except ValueError:
-            font_size = 14 # Default font size
+            # Fallback to parsing the default font_size from text_format_defaults
+            try:
+                default_font_size_val = int(str(text_format_defaults['font_size']).lower().replace("px",""))
+                font_size = default_font_size_val
+            except ValueError:
+                font_size = 14 # Ultimate fallback default font size if default config is also bad
 
         font = self.text_item.font()
         font.setPointSize(font_size)
@@ -367,15 +382,46 @@ class InfoRectangleItem(QGraphicsObject):
             self.item_moved.emit(self)
         return super().itemChange(change, value)
 
-    def apply_style(self, style_config):
-        """Applies a style configuration to the item."""
-        # Update relevant parts of config_data with the style_config
-        # Only update keys that are present in style_config
-        for key, value in style_config.items():
-            if key in self.config_data or key in ["vertical_alignment", "horizontal_alignment", "font_style", "font_color", "font_size", "padding"]: # include new keys
-                self.config_data[key] = value
+    def apply_style(self, style_config_object):
+        """
+        Applies a style configuration object to the item.
+        The item will hold a reference to this object.
+        """
+        self._style_config_ref = style_config_object
 
-        # Re-apply text and appearance based on updated config
-        self.update_text_from_config() # This will also call _center_text
-        self.update_appearance(self.isSelected()) # Keep current selection state
-        self.properties_changed.emit(self) # Notify that properties have changed
+        if style_config_object and style_config_object.get('name'):
+            self.config_data['text_style_ref'] = style_config_object['name']
+        else:
+            self.config_data.pop('text_style_ref', None)
+
+        # Flatten style properties into self.config_data
+        text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+        all_style_keys = [
+            'text', 'font_color', 'font_size', 'font_style',
+            'vertical_alignment', 'horizontal_alignment', 'padding'
+        ]
+
+        if style_config_object: # A specific style dictionary is provided (e.g. a named style or "Default")
+            for key in all_style_keys:
+                if key in style_config_object:
+                    self.config_data[key] = style_config_object[key]
+                elif key in text_format_defaults:
+                    # If the applied style object *omits* a key that has a defined default,
+                    # the item's config_data should adopt that default for that key.
+                    self.config_data[key] = text_format_defaults[key]
+                elif key == 'text':
+                    # If 'text' is not in style_config_object, self.config_data['text'] should remain.
+                    # It should not be defaulted to empty or popped here by the style application process
+                    # unless the style itself defines text as empty.
+                    pass # Do nothing to self.config_data['text'] if key 'text' is not in style_config_object
+                else:
+                    # For other formatting keys not in style and not in defaults (unlikely for well-defined defaults)
+                    self.config_data.pop(key, None)
+        # If style_config_object is None (meaning detach style, go to fully custom),
+        # then self.config_data already holds the custom values. No flattening needed from a None object.
+        # The _style_config_ref is None, and text_style_ref is popped.
+        # update_text_from_config will then read directly from self.config_data via _get_style_value's fallback.
+
+        self.update_text_from_config()
+        self.update_appearance(self.isSelected())
+        self.properties_changed.emit(self)
