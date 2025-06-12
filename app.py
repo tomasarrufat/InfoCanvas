@@ -1079,29 +1079,20 @@ class InteractiveToolApp(QMainWindow):
         self.save_config() # Save changes to project config file
         self._load_text_styles_into_dropdown() # Refresh dropdown
 
-        # Update propagation for items using this style
-        for item_in_map_id, item_in_map in self.item_map.items():
+        # Update all InfoRectangleItems that reference this style by name
+        for item_in_map in self.item_map.values(): # Iterate directly over values
             if isinstance(item_in_map, InfoRectangleItem):
-                # Check if the item was referencing the exact style object that got updated OR
-                # if the item was referencing the style by the same name (covers newly linked items too)
-                should_update = False
-                if item_in_map._style_config_ref is style_object_updated: # Direct reference match
-                    should_update = True
-                elif item_in_map.config_data.get('text_style_ref') == style_name: # Name match
-                    # If it matched by name, ensure its _style_config_ref is now pointing to the updated object
-                    # This is important if the style was found and updated in-place.
-                    # For new styles, apply_style will set the ref.
-                    if item_in_map._style_config_ref is not style_object_updated:
-                         item_in_map.apply_style(style_object_updated) # This also calls update_text_from_config
-                         should_update = False # apply_style already did the update
-                    else: # It was already referencing the correct object (e.g. selected_item)
-                        should_update = True
-
-                if should_update:
-                    item_in_map.update_text_from_config()
+                if item_in_map.config_data.get('text_style_ref') == style_name:
+                    # Force apply the canonical, possibly updated, style object
+                    # This ensures the item uses the canonical style object and refreshes.
+                    item_in_map.apply_style(style_object_updated)
 
         # Ensure the selected item (which was the source of the style)
         # is correctly referencing the potentially new style object and its UI is updated.
+        # This also updates its internal text_style_ref name.
+        # The loop above would have already handled self.selected_item if its text_style_ref matched.
+        # However, explicitly calling apply_style on self.selected_item ensures it's updated,
+        # particularly if its text_style_ref was just set or if it was a new style.
         # This also updates its internal text_style_ref name.
         self.selected_item.apply_style(style_object_updated)
 
