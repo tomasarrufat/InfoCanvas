@@ -102,8 +102,9 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
 
         self_app.setup_ui()
         self_app.populate_controls_from_config()
-        self_app.render_canvas_from_config()
-        self_app.update_mode_ui()
+        self_app.render_canvas_from_config() # This populates item_map
+        self_app._load_text_styles_into_dropdown() # Populate style combo
+        self_app.update_mode_ui() # This calls update_properties_panel
         self_app._update_window_title()
         return True
 
@@ -1543,6 +1544,9 @@ def test_delete_selected_image_success(mock_os_remove, mock_qmessagebox_question
     mock_os_remove.assert_called_once_with(dummy_image_file_path)
     assert len(app.config.get('images', [])) == initial_image_count - 1
     assert img_id_to_delete not in app.item_map
+    os.remove(dummy_image_file_path) # Clean up the dummy file
+
+
     assert app.selected_item is None
     app.scene.removeItem.assert_called_once_with(selected_image_item)
     app.save_config.assert_called_once()
@@ -1571,3 +1575,115 @@ def test_delete_selected_image_user_cancel(mock_qmessagebox_question, base_app_f
     assert len(app.config.get('images', [])) == initial_image_count
     app.save_config.assert_not_called()
     os.remove.assert_not_called()
+
+
+# --- Tests for Text Formatting UI --- #
+
+@patch('app.QColorDialog.getColor')
+def test_font_color_change_updates_item_and_ui(mock_get_color, base_app_fixture, qtbot, monkeypatch):
+    app = base_app_fixture
+    app._load_text_styles_into_dropdown() # Ensure it's populated for this test run
+
+    # Ensure an InfoRectangleItem is selected
+    rect_id = "rect_for_color_test"
+    initial_color = "#EFEFEF" # A non-default, distinct color
+    default_text_config = utils.get_default_config()['defaults']['info_rectangle_text_display']
+
+    rect_config = {
+        "id": rect_id, "text": "Color Test", "width": 150, "height": 70,
+        "center_x": 50, "center_y": 50, "z_index": 1,
+        "font_color": initial_color,
+        # Ensure other text properties are present for apply_style to work correctly
+        "font_size": default_text_config['font_size'],
+        "font_style": default_text_config['font_style'],
+        "horizontal_alignment": default_text_config['horizontal_alignment'],
+        "vertical_alignment": default_text_config['vertical_alignment'],
+        "padding": default_text_config['padding'],
+        "background_color": default_text_config['background_color']
+    }
+    app.config.setdefault('info_rectangles', []).append(rect_config)
+
+    # Temporarily mock render_canvas if it causes issues with already mocked scene items
+    # or if it re-selects items unexpectedly.
+    # For this test, we manually set up the selected item.
+    # monkeypatch.setattr(app, 'render_canvas_from_config', MagicMock())
+    # Instead of full render, let's add item manually to map and select
+
+    # Create and add the item to the scene if not already there by render_canvas
+    # This ensures the item exists in app.item_map for selection
+    # Add the config, then re-render so signals are connected for the new item.
+    app.render_canvas_from_config() # This will process rect_config and create the item
+
+    app.selected_item = app.item_map.get(rect_id) # Use .get for safety, though it should be there
+    assert isinstance(app.selected_item, InfoRectangleItem), f"Item '{rect_id}' not found or not an InfoRectangleItem after render."
+
+    # Manually select the item in the scene as render_canvas_from_config might clear selection
+    if app.selected_item:
+        app.selected_item.setSelected(True)
+    app.update_properties_panel() # Call after item is selected and potentially re-rendered
+
+    # Check initial button style
+    initial_button_style_processed = app.rect_font_color_button.styleSheet().replace(" ", "").lower()
+    expected_initial_text_color = app._get_contrasting_text_color(initial_color)
+    assert f"background-color:{initial_color}".lower() in initial_button_style_processed
+    assert f"color:{expected_initial_text_color}".lower() in initial_button_style_processed
+
+
+    # Mock QColorDialog.getColor to return a new specific color
+    new_test_color_hex = "#12ab34"
+    mock_get_color.return_value = QColor(new_test_color_hex)
+
+    # Mock save_config to check if it's called (via properties_changed signal)
+    monkeypatch.setattr(app, 'save_config', MagicMock())
+
+    # Call the handler for the font color button
+    app._on_rect_font_color_button_clicked()
+
+    # Assertions
+    mock_get_color.assert_called_once()
+    # Check that the initial color passed to getColor was correct
+    args, _ = mock_get_color.call_args
+    assert args[0].name().lower() == initial_color.lower() # Compare QColor.name()
+
+    # Check item's config data
+    selected_item_config = app.selected_item.config_data
+    assert selected_item_config['font_color'].lower() == new_test_color_hex.lower()
+    assert selected_item_config.get('text_style_ref') is None # Or "Custom" if that's the implementation
+
+    # Check if save_config was triggered by apply_style via properties_changed
+    app.save_config.assert_called_once()
+
+    # Check button style update
+    # Stylesheet might be complex, so check for presence of the new background color
+    # and the new contrasting text color.
+    current_button_style_processed = app.rect_font_color_button.styleSheet().replace(" ", "").lower()
+    expected_text_color_on_button = app._get_contrasting_text_color(new_test_color_hex)
+
+    assert f"background-color:{new_test_color_hex};".lower() in current_button_style_processed
+    assert f"color:{expected_text_color_on_button};".lower() in current_button_style_processed
+
+    # Check if style combo was updated to "Custom"
+    # This is handled by update_properties_panel, which is called by properties_changed signal
+    # So, if save_config was called, update_properties_panel should also have been called.
+    # We can check the current text of the combo box.
+    # Forcing an update_properties_panel call here to ensure UI state is refreshed before assertion,
+    # though it should be handled by the properties_changed signal.
+    app.update_properties_panel()
+
+    # Diagnostic: Check if "Custom" is actually in the combo box items
+    custom_item_found = False
+    for i in range(app.rect_style_combo.count()):
+        if app.rect_style_combo.itemText(i) == "Custom":
+            custom_item_found = True
+            break
+    assert custom_item_found, "The 'Custom' item is not in rect_style_combo"
+
+    assert app.rect_style_combo.currentText() == "Custom" or app.rect_style_combo.currentText() == "Default"
+    # If the new color by chance matches default, it will be "Default".
+    # If it matches another style, it will be that style's name.
+    # If it's truly custom, it will be "Custom".
+    # The logic in update_properties_panel handles this.
+    # For this test, new_test_color_hex is unlikely to match default or other saved styles.
+    if not app._does_current_rect_match_default_style(selected_item_config) and \
+       not app._find_matching_style_name(selected_item_config):
+        assert app.rect_style_combo.currentText() == "Custom"

@@ -437,6 +437,17 @@ class InteractiveToolApp(QMainWindow):
         font_style_layout.addWidget(self.rect_font_italic_button)
         text_format_layout.addLayout(font_style_layout)
 
+        # Font Color Button
+        font_color_layout = QHBoxLayout()
+        font_color_layout.addWidget(QLabel("Font Color:"))
+        self.rect_font_color_button = QPushButton("Select Color")
+        self.rect_font_color_button.setToolTip("Click to select text color")
+        # Initial color preview (will be updated later)
+        self.rect_font_color_button.setStyleSheet("background-color: #000000; color: white;")
+        self.rect_font_color_button.clicked.connect(self._on_rect_font_color_button_clicked)
+        font_color_layout.addWidget(self.rect_font_color_button)
+        text_format_layout.addLayout(font_color_layout)
+
         # Text Styles Dropdown
         style_selection_layout = QHBoxLayout()
         style_selection_layout.addWidget(QLabel("Text Style:"))
@@ -805,6 +816,14 @@ class InteractiveToolApp(QMainWindow):
             self.rect_font_italic_button.blockSignals(False)
             self.rect_style_combo.blockSignals(False)
 
+            # Update font color button preview
+            current_font_color = rect_conf.get('font_color', default_text_config['font_color'])
+            contrasting_color = self._get_contrasting_text_color(current_font_color)
+            self.rect_font_color_button.setStyleSheet(
+                f"background-color: {current_font_color}; color: {contrasting_color};"
+            )
+
+
             self.info_rect_text_input.blockSignals(False)
             self.info_rect_width_input.blockSignals(False)
             self.info_rect_height_input.blockSignals(False)
@@ -915,6 +934,65 @@ class InteractiveToolApp(QMainWindow):
                     self.rect_style_combo.setCurrentText("Custom")
             self.rect_style_combo.blockSignals(False)
             # self.save_config() is called by apply_style's emission
+
+    def _on_rect_font_color_button_clicked(self):
+        # Placeholder: QColorDialog logic will be implemented in the next step
+        print("Font color button clicked - QColorDialog to be implemented here")
+        # For now, let's simulate a color change to see button update
+        # if self.selected_item and isinstance(self.selected_item, InfoRectangleItem):
+        #     self.selected_item.config_data['font_color'] = "#FF0000" # Simulate red
+        #     self.update_properties_panel() # To update the button color based on new config
+
+    def _get_contrasting_text_color(self, hex_color):
+        """Determines if black or white text is more readable against a given hex background color."""
+        try:
+            hex_color = hex_color.lstrip('#')
+            r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+            # Calculate luminance (standard formula)
+            luminance = (0.299 * r + 0.587 * g + 0.114 * b)
+            return "#FFFFFF" if luminance < 128 else "#000000"
+        except Exception:
+            return "#000000" # Default to black text on error
+
+    def _on_rect_font_color_button_clicked(self):
+        if not self.selected_item or not isinstance(self.selected_item, InfoRectangleItem):
+            return
+
+        item_config = self.selected_item.config_data
+        default_color = utils.get_default_config()["defaults"]["info_rectangle_text_display"]['font_color']
+        initial_color_str = item_config.get('font_color', default_color)
+
+        try:
+            q_initial_color = QColor(initial_color_str)
+            if not q_initial_color.isValid(): # Fallback if hex is somehow invalid
+                q_initial_color = QColor(default_color)
+        except Exception: # Catch any error during QColor creation from potentially bad hex
+            q_initial_color = QColor(default_color)
+
+        color = QColorDialog.getColor(q_initial_color, self, "Select Text Color")
+
+        if color.isValid():
+            new_color_hex = color.name()
+            item_config['font_color'] = new_color_hex
+            item_config.pop('text_style_ref', None) # Mark as custom modification
+
+            # Prepare a complete style dict to pass to apply_style
+            # This ensures all current text formatting aspects are preserved/updated
+            current_text_config = {
+                key: item_config.get(key, utils.get_default_config()["defaults"]["info_rectangle_text_display"][key])
+                for key in utils.get_default_config()["defaults"]["info_rectangle_text_display"].keys()
+            }
+            current_text_config['font_color'] = new_color_hex # Ensure the new color is in the dict for apply_style
+
+            self.selected_item.apply_style(current_text_config)
+            # apply_style calls properties_changed, which calls save_config and update_properties_panel.
+            # update_properties_panel will update the button color via its logic.
+            # Explicitly update button style here for immediate feedback if update_properties_panel is slow or deferred.
+            contrasting_text_color = self._get_contrasting_text_color(new_color_hex)
+            self.rect_font_color_button.setStyleSheet(
+                f"background-color: {new_color_hex}; color: {contrasting_text_color};"
+            )
+            # self.update_properties_panel() # This will be called by properties_changed signal
 
     def _load_text_styles_into_dropdown(self):
         if not hasattr(self, 'rect_style_combo'): return
