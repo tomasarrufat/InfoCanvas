@@ -24,9 +24,22 @@ def test_export_to_html_writes_file(base_app_fixture, tmp_path, monkeypatch):
     assert '<html>' in content
     assert 'hello' in content
     assert 'hotspot' in content # This class is still used on the outer div
-    # assert 'tooltip' in content # The old JS tooltip class might not be relevant if text is inline
-    assert '.text-content' not in content # Class name used in implementation, not necessarily in default style block
-    assert 'hello' in content # Text content should be there
+    # assert 'tooltip' in content # The old JS tooltip class is no longer relevant
+    assert '.text-content' in content # Ensure the class for the text container is present
+
+    # Check for the basic structure and that display: none is part of the style for the text content
+    text_content_div_start_str = "<div class='text-content' style='"
+    text_content_div_end_str = "'>hello</div>" # Simple text case
+
+    start_index = content.find(text_content_div_start_str)
+    assert start_index != -1, "Could not find the start of the .text-content div for 'hello'"
+
+    end_index = content.find(text_content_div_end_str, start_index)
+    assert end_index != -1, "Could not find the end of the .text-content div with 'hello' text"
+
+    style_attribute_content = content[start_index + len(text_content_div_start_str):end_index]
+    assert "display: none;" in style_attribute_content, f"'display: none;' not found in style: '{style_attribute_content}'"
+    assert "hello" in content # Overall check that the text is somewhere (already implicitly checked by end_index search)
 
 
 def test_export_html_rich_text_formatting(base_app_fixture, tmp_path, monkeypatch):
@@ -65,17 +78,38 @@ def test_export_html_rich_text_formatting(base_app_fixture, tmp_path, monkeypatc
     assert 'align-items:center;' in content # vertical_alignment: middle -> center
 
     # Check for inner text div style
-    assert 'color:#FF0000;' in content
-    assert 'font-size:20px;' in content
-    assert 'background-color:#FFFF00;' in content
-    assert 'padding:10px;' in content
-    assert 'text-align:center;' in content # horizontal_alignment: center
-    assert 'font-weight:bold;' in content # font_style: bold
+    # The style string for the .text-content div
+    expected_inner_style_parts = [
+        'color:#FF0000;',
+        'font-size:20px;',
+        'background-color:#FFFF00;',
+        'padding:10px;',
+        'text-align:center;',
+        'font-weight:bold;',
+        'display: none;' # Added check for display: none;
+    ]
+    # Construct a regex or a series of assertions to ensure these parts are in the style attribute of the text-content div
+    # For simplicity with string searching, we'll look for the div and then its style content.
+    # This is less robust than parsing but avoids new dependencies for now.
+
+    text_content_div_start_str = "<div class='text-content' style='"
+    text_content_div_end_str = "'>Formatted Text<br>With Newlines &amp; &lt;HTML&gt;!</div>"
+
+    start_index = content.find(text_content_div_start_str)
+    assert start_index != -1, "Could not find the start of the .text-content div"
+
+    end_index = content.find(text_content_div_end_str, start_index)
+    assert end_index != -1, "Could not find the end of the .text-content div with expected text"
+
+    style_attribute_content = content[start_index + len(text_content_div_start_str):end_index]
+
+    for part in expected_inner_style_parts:
+        assert part in style_attribute_content, f"Expected style part '{part}' not found in '{style_attribute_content}'"
 
     # Check for text content: HTML escaped and newlines to <br>
-    assert 'Formatted Text<br>With Newlines &amp; &lt;HTML&gt;!' in content
-    # Verify that the old data-text attribute is NOT used for this div if we changed the structure
-    # assert 'data-text="Formatted Text' not in content # This depends on final HTML structure from app.py
+    assert 'Formatted Text<br>With Newlines &amp; &lt;HTML&gt;!' in content # Already checked by end_str effectively
+    # Verify that the old data-text attribute is NOT used for this div
+    assert 'data-text="Formatted Text' not in content
 
 
 def test_export_to_html_write_error(base_app_fixture, monkeypatch):

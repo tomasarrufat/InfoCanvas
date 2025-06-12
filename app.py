@@ -1458,18 +1458,33 @@ class InteractiveToolApp(QMainWindow):
                 inner_style += "font-style:italic;"
             # Note: "bold italic" would require both if InfoRectangleItem supports it. Assuming it's one or the other or normal.
 
-            # The 'hotspot' class was for JS tooltips. If text is inline, its role changes.
-            # For now, let's keep it for potential JS interaction, but the text is visible.
-            # The data-text attribute for JS tooltip can be removed if text is always visible.
+            # The 'hotspot' class is used by the JS for hover interactions.
+            # Ensure 'info-rectangle-export' class is also present.
+            # The data-text attribute is no longer needed as text is in an inner div.
+            inner_style += " display: none;" # Hide text content by default
+
             lines.append(
-                f"<div class='hotspot info-rectangle-export' style='{outer_style}'>" # Added info-rectangle-export class
-                f"<div class='text-content' style='{inner_style}'>{text_content}</div>"
+                f"<div class='hotspot info-rectangle-export' style='{outer_style}'>" # Ensure both classes
+                f"<div class='text-content' style='{inner_style}'>{text_content}</div>" # Added display:none here
                 f"</div>"
             )
 
         lines.append("</div>")
-        lines.append("<div id='tooltip' class='tooltip'></div>")
-        lines.append("<script>document.querySelectorAll('.hotspot').forEach(function(h){h.addEventListener('mouseenter',function(e){var t=document.getElementById('tooltip');t.innerHTML=h.dataset.text;t.style.display='block';t.style.left=(e.pageX+10)+'px';t.style.top=(e.pageY+10)+'px';});h.addEventListener('mousemove',function(e){var t=document.getElementById('tooltip');t.style.left=(e.pageX+10)+'px';t.style.top=(e.pageY+10)+'px';});h.addEventListener('mouseleave',function(){var t=document.getElementById('tooltip');t.style.display='none';});});</script>")
+        # Tooltip div is no longer needed for info rectangles with the new hover mechanism
+        # lines.append("<div id='tooltip' class='tooltip'></div>") # Keep this line if other things use it, or remove if only for old info rects
+        lines.append("<script>")
+        lines.append("document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){")
+        lines.append("  var textContentDiv = h.querySelector('.text-content');")
+        lines.append("  if (!textContentDiv) return;") # Skip if no text content
+        lines.append("  h.addEventListener('mouseenter', function(e){")
+        lines.append("    textContentDiv.style.display = 'block';") # Or 'flex' if it was originally flex
+        lines.append("  });")
+        # mousemove listener removed as per requirements
+        lines.append("  h.addEventListener('mouseleave', function(e){")
+        lines.append("    textContentDiv.style.display = 'none';")
+        lines.append("  });")
+        lines.append("});")
+        lines.append("</script>")
         lines.append("</body></html>")
         return "\n".join(lines)
 
