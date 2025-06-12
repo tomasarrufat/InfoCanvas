@@ -34,9 +34,13 @@ def get_default_config():
                 "font_size": "14px",
                 "background_color": "#FFFFFF",
                 "box_width": 200,
-                "padding": "5px"
+                "padding": "5px",
+                "vertical_alignment": "top",
+                "horizontal_alignment": "left",
+                "font_style": "normal"
             }
         },
+        "text_styles": [],
         "background": {
             "width": 800,
             "height": 600,

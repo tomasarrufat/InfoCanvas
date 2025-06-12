@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QGraphicsObject, QGraphicsItem, QGraphicsTextItem, QApplication
 from PyQt5.QtCore import Qt, QRectF, QPointF, pyqtSignal, QRect
-from PyQt5.QtGui import QColor, QBrush, QPen, QFontMetrics, QCursor
+from PyQt5.QtGui import QColor, QBrush, QPen, QFontMetrics, QCursor, QTextOption, QFont
 
 from . import utils
 
@@ -33,6 +33,12 @@ class InfoRectangleItem(QGraphicsObject):
         self._pen = QPen(Qt.NoPen)
         self._brush = QBrush(Qt.NoBrush)
 
+        # Formatting options
+        text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+        self.vertical_alignment = self.config_data.get('vertical_alignment', text_format_defaults['vertical_alignment'])
+        self.horizontal_alignment = self.config_data.get('horizontal_alignment', text_format_defaults['horizontal_alignment'])
+        self.font_style = self.config_data.get('font_style', text_format_defaults['font_style'])
+
         self.setFlags(QGraphicsItem.ItemIsSelectable |
                       QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemSendsGeometryChanges)
@@ -41,7 +47,8 @@ class InfoRectangleItem(QGraphicsObject):
         self.setZValue(self.config_data.get('z_index', utils.Z_VALUE_INFO_RECT))
 
         self.text_item = QGraphicsTextItem('', self)
-        self.text_item.setDefaultTextColor(QColor("#000000"))
+        # Default text color will be set in update_text_from_config
+        # self.text_item.setDefaultTextColor(QColor("#000000")) # Removed, handled by update_text_from_config
 
         self._current_resize_handle = self.ResizeHandle.NONE
         self._resizing_initial_mouse_pos = QPointF()
@@ -236,31 +243,94 @@ class InfoRectangleItem(QGraphicsObject):
         # Use QFontMetrics to calculate the actual height of the text block
         font_metrics = QFontMetrics(self.text_item.font())
         # Need to use a QRect that respects the width of the text item for word wrapping
-        text_bounding_rect = font_metrics.boundingRect(QRect(0, 0, int(self._w), 10000), Qt.TextWordWrap | Qt.AlignLeft, self.text_item.toPlainText()) # Large height for calculation
+        # Use current horizontal alignment for bounding rect calculation
+        align_flag = Qt.AlignLeft
+        if self.horizontal_alignment == "center":
+            align_flag = Qt.AlignCenter
+        elif self.horizontal_alignment == "right":
+            align_flag = Qt.AlignRight
+        text_bounding_rect = font_metrics.boundingRect(QRect(0, 0, int(self.text_item.textWidth()), 10000), Qt.TextWordWrap | align_flag, self.text_item.toPlainText()) # Large height for calculation
         text_height = text_bounding_rect.height()
 
         # Get padding from config, default to 5 if not found or invalid
-        padding_str = self.config_data.get("defaults", {}).get("info_rectangle_text_display", {}).get("padding", "5px")
+        # Use the actual config_data for padding, not defaults, as it might be styled
+        padding_str = self.config_data.get("padding", "5px")
         try:
             padding_val = int(padding_str.lower().replace("px", "")) if "px" in padding_str.lower() else 5
         except ValueError:
             padding_val = 5 # Default padding if conversion fails
 
-        # Calculate Y position to center text, ensuring it doesn't go above padding
-        text_y_offset = (self._h - text_height) / 2
-        self.text_item.setY(max(padding_val, text_y_offset))
+        if self.vertical_alignment == "top":
+            text_y_offset = padding_val
+        elif self.vertical_alignment == "bottom":
+            text_y_offset = self._h - text_height - padding_val
+        else: # center (default)
+            text_y_offset = (self._h - text_height) / 2
+            # Ensure centered text also respects top padding if content is large
+            text_y_offset = max(padding_val, text_y_offset)
+            # And bottom padding
+            if text_y_offset + text_height > self._h - padding_val:
+                 text_y_offset = self._h - text_height - padding_val
+
+
+        self.text_item.setY(text_y_offset)
 
 
     def set_display_text(self, text):
         """Sets the display text and recenters, optimized for live editing from properties panel."""
+        self.config_data['text'] = text # Update config_data as well
         self.text_item.setPlainText(text)
         self._center_text() # Recenter after text change
         self.update() # Ensure repaint
 
     def update_text_from_config(self):
-        """Updates the text content from config_data (e.g., on load) and adjusts text centering."""
+        """Updates the text content and formatting from config_data."""
         self.text_item.setPlainText(self.config_data.get('text', ''))
-        self._center_text() # Recenter after text change
+
+        # Update formatting options from config_data, falling back to defaults if necessary
+        text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+
+        self.vertical_alignment = self.config_data.get('vertical_alignment', text_format_defaults['vertical_alignment'])
+        self.horizontal_alignment = self.config_data.get('horizontal_alignment', text_format_defaults['horizontal_alignment'])
+        self.font_style = self.config_data.get('font_style', text_format_defaults['font_style'])
+        font_color = self.config_data.get('font_color', text_format_defaults['font_color'])
+        font_size_str = self.config_data.get('font_size', text_format_defaults['font_size'])
+
+        try:
+            font_size = int(font_size_str.lower().replace("px", ""))
+        except ValueError:
+            font_size = 14 # Default font size
+
+        font = self.text_item.font()
+        font.setPointSize(font_size)
+
+        if self.font_style == "bold":
+            font.setWeight(QFont.Bold)
+            font.setItalic(False)
+        elif self.font_style == "italic":
+            font.setWeight(QFont.Normal)
+            font.setItalic(True)
+        else: # normal
+            font.setWeight(QFont.Normal)
+            font.setItalic(False)
+
+        self.text_item.setFont(font)
+        self.text_item.setDefaultTextColor(QColor(font_color))
+
+        # Set horizontal alignment for the text item
+        option = QTextOption(self.text_item.defaultTextOption().alignment())
+        if self.horizontal_alignment == "left":
+            option.setAlignment(Qt.AlignLeft)
+        elif self.horizontal_alignment == "center":
+            option.setAlignment(Qt.AlignCenter)
+        elif self.horizontal_alignment == "right":
+            option.setAlignment(Qt.AlignRight)
+        self.text_item.document().setDefaultTextOption(option)
+        # Setting text width is important for alignment to work correctly with wrapped text
+        self.text_item.setTextWidth(self._w)
+
+
+        self._center_text() # Recenter/re-align after text and format change
         self.update() # Ensure repaint
 
     def update_appearance(self, is_selected=False, is_view_mode=False):
@@ -286,3 +356,16 @@ class InfoRectangleItem(QGraphicsObject):
             self.config_data['center_y'] = value.y() + self._h / 2
             self.item_moved.emit(self)
         return super().itemChange(change, value)
+
+    def apply_style(self, style_config):
+        """Applies a style configuration to the item."""
+        # Update relevant parts of config_data with the style_config
+        # Only update keys that are present in style_config
+        for key, value in style_config.items():
+            if key in self.config_data or key in ["vertical_alignment", "horizontal_alignment", "font_style", "font_color", "font_size", "padding"]: # include new keys
+                self.config_data[key] = value
+
+        # Re-apply text and appearance based on updated config
+        self.update_text_from_config() # This will also call _center_text
+        self.update_appearance(self.isSelected()) # Keep current selection state
+        self.properties_changed.emit(self) # Notify that properties have changed
