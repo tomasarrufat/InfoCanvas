@@ -187,6 +187,8 @@ class InteractiveToolApp(QMainWindow):
         self._update_window_title()
         if hasattr(self, 'edit_mode_controls_widget'): # Ensure controls are enabled after successful switch
             self.edit_mode_controls_widget.setEnabled(True)
+
+        self._load_text_styles_into_dropdown() # Load styles after config is ready
         return True
 
     def _load_config_for_current_project(self):
@@ -382,10 +384,87 @@ class InteractiveToolApp(QMainWindow):
         rect_props_layout = QVBoxLayout(self.info_rect_properties_widget)
         
         self.info_rect_text_input = QTextEdit()
-        self.info_rect_text_input.setPlaceholderText("Enter information here...") 
+        self.info_rect_text_input.setPlaceholderText("Enter information here...")
         self.info_rect_text_input.setFixedHeight(80)
         self.info_rect_text_input.textChanged.connect(self.update_selected_rect_text)
         rect_props_layout.addWidget(self.info_rect_text_input)
+
+        # --- New Text Formatting Controls ---
+        text_format_group = QWidget()
+        text_format_layout = QVBoxLayout(text_format_group)
+        text_format_layout.addWidget(QLabel("<u>Text Formatting:</u>"))
+
+        # Horizontal Alignment
+        h_align_layout = QHBoxLayout()
+        h_align_layout.addWidget(QLabel("Horizontal Align:"))
+        self.rect_h_align_combo = QComboBox()
+        self.rect_h_align_combo.addItems(["Left", "Center", "Right"])
+        self.rect_h_align_combo.activated[str].connect(self._on_rect_format_changed)
+        h_align_layout.addWidget(self.rect_h_align_combo)
+        text_format_layout.addLayout(h_align_layout)
+
+        # Vertical Alignment
+        v_align_layout = QHBoxLayout()
+        v_align_layout.addWidget(QLabel("Vertical Align:"))
+        self.rect_v_align_combo = QComboBox()
+        self.rect_v_align_combo.addItems(["Top", "Center", "Bottom"])
+        self.rect_v_align_combo.activated[str].connect(self._on_rect_format_changed)
+        v_align_layout.addWidget(self.rect_v_align_combo)
+        text_format_layout.addLayout(v_align_layout)
+
+        # Font Size
+        font_size_layout = QHBoxLayout()
+        font_size_layout.addWidget(QLabel("Font Size:"))
+        self.rect_font_size_combo = QComboBox()
+        common_font_sizes = ["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "32", "36", "48", "72"]
+        self.rect_font_size_combo.addItems(common_font_sizes)
+        self.rect_font_size_combo.setEditable(True)
+        self.rect_font_size_combo.lineEdit().setPlaceholderText("px")
+        self.rect_font_size_combo.activated[str].connect(self._on_rect_format_changed) # Connect to existing if using index, or custom for text
+        font_size_layout.addWidget(self.rect_font_size_combo)
+        text_format_layout.addLayout(font_size_layout)
+
+        # Font Style (Bold/Italic)
+        font_style_layout = QHBoxLayout()
+        self.rect_font_bold_button = QPushButton("Bold")
+        self.rect_font_bold_button.setCheckable(True)
+        self.rect_font_bold_button.toggled.connect(self._on_rect_font_style_changed)
+        font_style_layout.addWidget(self.rect_font_bold_button)
+
+        self.rect_font_italic_button = QPushButton("Italic")
+        self.rect_font_italic_button.setCheckable(True)
+        self.rect_font_italic_button.toggled.connect(self._on_rect_font_style_changed)
+        font_style_layout.addWidget(self.rect_font_italic_button)
+        text_format_layout.addLayout(font_style_layout)
+
+        # Font Color Button
+        font_color_layout = QHBoxLayout()
+        font_color_layout.addWidget(QLabel("Font Color:"))
+        self.rect_font_color_button = QPushButton("Select Color")
+        self.rect_font_color_button.setToolTip("Click to select text color")
+        # Initial color preview (will be updated later)
+        self.rect_font_color_button.setStyleSheet("background-color: #000000; color: white;")
+        self.rect_font_color_button.clicked.connect(self._on_rect_font_color_button_clicked)
+        font_color_layout.addWidget(self.rect_font_color_button)
+        text_format_layout.addLayout(font_color_layout)
+
+        # Text Styles Dropdown
+        style_selection_layout = QHBoxLayout()
+        style_selection_layout.addWidget(QLabel("Text Style:"))
+        self.rect_style_combo = QComboBox()
+        # self.rect_style_combo.addItem("Default") # Will be populated by _load_text_styles_into_dropdown
+        self.rect_style_combo.activated[str].connect(self._on_rect_style_selected) # Connect signal
+        style_selection_layout.addWidget(self.rect_style_combo)
+        text_format_layout.addLayout(style_selection_layout)
+
+        # Save Style Button
+        self.rect_save_style_button = QPushButton("Save Current as Style")
+        self.rect_save_style_button.clicked.connect(self._save_current_text_style) # Connect signal
+        text_format_layout.addWidget(self.rect_save_style_button)
+
+        rect_props_layout.addWidget(text_format_group)
+        # --- End of New Text Formatting Controls ---
+
         rect_width_layout = QHBoxLayout()
         rect_width_layout.addWidget(QLabel("Width (px):"))
         self.info_rect_width_input = QSpinBox()
@@ -668,12 +747,408 @@ class InteractiveToolApp(QMainWindow):
             self.info_rect_width_input.blockSignals(True)
             self.info_rect_height_input.blockSignals(True)
             self.info_rect_text_input.setPlainText(rect_conf.get('text', ''))
-            self.info_rect_width_input.setValue(int(rect_conf.get('width', 100))) 
+            self.info_rect_width_input.setValue(int(rect_conf.get('width', 100)))
             self.info_rect_height_input.setValue(int(rect_conf.get('height', 50)))
+
+            # Update new formatting controls
+            self.rect_h_align_combo.blockSignals(True)
+            self.rect_v_align_combo.blockSignals(True)
+            self.rect_font_size_combo.blockSignals(True)
+            self.rect_font_bold_button.blockSignals(True)
+            self.rect_font_italic_button.blockSignals(True)
+            self.rect_style_combo.blockSignals(True)
+
+            default_text_config = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+            current_style_ref = rect_conf.get('text_style_ref')
+
+            # Set style combo based on item's state
+            if current_style_ref:
+                style_idx = self.rect_style_combo.findText(current_style_ref)
+                if style_idx != -1:
+                    self.rect_style_combo.setCurrentIndex(style_idx)
+                else: # Style ref exists but not found (e.g. style was deleted)
+                    rect_conf.pop('text_style_ref', None) # Clear invalid ref
+                    # Now check if current config matches default or other saved style
+                    if self._does_current_rect_match_default_style(rect_conf):
+                        self.rect_style_combo.setCurrentText("Default")
+                    else:
+                        matched_style_name = self._find_matching_style_name(rect_conf)
+                        if matched_style_name:
+                            self.rect_style_combo.setCurrentText(matched_style_name)
+                            rect_conf['text_style_ref'] = matched_style_name # Re-assign if it matches another
+                        else:
+                            self.rect_style_combo.setCurrentText("Custom")
+            elif self._does_current_rect_match_default_style(rect_conf):
+                 self.rect_style_combo.setCurrentText("Default")
+            else:
+                matched_style_name = self._find_matching_style_name(rect_conf)
+                if matched_style_name:
+                    self.rect_style_combo.setCurrentText(matched_style_name)
+                    # Optionally set text_style_ref here if we want to "re-link" it implicitly
+                    # rect_conf['text_style_ref'] = matched_style_name
+                else:
+                    self.rect_style_combo.setCurrentText("Custom")
+
+            h_align = rect_conf.get('horizontal_alignment', default_text_config['horizontal_alignment'])
+            v_align = rect_conf.get('vertical_alignment', default_text_config['vertical_alignment'])
+            font_style = rect_conf.get('font_style', default_text_config['font_style'])
+            font_size = str(rect_conf.get('font_size', default_text_config['font_size'])).replace("px", "")
+
+            self.rect_h_align_combo.setCurrentText(h_align.capitalize())
+            self.rect_v_align_combo.setCurrentText(v_align.capitalize())
+
+            # Ensure font_size is in the combo or set as current text
+            f_size_idx = self.rect_font_size_combo.findText(font_size)
+            if f_size_idx != -1:
+                self.rect_font_size_combo.setCurrentIndex(f_size_idx)
+            else:
+                self.rect_font_size_combo.setEditText(font_size)
+
+            self.rect_font_bold_button.setChecked(font_style == "bold")
+            # Ensure italic is not checked if bold is true, and vice-versa if that's the desired logic.
+            # Current rect_item logic: font_style can be "bold", "italic", or "normal" (exclusive)
+            self.rect_font_italic_button.setChecked(font_style == "italic")
+
+            self.rect_h_align_combo.blockSignals(False)
+            self.rect_v_align_combo.blockSignals(False)
+            self.rect_font_size_combo.blockSignals(False)
+            self.rect_font_bold_button.blockSignals(False)
+            self.rect_font_italic_button.blockSignals(False)
+            self.rect_style_combo.blockSignals(False)
+
+            # Update font color button preview
+            current_font_color = rect_conf.get('font_color', default_text_config['font_color'])
+            contrasting_color = self._get_contrasting_text_color(current_font_color)
+            self.rect_font_color_button.setStyleSheet(
+                f"background-color: {current_font_color}; color: {contrasting_color};"
+            )
+
+
             self.info_rect_text_input.blockSignals(False)
             self.info_rect_width_input.blockSignals(False)
             self.info_rect_height_input.blockSignals(False)
             self.info_rect_properties_widget.setVisible(True)
+        else: # Not an InfoRectangleItem or no selection
+             # Ensure formatting controls are hidden if no relevant item is selected
+            if hasattr(self, 'rect_h_align_combo'): # Check if one of the new controls exists
+                # Find the parent QWidget for the text_format_group to hide it
+                # Assuming rect_props_layout.itemAt(1) is text_format_group (index might change based on final layout)
+                # A safer way would be to keep a reference to text_format_group if it's complex
+                # For now, let's assume it's the second direct widget in rect_props_layout (after text input)
+                # Or, more simply, hide specific controls or the entire info_rect_properties_widget if no item is selected
+                # The existing logic already hides info_rect_properties_widget if no item is selected or item is not InfoRect.
+                # So, specific hiding of text_format_group might not be needed if it's part of info_rect_properties_widget.
+                pass
+
+
+    # --- Handler for new formatting controls ---
+    def _on_rect_format_changed(self, value=None): # value can be text from ComboBox or not used if called by buttons
+        if isinstance(self.selected_item, InfoRectangleItem):
+            config = self.selected_item.config_data
+
+            # Horizontal Alignment
+            config['horizontal_alignment'] = self.rect_h_align_combo.currentText().lower()
+
+            # Vertical Alignment
+            config['vertical_alignment'] = self.rect_v_align_combo.currentText().lower()
+
+            # Font Size
+            font_size_text = self.rect_font_size_combo.currentText()
+            if font_size_text.isdigit():
+                config['font_size'] = f"{font_size_text}px"
+            else: # Reset to default or handle error if input is invalid
+                default_font_size = utils.get_default_config()["defaults"]["info_rectangle_text_display"]["font_size"]
+                config['font_size'] = default_font_size
+                self.rect_font_size_combo.blockSignals(True)
+                self.rect_font_size_combo.setCurrentText(default_font_size.replace("px",""))
+                self.rect_font_size_combo.blockSignals(False)
+
+            config.pop('text_style_ref', None) # Manual change, so remove style reference
+            self.selected_item.apply_style(config)
+
+            # Update style combo to "Custom" or matching style after manual change
+            self.rect_style_combo.blockSignals(True)
+            if self._does_current_rect_match_default_style(config):
+                self.rect_style_combo.setCurrentText("Default")
+            else:
+                matched_style_name = self._find_matching_style_name(config)
+                if matched_style_name:
+                    self.rect_style_combo.setCurrentText(matched_style_name)
+                else:
+                    self.rect_style_combo.setCurrentText("Custom")
+            self.rect_style_combo.blockSignals(False)
+            # self.save_config() is called by apply_style's emission
+
+    def _on_rect_font_style_changed(self, checked=None):
+        if isinstance(self.selected_item, InfoRectangleItem):
+            config = self.selected_item.config_data
+            is_bold = self.rect_font_bold_button.isChecked()
+            is_italic = self.rect_font_italic_button.isChecked()
+
+            if is_bold:
+                config['font_style'] = "bold"
+            elif is_italic:
+                config['font_style'] = "italic"
+            else:
+                config['font_style'] = "normal"
+
+            # If bold is checked, and italic is then checked, italic should take precedence or they should combine.
+            # Current InfoRectangleItem logic treats them exclusively (bold OR italic OR normal).
+            # For this iteration, if bold is checked, then italic is checked, italic wins.
+            # If italic is checked, then bold is checked, bold wins.
+            # If one is unchecked, it might become normal or the other style.
+            # This logic ensures only one state or normal is passed.
+            if is_bold and self.sender() == self.rect_font_bold_button:
+                self.rect_font_italic_button.blockSignals(True)
+                self.rect_font_italic_button.setChecked(False)
+                self.rect_font_italic_button.blockSignals(False)
+                config['font_style'] = "bold"
+            elif is_italic and self.sender() == self.rect_font_italic_button:
+                self.rect_font_bold_button.blockSignals(True)
+                self.rect_font_bold_button.setChecked(False)
+                self.rect_font_bold_button.blockSignals(False)
+                config['font_style'] = "italic"
+            elif not is_bold and not is_italic:
+                 config['font_style'] = "normal"
+            # If sender was unchecked, and the other button is still checked, that style should prevail.
+            elif not is_bold and is_italic: # Bold was unchecked
+                config['font_style'] = "italic"
+            elif not is_italic and is_bold: # Italic was unchecked or bold was re-checked
+                config['font_style'] = "bold"
+            else: # Should be normal if both somehow got unchecked not via sender or if logic is complex
+                config['font_style'] = "normal"
+
+
+            config.pop('text_style_ref', None) # Manual change, remove style reference
+            self.selected_item.apply_style(config)
+
+            # Update style combo to "Custom" or matching style after manual change
+            self.rect_style_combo.blockSignals(True)
+            if self._does_current_rect_match_default_style(config):
+                self.rect_style_combo.setCurrentText("Default")
+            else:
+                matched_style_name = self._find_matching_style_name(config)
+                if matched_style_name:
+                    self.rect_style_combo.setCurrentText(matched_style_name)
+                else:
+                    self.rect_style_combo.setCurrentText("Custom")
+            self.rect_style_combo.blockSignals(False)
+            # self.save_config() is called by apply_style's emission
+
+    def _on_rect_font_color_button_clicked(self):
+        # Placeholder: QColorDialog logic will be implemented in the next step
+        print("Font color button clicked - QColorDialog to be implemented here")
+        # For now, let's simulate a color change to see button update
+        # if self.selected_item and isinstance(self.selected_item, InfoRectangleItem):
+        #     self.selected_item.config_data['font_color'] = "#FF0000" # Simulate red
+        #     self.update_properties_panel() # To update the button color based on new config
+
+    def _get_contrasting_text_color(self, hex_color):
+        """Determines if black or white text is more readable against a given hex background color."""
+        try:
+            hex_color = hex_color.lstrip('#')
+            r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+            # Calculate luminance (standard formula)
+            luminance = (0.299 * r + 0.587 * g + 0.114 * b)
+            return "#FFFFFF" if luminance < 128 else "#000000"
+        except Exception:
+            return "#000000" # Default to black text on error
+
+    def _on_rect_font_color_button_clicked(self):
+        if not self.selected_item or not isinstance(self.selected_item, InfoRectangleItem):
+            return
+
+        item_config = self.selected_item.config_data
+        default_color = utils.get_default_config()["defaults"]["info_rectangle_text_display"]['font_color']
+        initial_color_str = item_config.get('font_color', default_color)
+
+        try:
+            q_initial_color = QColor(initial_color_str)
+            if not q_initial_color.isValid(): # Fallback if hex is somehow invalid
+                q_initial_color = QColor(default_color)
+        except Exception: # Catch any error during QColor creation from potentially bad hex
+            q_initial_color = QColor(default_color)
+
+        color = QColorDialog.getColor(q_initial_color, self, "Select Text Color")
+
+        if color.isValid():
+            new_color_hex = color.name()
+            item_config['font_color'] = new_color_hex
+            item_config.pop('text_style_ref', None) # Mark as custom modification
+
+            # Prepare a complete style dict to pass to apply_style
+            # This ensures all current text formatting aspects are preserved/updated
+            current_text_config = {
+                key: item_config.get(key, utils.get_default_config()["defaults"]["info_rectangle_text_display"][key])
+                for key in utils.get_default_config()["defaults"]["info_rectangle_text_display"].keys()
+            }
+            current_text_config['font_color'] = new_color_hex # Ensure the new color is in the dict for apply_style
+
+            self.selected_item.apply_style(current_text_config)
+            # apply_style calls properties_changed, which calls save_config and update_properties_panel.
+            # update_properties_panel will update the button color via its logic.
+            # Explicitly update button style here for immediate feedback if update_properties_panel is slow or deferred.
+            contrasting_text_color = self._get_contrasting_text_color(new_color_hex)
+            self.rect_font_color_button.setStyleSheet(
+                f"background-color: {new_color_hex}; color: {contrasting_text_color};"
+            )
+            # self.update_properties_panel() # This will be called by properties_changed signal
+
+    def _load_text_styles_into_dropdown(self):
+        if not hasattr(self, 'rect_style_combo'): return
+        self.rect_style_combo.blockSignals(True)
+        self.rect_style_combo.clear()
+        self.rect_style_combo.addItem("Default")
+        self.rect_style_combo.addItem("Custom") # For when config doesn't match any style or default
+
+        styles = self.config.get('text_styles', [])
+        for style in styles:
+            if isinstance(style, dict) and 'name' in style:
+                 self.rect_style_combo.addItem(style['name'])
+        self.rect_style_combo.blockSignals(False)
+
+    def _save_current_text_style(self):
+        if not isinstance(self.selected_item, InfoRectangleItem):
+            QMessageBox.warning(self, "Save Style", "Please select an Info Rectangle to save its style.")
+            return
+
+        item_config = self.selected_item.config_data
+        # Use default text display config as a base for all style properties
+        default_display_conf = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+
+        style_name, ok = QInputDialog.getText(self, "Save Text Style", "Enter style name:")
+        if ok and style_name:
+            # Check if style name already exists
+            existing_styles = self.config.get('text_styles', [])
+            for s in existing_styles:
+                if s['name'] == style_name:
+                    reply = QMessageBox.question(self, "Overwrite Style",
+                                                 f"Style '{style_name}' already exists. Overwrite it?",
+                                                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                    if reply == QMessageBox.No:
+                        return
+                    else: # Overwrite: remove existing
+                        existing_styles.remove(s)
+                        break
+
+            current_style_dict = {
+                "name": style_name,
+                "font_color": item_config.get('font_color', default_display_conf['font_color']),
+                "font_size": item_config.get('font_size', default_display_conf['font_size']),
+                "font_style": item_config.get('font_style', default_display_conf['font_style']),
+                "horizontal_alignment": item_config.get('horizontal_alignment', default_display_conf['horizontal_alignment']),
+                "vertical_alignment": item_config.get('vertical_alignment', default_display_conf['vertical_alignment']),
+                "padding": item_config.get('padding', default_display_conf['padding']),
+                # Not including background_color or box_width from defaults as they are not text specific
+            }
+
+            self.config.setdefault('text_styles', []).append(current_style_dict)
+            self.save_config()
+            self._load_text_styles_into_dropdown() # Refresh dropdown
+
+            # Set the current item's style reference and update dropdown to new style
+            item_config['text_style_ref'] = style_name
+            self.rect_style_combo.blockSignals(True)
+            self.rect_style_combo.setCurrentText(style_name)
+            self.rect_style_combo.blockSignals(False)
+            self.statusBar().showMessage(f"Text style '{style_name}' saved.", 2000)
+            # No need to call update_properties_panel here as setCurrentText will reflect the change.
+        elif ok and not style_name:
+            QMessageBox.warning(self, "Save Style", "Style name cannot be empty.")
+
+
+    def _on_rect_style_selected(self, style_name):
+        if not isinstance(self.selected_item, InfoRectangleItem) or not style_name :
+            return
+
+        # Block signals on all formatting controls during update
+        controls_to_block = [
+            self.rect_style_combo, self.rect_h_align_combo, self.rect_v_align_combo,
+            self.rect_font_size_combo, self.rect_font_bold_button, self.rect_font_italic_button
+        ]
+        for control in controls_to_block:
+            control.blockSignals(True)
+
+        item_config = self.selected_item.config_data
+        style_applied_or_defaulted = False
+
+        if style_name == "Default":
+            default_settings = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+            style_to_apply = default_settings.copy()
+            item_config.pop('text_style_ref', None)
+            self.selected_item.apply_style(style_to_apply)
+            style_applied_or_defaulted = True
+        elif style_name == "Custom":
+            # "Custom" selection means no change to item's actual style properties.
+            # UI should already reflect item_config. If item had a style_ref, it might be cleared
+            # if a manual edit happened. update_properties_panel handles setting to "Custom".
+            pass # Essentially, do nothing to the item's properties.
+        else: # A named style is selected
+            found_style = None
+            for s in self.config.get('text_styles', []):
+                if isinstance(s, dict) and s.get('name') == style_name:
+                    found_style = s
+                    break
+            if found_style:
+                style_to_apply = found_style.copy()
+                # Don't remove 'name' from style_to_apply, apply_style in item should ignore it.
+                item_config['text_style_ref'] = style_name
+                self.selected_item.apply_style(style_to_apply)
+                style_applied_or_defaulted = True
+            else: # Style not found (e.g. if list got corrupted, or "Custom" was somehow passed here)
+                 pass # Do nothing if style isn't found
+
+        # Unblock signals
+        for control in controls_to_block:
+            control.blockSignals(False)
+
+        if style_applied_or_defaulted:
+            # This will re-read item's config (now updated by apply_style)
+            # and set all UI controls, including the style_combo itself.
+            self.update_properties_panel()
+        elif style_name == "Custom": # Ensure combo stays on custom if that was selected
+             self.rect_style_combo.blockSignals(True)
+             self.rect_style_combo.setCurrentText("Custom")
+             self.rect_style_combo.blockSignals(False)
+
+
+    def _does_current_rect_match_default_style(self, rect_config):
+        # Use a clean copy of default settings for comparison
+        defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"].copy()
+        # Keys that define a text style
+        style_keys = ["font_color", "font_size", "font_style",
+                      "horizontal_alignment", "vertical_alignment", "padding"]
+        for key in style_keys:
+            # If a key is missing in rect_config, it's considered default for that key.
+            # So, compare rect_config.get(key, defaults[key]) with defaults[key].
+            if rect_config.get(key, defaults[key]) != defaults[key]:
+                return False
+        return True
+
+    def _find_matching_style_name(self, rect_config):
+        """Checks if the rect_config matches any saved style."""
+        styles = self.config.get('text_styles', [])
+        # Keys that define a text style
+        style_keys_to_check = ["font_color", "font_size", "font_style",
+                               "horizontal_alignment", "vertical_alignment", "padding"]
+        for style_dict in styles:
+            if not isinstance(style_dict, dict): continue # Skip if style is not a dict
+            match = True
+            for key in style_keys_to_check:
+                # Use .get for rect_config as well, to handle cases where a key might be missing
+                # and should implicitly use the default (which might match the style's value if it's also default)
+                # However, styles should ideally be complete.
+                # For a style to match, all its defined properties must match the item's properties.
+                # If item is missing a property defined in style, it's not a match unless style's value is default for it.
+                # This simple check assumes styles are fully defined for these keys.
+                item_value = rect_config.get(key)
+                style_value = style_dict.get(key)
+                if item_value != style_value:
+                    match = False
+                    break
+            if match:
+                return style_dict.get('name')
+        return None
 
     def upload_image(self):
         if not self.current_project_path:
@@ -931,13 +1406,65 @@ class InteractiveToolApp(QMainWindow):
             )
 
         for rect_conf in self.config.get('info_rectangles', []):
-            width = rect_conf.get('width', 0)
-            height = rect_conf.get('height', 0)
-            left = rect_conf.get('center_x', 0) - width / 2
-            top = rect_conf.get('center_y', 0) - height / 2
-            text = html.escape(rect_conf.get('text', '').replace('\n', '<br>'), quote=True)
+            rect_width = rect_conf.get('width', 0)
+            rect_height = rect_conf.get('height', 0)
+            left = rect_conf.get('center_x', 0) - rect_width / 2
+            top = rect_conf.get('center_y', 0) - rect_height / 2
+
+            default_text_config = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+
+            text_content = html.escape(rect_conf.get('text', '')).replace('\n', '<br>')
+            font_color = rect_conf.get('font_color', default_text_config['font_color'])
+            font_size_str = rect_conf.get('font_size', default_text_config['font_size'])
+            # Ensure font_size has 'px'
+            if isinstance(font_size_str, (int, float)) or font_size_str.isdigit():
+                font_size = f"{font_size_str}px"
+            else:
+                font_size = font_size_str # Assume it already has units like 'px'
+
+            text_bg_color = rect_conf.get('background_color', default_text_config['background_color']) # This is text area background
+            padding_str = rect_conf.get('padding', default_text_config['padding'])
+            if isinstance(padding_str, (int, float)) or padding_str.isdigit():
+                padding = f"{padding_str}px"
+            else:
+                padding = padding_str
+
+
+            h_align = rect_conf.get('horizontal_alignment', default_text_config['horizontal_alignment']) # left, center, right
+            v_align = rect_conf.get('vertical_alignment', default_text_config['vertical_alignment']) # top, center, bottom
+            font_style_prop = rect_conf.get('font_style', default_text_config['font_style']) # normal, bold, italic
+
+            # Outer div styles (the rectangle itself)
+            outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex;"
+
+            if v_align == "top":
+                outer_style += "align-items:flex-start;"
+            elif v_align == "center" or v_align == "middle": # Handle "middle" as center
+                outer_style += "align-items:center;"
+            elif v_align == "bottom":
+                outer_style += "align-items:flex-end;"
+
+            # Inner div styles (text container)
+            inner_style = f"width:100%; box-sizing:border-box; overflow-wrap:break-word; word-wrap:break-word;" # Ensure text wraps and padding is contained
+            inner_style += f"color:{font_color};"
+            inner_style += f"font-size:{font_size};"
+            inner_style += f"background-color:{text_bg_color};"
+            inner_style += f"padding:{padding};"
+            inner_style += f"text-align:{h_align};"
+
+            if font_style_prop == "bold":
+                inner_style += "font-weight:bold;"
+            elif font_style_prop == "italic":
+                inner_style += "font-style:italic;"
+            # Note: "bold italic" would require both if InfoRectangleItem supports it. Assuming it's one or the other or normal.
+
+            # The 'hotspot' class was for JS tooltips. If text is inline, its role changes.
+            # For now, let's keep it for potential JS interaction, but the text is visible.
+            # The data-text attribute for JS tooltip can be removed if text is always visible.
             lines.append(
-                f"<div class='hotspot' data-text='{text}' style='left:{left}px;top:{top}px;width:{width}px;height:{height}px;'></div>"
+                f"<div class='hotspot info-rectangle-export' style='{outer_style}'>" # Added info-rectangle-export class
+                f"<div class='text-content' style='{inner_style}'>{text_content}</div>"
+                f"</div>"
             )
 
         lines.append("</div>")
