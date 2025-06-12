@@ -505,27 +505,56 @@ class InteractiveToolApp(QMainWindow):
         self.update_properties_panel()
 
     def apply_modern_theme(self):
-        """Applies a grey translucent matte glass style to the UI."""
+        """Applies an enhanced grey translucent matte glass theme to the UI."""
         app = QApplication.instance()
         if not app:
             return
+
         style_sheet = """
             QMainWindow {
-                background-color: rgba(200, 200, 200, 0.8);
+                background-color: rgba(40, 40, 40, 0.9);
+                color: #f0f0f0;
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 12pt;
+            }
+            QMenuBar, QMenu {
+                background-color: rgba(60, 60, 60, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+            QMenuBar::item:selected, QMenu::item:selected {
+                background-color: rgba(90, 90, 90, 0.65);
+            }
+            QStatusBar {
+                background-color: rgba(60, 60, 60, 0.85);
+                border-top: 1px solid rgba(255, 255, 255, 0.08);
             }
             QDockWidget {
-                background-color: rgba(220, 220, 220, 0.75);
+                background-color: rgba(50, 50, 50, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            QDockWidget::title {
+                background-color: rgba(70, 70, 70, 0.85);
+                padding-left: 8px;
             }
             QPushButton {
-                background-color: rgba(255, 255, 255, 0.25);
-                border: 1px solid rgba(0, 0, 0, 0.2);
+                background-color: rgba(90, 90, 90, 0.65);
+                border: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: 6px;
-                padding: 4px 8px;
+                padding: 6px 12px;
+                color: #f0f0f0;
             }
             QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.35);
+                background-color: rgba(110, 110, 110, 0.7);
+            }
+            QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTextEdit {
+                background-color: rgba(70, 70, 70, 0.65);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 4px;
+                padding: 4px;
+                color: #f0f0f0;
             }
         """
+
         app.setStyleSheet(style_sheet)
 
 
