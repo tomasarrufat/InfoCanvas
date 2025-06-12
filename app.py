@@ -1679,14 +1679,14 @@ class InteractiveToolApp(QMainWindow):
         if len(selected_info_rects) <= 2:
             return
 
-        sum_y = 0
+        sum_x = 0
         for rect in selected_info_rects:
-            sum_y += rect.config_data.get('center_y', 0) # Default to 0 if somehow missing
+            sum_x += rect.config_data.get('center_x', 0) # Default to 0 if somehow missing
 
-        average_y = sum_y / len(selected_info_rects)
+        average_x = sum_x / len(selected_info_rects)
 
         for rect in selected_info_rects:
-            rect.config_data['center_y'] = average_y
+            rect.config_data['center_x'] = average_x # Corrected: set center_x
             rect.update_geometry_from_config()
             # Ensure properties_changed is emitted so save_config and UI updates are triggered
             # if rect has such a signal and it's connected to on_graphics_item_properties_changed
@@ -1712,14 +1712,14 @@ class InteractiveToolApp(QMainWindow):
         if len(selected_info_rects) <= 2:
             return
 
-        sum_x = 0
+        sum_y = 0
         for rect in selected_info_rects:
-            sum_x += rect.config_data.get('center_x', 0) # Default to 0 if somehow missing
+            sum_y += rect.config_data.get('center_y', 0) # Default to 0 if somehow missing
 
-        average_x = sum_x / len(selected_info_rects)
+        average_y = sum_y / len(selected_info_rects)
 
         for rect in selected_info_rects:
-            rect.config_data['center_x'] = average_x
+            rect.config_data['center_y'] = average_y # Corrected: set center_y
             rect.update_geometry_from_config()
             # Ensure properties_changed is emitted so save_config and UI updates are triggered
             if hasattr(rect, 'properties_changed') and hasattr(rect.properties_changed, 'emit'):

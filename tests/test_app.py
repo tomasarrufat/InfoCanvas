@@ -1984,11 +1984,11 @@ class TestAlignmentFeatures:
         app_window.scene.clear() # Clear actual scene items
         app_window.render_canvas_from_config() # To reset based on empty config
 
-
+        # Horizontal alignment (as per corrected app logic) now averages center_x
         rect_details = [
-            (100, 50, 80, 40, "R1"),  # cx, cy, w, h, text
+            (50, 100, 80, 40, "R1"),  # cx, cy, w, h, text
             (100, 100, 80, 40, "R2"),
-            (100, 150, 80, 40, "R3")
+            (150, 100, 80, 40, "R3")
         ]
         created_rects = self._add_and_select_rects(app_window, rect_details, monkeypatch)
 
@@ -1997,14 +1997,13 @@ class TestAlignmentFeatures:
              assert item.isSelected(), f"Item {item.config_data['id']} was not selected."
         assert len(app_window.scene.selectedItems()) == 3, "Scene selection count mismatch."
 
-
-        sum_y = sum(r.config_data['center_y'] for r in created_rects)
-        expected_average_y = sum_y / len(created_rects)
+        sum_x = sum(r.config_data['center_x'] for r in created_rects)
+        expected_average_x = sum_x / len(created_rects)
 
         # Store initial other properties to ensure they don't change
         initial_other_props = [{
             'id': r.config_data['id'],
-            'center_x': r.config_data['center_x'],
+            'center_y': r.config_data['center_y'], # Ensure center_y is checked
             'width': r.config_data['width'],
             'height': r.config_data['height']
         } for r in created_rects]
@@ -2012,25 +2011,15 @@ class TestAlignmentFeatures:
         app_window.align_selected_rects_horizontally()
 
         for i, rect_item in enumerate(created_rects):
-            # Refresh item's config_data from app_window.config if it was modified there directly
-            # (Though align_selected_rects_horizontally modifies rect.config_data directly)
             updated_config_in_app = next(c for c in app_window.config['info_rectangles'] if c['id'] == rect_item.config_data['id'])
 
-            assert updated_config_in_app['center_y'] == pytest.approx(expected_average_y)
-            # Also check the item's internal config_data if it's the source of truth for rendering
-            assert rect_item.config_data['center_y'] == pytest.approx(expected_average_y)
+            assert updated_config_in_app['center_x'] == pytest.approx(expected_average_x)
+            assert rect_item.config_data['center_x'] == pytest.approx(expected_average_x)
 
-            # Verify other properties haven't changed
             original_props = next(p for p in initial_other_props if p['id'] == updated_config_in_app['id'])
-            assert updated_config_in_app['center_x'] == original_props['center_x']
+            assert updated_config_in_app['center_y'] == original_props['center_y'] # Should not change
             assert updated_config_in_app['width'] == original_props['width']
             assert updated_config_in_app['height'] == original_props['height']
-
-            # Check visual position (center based on item's own x(), y(), width, height)
-            # item.x() and item.y() are top-left.
-            # center_y_visual = rect_item.y() + rect_item.boundingRect().height() / 2
-            # This might be tricky due to how InfoRectangleItem handles its internal geometry vs config.
-            # update_geometry_from_config() should have been called.
 
     def test_vertical_alignment_logic(self, base_app_fixture, monkeypatch):
         app_window = base_app_fixture
@@ -2039,20 +2028,21 @@ class TestAlignmentFeatures:
         app_window.scene.clear()
         app_window.render_canvas_from_config()
 
+        # Vertical alignment (as per corrected app logic) now averages center_y
         rect_details = [
-            (50, 100, 80, 40, "R1"),
+            (100, 50, 80, 40, "R1"),
             (100, 100, 80, 40, "R2"),
-            (150, 100, 80, 40, "R3")
+            (100, 150, 80, 40, "R3")
         ]
         created_rects = self._add_and_select_rects(app_window, rect_details, monkeypatch)
         assert len(app_window.scene.selectedItems()) == 3
 
-        sum_x = sum(r.config_data['center_x'] for r in created_rects)
-        expected_average_x = sum_x / len(created_rects)
+        sum_y = sum(r.config_data['center_y'] for r in created_rects)
+        expected_average_y = sum_y / len(created_rects)
 
         initial_other_props = [{
             'id': r.config_data['id'],
-            'center_y': r.config_data['center_y'],
+            'center_x': r.config_data['center_x'], # Ensure center_x is checked
             'width': r.config_data['width'],
             'height': r.config_data['height']
         } for r in created_rects]
@@ -2061,11 +2051,11 @@ class TestAlignmentFeatures:
 
         for i, rect_item in enumerate(created_rects):
             updated_config_in_app = next(c for c in app_window.config['info_rectangles'] if c['id'] == rect_item.config_data['id'])
-            assert updated_config_in_app['center_x'] == pytest.approx(expected_average_x)
-            assert rect_item.config_data['center_x'] == pytest.approx(expected_average_x)
+            assert updated_config_in_app['center_y'] == pytest.approx(expected_average_y)
+            assert rect_item.config_data['center_y'] == pytest.approx(expected_average_y)
 
             original_props = next(p for p in initial_other_props if p['id'] == updated_config_in_app['id'])
-            assert updated_config_in_app['center_y'] == original_props['center_y']
+            assert updated_config_in_app['center_x'] == original_props['center_x'] # Should not change
             assert updated_config_in_app['width'] == original_props['width']
             assert updated_config_in_app['height'] == original_props['height']
 
