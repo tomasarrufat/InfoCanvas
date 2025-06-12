@@ -1448,7 +1448,7 @@ class InteractiveToolApp(QMainWindow):
             inner_style = f"width:100%; box-sizing:border-box; overflow-wrap:break-word; word-wrap:break-word;" # Ensure text wraps and padding is contained
             inner_style += f"color:{font_color};"
             inner_style += f"font-size:{font_size};"
-            inner_style += f"background-color:{text_bg_color};"
+            inner_style += "background-color:transparent;" # Unconditionally set to transparent
             inner_style += f"padding:{padding};"
             inner_style += f"text-align:{h_align};"
 

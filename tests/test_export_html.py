@@ -82,11 +82,11 @@ def test_export_html_rich_text_formatting(base_app_fixture, tmp_path, monkeypatc
     expected_inner_style_parts = [
         'color:#FF0000;',
         'font-size:20px;',
-        'background-color:#FFFF00;',
+        'background-color:transparent;', # Changed from #FFFF00 to transparent
         'padding:10px;',
         'text-align:center;',
         'font-weight:bold;',
-        'display: none;' # Added check for display: none;
+        'display: none;'
     ]
     # Construct a regex or a series of assertions to ensure these parts are in the style attribute of the text-content div
     # For simplicity with string searching, we'll look for the div and then its style content.
