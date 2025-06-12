@@ -37,6 +37,7 @@ def get_default_config():
                 "padding": "5px"
             }
         },
+        "text_styles": {},
         "background": {
             "width": 800,
             "height": 600,

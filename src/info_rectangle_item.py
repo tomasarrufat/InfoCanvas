@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QGraphicsObject, QGraphicsItem, QGraphicsTextItem, QApplication
 from PyQt5.QtCore import Qt, QRectF, QPointF, pyqtSignal, QRect
-from PyQt5.QtGui import QColor, QBrush, QPen, QFontMetrics, QCursor
+from PyQt5.QtGui import QColor, QBrush, QPen, QFontMetrics, QCursor, QFont, QTextOption
 
 from . import utils
 
@@ -48,6 +48,10 @@ class InfoRectangleItem(QGraphicsObject):
         self._resizing_initial_rect = QRectF()
         self._is_resizing = False
         self._was_movable = self.flags() & QGraphicsItem.ItemIsMovable
+
+        fmt = self.config_data.get('text_format', {})
+        self._h_align = fmt.get('h_align', 'left')
+        self._v_align = fmt.get('v_align', 'top')
 
         self.update_geometry_from_config()
         self.update_text_from_config()
@@ -227,17 +231,17 @@ class InfoRectangleItem(QGraphicsObject):
         self.setPos(center_x - self._w / 2, center_y - self._h / 2)
 
         self.text_item.setTextWidth(self._w)
-        self._center_text()
+        self.apply_text_format()
         self.update()
 
     def _center_text(self):
         if not self.text_item: return
         self.text_item.setPos(0,0) # Ensure text_item origin is top-left of InfoRectangleItem
-        # Use QFontMetrics to calculate the actual height of the text block
+        # Use QFontMetrics to calculate the actual dimensions of the text block
         font_metrics = QFontMetrics(self.text_item.font())
-        # Need to use a QRect that respects the width of the text item for word wrapping
-        text_bounding_rect = font_metrics.boundingRect(QRect(0, 0, int(self._w), 10000), Qt.TextWordWrap | Qt.AlignLeft, self.text_item.toPlainText()) # Large height for calculation
+        text_bounding_rect = font_metrics.boundingRect(QRect(0, 0, int(self._w), 10000), Qt.TextWordWrap | Qt.AlignLeft, self.text_item.toPlainText())
         text_height = text_bounding_rect.height()
+        text_width = text_bounding_rect.width()
 
         # Get padding from config, default to 5 if not found or invalid
         padding_str = self.config_data.get("defaults", {}).get("info_rectangle_text_display", {}).get("padding", "5px")
@@ -246,21 +250,64 @@ class InfoRectangleItem(QGraphicsObject):
         except ValueError:
             padding_val = 5 # Default padding if conversion fails
 
-        # Calculate Y position to center text, ensuring it doesn't go above padding
-        text_y_offset = (self._h - text_height) / 2
-        self.text_item.setY(max(padding_val, text_y_offset))
+        if self._h_align == 'center':
+            x = (self._w - text_width) / 2
+        elif self._h_align == 'right':
+            x = self._w - text_width - padding_val
+        else:
+            x = padding_val
+        if self._v_align == 'bottom':
+            y = self._h - text_height - padding_val
+        elif self._v_align == 'center':
+            y = (self._h - text_height) / 2
+        else:
+            y = padding_val
+        self.text_item.setX(x)
+        self.text_item.setY(y)
+
+    def apply_text_format(self):
+        fmt = self.config_data.get('text_format', {})
+        self._h_align = fmt.get('h_align', self._h_align)
+        self._v_align = fmt.get('v_align', self._v_align)
+
+        font = QFont(self.text_item.font())
+        size_val = fmt.get('font_size', '14px')
+        try:
+            size_int = int(str(size_val).replace('px', ''))
+        except Exception:
+            size_int = 14
+        font.setPointSize(size_int)
+        font.setBold(bool(fmt.get('bold')))
+        font.setItalic(bool(fmt.get('italic')))
+        self.text_item.setFont(font)
+
+        color = fmt.get('font_color')
+        if color:
+            self.text_item.setDefaultTextColor(QColor(color))
+
+        option = QTextOption(self.text_item.document().defaultTextOption())
+        align_map = {
+            'left': Qt.AlignLeft,
+            'center': Qt.AlignHCenter,
+            'right': Qt.AlignRight,
+        }
+        option.setAlignment(align_map.get(self._h_align, Qt.AlignLeft))
+        option.setWrapMode(QTextOption.WordWrap)
+        self.text_item.document().setDefaultTextOption(option)
+        self.text_item.setTextWidth(self._w)
+        self._center_text()
 
 
     def set_display_text(self, text):
         """Sets the display text and recenters, optimized for live editing from properties panel."""
         self.text_item.setPlainText(text)
-        self._center_text() # Recenter after text change
+        self.apply_text_format()
         self.update() # Ensure repaint
 
     def update_text_from_config(self):
         """Updates the text content from config_data (e.g., on load) and adjusts text centering."""
         self.text_item.setPlainText(self.config_data.get('text', ''))
-        self._center_text() # Recenter after text change
+        self.apply_text_format()
         self.update() # Ensure repaint
 
     def update_appearance(self, is_selected=False, is_view_mode=False):

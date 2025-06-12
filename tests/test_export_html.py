@@ -99,3 +99,27 @@ def test_export_to_html_copies_images(base_app_fixture, tmp_path, monkeypatch):
     assert app.export_html_button.isVisible()
     app.on_mode_changed('Edit Mode')
     assert not app.export_html_button.isVisible()
+
+
+def test_generate_view_html_includes_style(base_app_fixture):
+    app = base_app_fixture
+    app.config['text_styles'] = {
+        'highlight': {
+            'font_color': '#ff0000',
+            'font_size': '16px',
+            'bold': True
+        }
+    }
+    app.config.setdefault('info_rectangles', []).append({
+        'id': 'r1',
+        'center_x': 50,
+        'center_y': 50,
+        'width': 20,
+        'height': 20,
+        'text': 'hello',
+        'style': 'highlight'
+    })
+    html_text = app._generate_view_html()
+    assert 'data-style' in html_text
+    assert 'font-size:16px' in html_text
+    assert 'color:#ff0000' in html_text

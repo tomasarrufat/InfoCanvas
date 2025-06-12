@@ -80,3 +80,27 @@ def test_item_moved_signal_emitted(qtbot):
     item.item_moved.connect(lambda obj: moved.append(True))
     item.setPos(5, 5)
     assert moved and item.config_data['center_x'] == 5 + item.boundingRect().width() / 2
+
+
+def test_text_formatting_applied(qtbot):
+    config = {
+        'width': 100,
+        'height': 50,
+        'center_x': 50,
+        'center_y': 25,
+        'text': 'hello',
+        'text_format': {
+            'font_size': '20px',
+            'bold': True,
+            'italic': True,
+            'font_color': '#111111',
+            'h_align': 'right',
+            'v_align': 'bottom'
+        },
+        'defaults': {'info_rectangle_text_display': {'padding': '5px'}},
+    }
+    item = InfoRectangleItem(config)
+    font = item.text_item.font()
+    assert font.bold() and font.italic()
+    assert font.pointSize() >= 20
+    assert item.text_item.defaultTextColor() == QColor('#111111')

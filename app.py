@@ -936,13 +936,40 @@ class InteractiveToolApp(QMainWindow):
             left = rect_conf.get('center_x', 0) - width / 2
             top = rect_conf.get('center_y', 0) - height / 2
             text = html.escape(rect_conf.get('text', '').replace('\n', '<br>'), quote=True)
+            style_dict = {}
+            if 'style' in rect_conf and self.config.get('text_styles', {}).get(rect_conf['style']):
+                style_dict.update(self.config['text_styles'][rect_conf['style']])
+            style_dict.update(rect_conf.get('text_format', {}))
+            css = ''
+            if style_dict:
+                mappings = {
+                    'font_color': 'color',
+                    'font_size': 'font-size',
+                    'bold': 'font-weight',
+                    'italic': 'font-style',
+                }
+                css_parts = []
+                for k, v in style_dict.items():
+                    if k == 'bold':
+                        css_parts.append(f"font-weight:{'bold' if v else 'normal'}")
+                    elif k == 'italic':
+                        css_parts.append(f"font-style:{'italic' if v else 'normal'}")
+                    elif k == 'h_align':
+                        css_parts.append(f"text-align:{v}")
+                        css_parts.append(f"justify-content:{'center' if v=='center' else 'flex-end' if v=='right' else 'flex-start'}")
+                    elif k == 'v_align':
+                        css_parts.append(f"align-items:{'center' if v=='center' else 'flex-end' if v=='bottom' else 'flex-start'}")
+                        css_parts.append('display:flex')
+                    else:
+                        css_parts.append(f"{mappings.get(k,k)}:{v}")
+                css = ';'.join(css_parts)
             lines.append(
-                f"<div class='hotspot' data-text='{text}' style='left:{left}px;top:{top}px;width:{width}px;height:{height}px;'></div>"
+                f"<div class='hotspot' data-text='{text}' data-style='{html.escape(css, quote=True)}' style='left:{left}px;top:{top}px;width:{width}px;height:{height}px;'></div>"
             )
 
         lines.append("</div>")
         lines.append("<div id='tooltip' class='tooltip'></div>")
-        lines.append("<script>document.querySelectorAll('.hotspot').forEach(function(h){h.addEventListener('mouseenter',function(e){var t=document.getElementById('tooltip');t.innerHTML=h.dataset.text;t.style.display='block';t.style.left=(e.pageX+10)+'px';t.style.top=(e.pageY+10)+'px';});h.addEventListener('mousemove',function(e){var t=document.getElementById('tooltip');t.style.left=(e.pageX+10)+'px';t.style.top=(e.pageY+10)+'px';});h.addEventListener('mouseleave',function(){var t=document.getElementById('tooltip');t.style.display='none';});});</script>")
+        lines.append("<script>const b='position:absolute;border:1px solid #333;padding:2px;background:rgba(255,255,255,0.9);z-index:1000;';document.querySelectorAll('.hotspot').forEach(function(h){h.addEventListener('mouseenter',function(e){var t=document.getElementById('tooltip');t.innerHTML=h.dataset.text;t.style.cssText=b+(h.dataset.style||'');t.style.display='block';t.style.left=(e.pageX+10)+'px';t.style.top=(e.pageY+10)+'px';});h.addEventListener('mousemove',function(e){var t=document.getElementById('tooltip');t.style.left=(e.pageX+10)+'px';t.style.top=(e.pageY+10)+'px';});h.addEventListener('mouseleave',function(){var t=document.getElementById('tooltip');t.style.display='none';});});</script>")
         lines.append("</body></html>")
         return "\n".join(lines)
 
