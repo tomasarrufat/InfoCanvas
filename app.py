@@ -44,6 +44,7 @@ class InteractiveToolApp(QMainWindow):
         self.populate_controls_from_config()
         self.render_canvas_from_config()
         self.update_mode_ui()
+        self.apply_modern_theme()
 
     def _get_project_config_path(self, project_name_or_path):
         if os.path.isabs(project_name_or_path) and os.path.isdir(project_name_or_path):
@@ -502,6 +503,30 @@ class InteractiveToolApp(QMainWindow):
             if hasattr(self, 'scene') and self.scene: self.scene.clearSelection()
             self.selected_item = None
         self.update_properties_panel()
+
+    def apply_modern_theme(self):
+        """Applies a grey translucent matte glass style to the UI."""
+        app = QApplication.instance()
+        if not app:
+            return
+        style_sheet = """
+            QMainWindow {
+                background-color: rgba(200, 200, 200, 0.8);
+            }
+            QDockWidget {
+                background-color: rgba(220, 220, 220, 0.75);
+            }
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.25);
+                border: 1px solid rgba(0, 0, 0, 0.2);
+                border-radius: 6px;
+                padding: 4px 8px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.35);
+            }
+        """
+        app.setStyleSheet(style_sheet)
 
 
     def choose_bg_color(self):
