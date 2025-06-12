@@ -389,17 +389,39 @@ class InfoRectangleItem(QGraphicsObject):
         """
         self._style_config_ref = style_config_object
 
-        if style_config_object and 'name' in style_config_object:
+        if style_config_object and style_config_object.get('name'):
             self.config_data['text_style_ref'] = style_config_object['name']
         else:
-            # If the applied style has no name (e.g., default settings or a custom ad-hoc dict),
-            # remove any existing style reference name from config_data.
             self.config_data.pop('text_style_ref', None)
 
-        # The loop that copied style values into self.config_data has been removed
-        # as per the new design to prioritize reading from _style_config_ref.
+        # Flatten style properties into self.config_data
+        text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+        all_style_keys = [
+            'text', 'font_color', 'font_size', 'font_style',
+            'vertical_alignment', 'horizontal_alignment', 'padding'
+        ]
 
-        # Re-apply text and appearance based on the newly referenced style (or defaults if ref is None)
-        self.update_text_from_config() # This will use _get_style_value, which reads from _style_config_ref
-        self.update_appearance(self.isSelected()) # Keep current selection state
-        self.properties_changed.emit(self) # Notify that properties have changed
+        if style_config_object: # A specific style dictionary is provided (e.g. a named style or "Default")
+            for key in all_style_keys:
+                if key in style_config_object:
+                    self.config_data[key] = style_config_object[key]
+                elif key in text_format_defaults:
+                    # If the applied style object *omits* a key that has a defined default,
+                    # the item's config_data should adopt that default for that key.
+                    self.config_data[key] = text_format_defaults[key]
+                elif key == 'text':
+                    # If 'text' is not in style_config_object, self.config_data['text'] should remain.
+                    # It should not be defaulted to empty or popped here by the style application process
+                    # unless the style itself defines text as empty.
+                    pass # Do nothing to self.config_data['text'] if key 'text' is not in style_config_object
+                else:
+                    # For other formatting keys not in style and not in defaults (unlikely for well-defined defaults)
+                    self.config_data.pop(key, None)
+        # If style_config_object is None (meaning detach style, go to fully custom),
+        # then self.config_data already holds the custom values. No flattening needed from a None object.
+        # The _style_config_ref is None, and text_style_ref is popped.
+        # update_text_from_config will then read directly from self.config_data via _get_style_value's fallback.
+
+        self.update_text_from_config()
+        self.update_appearance(self.isSelected())
+        self.properties_changed.emit(self)

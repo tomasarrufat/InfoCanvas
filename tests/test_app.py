@@ -1762,28 +1762,41 @@ def test_project_load_style_application_and_update(qtbot, monkeypatch, tmp_path)
     assert isinstance(item1, InfoRectangleItem)
     assert isinstance(item2, InfoRectangleItem)
 
-    # Check that items reflect 'TestStyle1'
+    # Check that items reflect 'TestStyle1' visually and that config_data is flattened
+    # Item 1 - Visual properties
     assert item1.text_item.defaultTextColor() == QColor(style1_initial_color)
     assert item1.text_item.font().pointSize() == style1_initial_font_size_int
     assert item1.vertical_alignment == style1_initial_v_align
     assert item1.horizontal_alignment == style1_initial_h_align
     assert item1.font_style == style1_initial_font_style
-    # Note: Padding is used in _center_text, not directly stored as an item attribute like vertical_alignment.
-    # To test padding propagation, one might need to check item.text_item.y() or similar, which is more complex.
-    # For now, we trust that if other properties from the same style object are propagated, padding is too.
+    # Item 1 - Flattened config_data
+    assert item1.config_data['font_color'] == style1_initial_color
+    assert item1.config_data['font_size'] == style1_initial_font_size
+    assert item1.config_data['vertical_alignment'] == style1_initial_v_align
+    assert item1.config_data['horizontal_alignment'] == style1_initial_h_align
+    assert item1.config_data['font_style'] == style1_initial_font_style
+    assert item1.config_data['padding'] == style1_initial_padding
+    assert item1.config_data.get('text_style_ref') == 'TestStyle1'
 
+    # Item 2 - Visual properties
     assert item2.text_item.defaultTextColor() == QColor(style1_initial_color)
     assert item2.text_item.font().pointSize() == style1_initial_font_size_int
     assert item2.vertical_alignment == style1_initial_v_align
     assert item2.horizontal_alignment == style1_initial_h_align
     assert item2.font_style == style1_initial_font_style
+    # Item 2 - Flattened config_data
+    assert item2.config_data['font_color'] == style1_initial_color
+    assert item2.config_data['font_size'] == style1_initial_font_size
+    assert item2.config_data['vertical_alignment'] == style1_initial_v_align
+    assert item2.config_data['horizontal_alignment'] == style1_initial_h_align
+    assert item2.config_data['font_style'] == style1_initial_font_style
+    assert item2.config_data['padding'] == style1_initial_padding
+    assert item2.config_data.get('text_style_ref') == 'TestStyle1'
 
     # Verify _style_config_ref points to the shared style object in app.config
-    # This assumes 'TestStyle1' is the first (and only) style in app.config['text_styles']
     shared_style_object = app_instance.config['text_styles'][0]
     assert item1._style_config_ref is shared_style_object
     assert item2._style_config_ref is shared_style_object
-    assert item1.config_data.get('text_style_ref') == 'TestStyle1'
 
     # Simulate selecting item1 to update the properties panel, including rect_style_combo
     app_instance.scene.clearSelection()
@@ -1823,24 +1836,42 @@ def test_project_load_style_application_and_update(qtbot, monkeypatch, tmp_path)
     shared_style_object['padding'] = style1_updated_padding
 
 
-    # Trigger refresh on items
-    # In a real scenario, _save_current_text_style would loop through items.
-    # Here, we simulate the item's own refresh mechanism.
-    item1.update_text_from_config()
-    item2.update_text_from_config()
+    # Trigger refresh by re-applying the modified style object.
+    # This simulates how _save_current_text_style would propagate changes
+    # and ensures the item's config_data is updated by the flattening logic in apply_style.
+    item1.apply_style(shared_style_object)
+    item2.apply_style(shared_style_object)
 
     # 5. Final Assertions (After Style Update)
+    # Visual properties for Item 1
     assert item1.text_item.defaultTextColor() == QColor(style1_updated_color)
     assert item1.text_item.font().pointSize() == style1_updated_font_size_int
     assert item1.vertical_alignment == style1_updated_v_align
     assert item1.horizontal_alignment == style1_updated_h_align
     assert item1.font_style == style1_updated_font_style
+    # Flattened config_data for Item 1
+    assert item1.config_data['font_color'] == style1_updated_color
+    assert item1.config_data['font_size'] == style1_updated_font_size
+    assert item1.config_data['vertical_alignment'] == style1_updated_v_align
+    assert item1.config_data['horizontal_alignment'] == style1_updated_h_align
+    assert item1.config_data['font_style'] == style1_updated_font_style
+    assert item1.config_data['padding'] == style1_updated_padding
+    assert item1.config_data.get('text_style_ref') == 'TestStyle1' # Name ref should persist
 
+    # Visual properties for Item 2
     assert item2.text_item.defaultTextColor() == QColor(style1_updated_color)
     assert item2.text_item.font().pointSize() == style1_updated_font_size_int
     assert item2.vertical_alignment == style1_updated_v_align
     assert item2.horizontal_alignment == style1_updated_h_align
     assert item2.font_style == style1_updated_font_style
+    # Flattened config_data for Item 2
+    assert item2.config_data['font_color'] == style1_updated_color
+    assert item2.config_data['font_size'] == style1_updated_font_size
+    assert item2.config_data['vertical_alignment'] == style1_updated_v_align
+    assert item2.config_data['horizontal_alignment'] == style1_updated_h_align
+    assert item2.config_data['font_style'] == style1_updated_font_style
+    assert item2.config_data['padding'] == style1_updated_padding
+    assert item2.config_data.get('text_style_ref') == 'TestStyle1'
 
     # Ensure the reference is still the same (mutated) object
     assert item1._style_config_ref is shared_style_object
