@@ -1909,3 +1909,219 @@ def test_ctrl_multi_select_info_rectangles(base_app_fixture, monkeypatch):
 
     assert item1.isSelected() and item2.isSelected()
     assert app.selected_item is item2
+
+
+# --- Tests for Alignment Features --- #
+
+class TestAlignmentFeatures:
+
+    def _add_and_select_rects(self, app_window, rect_details_list, monkeypatch):
+        """
+        Helper method to add InfoRectangleItems to the scene and select them.
+        rect_details_list: List of tuples (center_x, center_y, width, height, text)
+        Returns a list of the created InfoRectangleItem objects.
+        """
+        created_rect_items = []
+        if 'info_rectangles' not in app_window.config:
+            app_window.config['info_rectangles'] = []
+
+        # Mock _get_next_z_index to ensure predictable z_index values if needed
+        # For alignment tests, z_index might not be critical, but good for consistency.
+        # current_z = len(app_window.scene.items()) # Simple starting z_index
+        # monkeypatch.setattr(app_window, '_get_next_z_index', lambda: current_z)
+
+
+        for i, (cx, cy, w, h, txt) in enumerate(rect_details_list):
+            rect_id = f"align_test_rect_{i}_{datetime.datetime.now().timestamp()}"
+            # Use a direct call to app_window._get_next_z_index() if not mocking per item
+            next_z = app_window._get_next_z_index()
+
+            rect_config = {
+                "id": rect_id, "text": txt,
+                "center_x": cx, "center_y": cy,
+                "width": w, "height": h,
+                "z_index": next_z,
+                # Add other default text properties if InfoRectangleItem constructor needs them
+                # or if they are accessed before apply_style can set them.
+                "font_color": "#000000", "font_size": "10px", "font_style": "normal",
+                "horizontal_alignment": "center", "vertical_alignment": "middle",
+                "padding": "2px", "background_color": "rgba(255, 255, 0, 128)"
+            }
+            app_window.config['info_rectangles'].append(rect_config)
+
+            # Create the item. InfoRectangleItem's __init__ should set up its geometry.
+            item = InfoRectangleItem(rect_config)
+            # Connect signals if necessary for general app behavior, though not strictly for alignment logic testing
+            item.item_selected.connect(app_window.on_graphics_item_selected)
+            item.item_moved.connect(app_window.on_graphics_item_moved)
+            item.properties_changed.connect(app_window.on_graphics_item_properties_changed)
+
+            app_window.scene.addItem(item)
+            app_window.item_map[rect_id] = item
+            created_rect_items.append(item)
+
+        # Select all newly created items
+        # Must clear previous selections first if scene.selectedItems() is used by app logic
+        app_window.scene.clearSelection()
+        for item in created_rect_items:
+            item.setSelected(True)
+            # Ensure the item's internal selected state matches, though setSelected should handle this.
+            # item.is_selected = True # If InfoRectangleItem has such a direct flag
+
+        # Manually trigger selection change processing
+        # This is important for update_properties_panel to reflect the new selection.
+        app_window.on_scene_selection_changed()
+        # Or, if on_scene_selection_changed is problematic, call update_properties_panel directly:
+        # app_window.update_properties_panel()
+
+        return created_rect_items
+
+    def test_horizontal_alignment_logic(self, base_app_fixture, monkeypatch):
+        app_window = base_app_fixture
+        # Ensure clean state for specific items for this test
+        app_window.config['info_rectangles'] = []
+        app_window.item_map.clear()
+        app_window.scene.clear() # Clear actual scene items
+        app_window.render_canvas_from_config() # To reset based on empty config
+
+
+        rect_details = [
+            (100, 50, 80, 40, "R1"),  # cx, cy, w, h, text
+            (100, 100, 80, 40, "R2"),
+            (100, 150, 80, 40, "R3")
+        ]
+        created_rects = self._add_and_select_rects(app_window, rect_details, monkeypatch)
+
+        assert len(created_rects) == 3
+        for item in created_rects:
+             assert item.isSelected(), f"Item {item.config_data['id']} was not selected."
+        assert len(app_window.scene.selectedItems()) == 3, "Scene selection count mismatch."
+
+
+        sum_y = sum(r.config_data['center_y'] for r in created_rects)
+        expected_average_y = sum_y / len(created_rects)
+
+        # Store initial other properties to ensure they don't change
+        initial_other_props = [{
+            'id': r.config_data['id'],
+            'center_x': r.config_data['center_x'],
+            'width': r.config_data['width'],
+            'height': r.config_data['height']
+        } for r in created_rects]
+
+        app_window.align_selected_rects_horizontally()
+
+        for i, rect_item in enumerate(created_rects):
+            # Refresh item's config_data from app_window.config if it was modified there directly
+            # (Though align_selected_rects_horizontally modifies rect.config_data directly)
+            updated_config_in_app = next(c for c in app_window.config['info_rectangles'] if c['id'] == rect_item.config_data['id'])
+
+            assert updated_config_in_app['center_y'] == pytest.approx(expected_average_y)
+            # Also check the item's internal config_data if it's the source of truth for rendering
+            assert rect_item.config_data['center_y'] == pytest.approx(expected_average_y)
+
+            # Verify other properties haven't changed
+            original_props = next(p for p in initial_other_props if p['id'] == updated_config_in_app['id'])
+            assert updated_config_in_app['center_x'] == original_props['center_x']
+            assert updated_config_in_app['width'] == original_props['width']
+            assert updated_config_in_app['height'] == original_props['height']
+
+            # Check visual position (center based on item's own x(), y(), width, height)
+            # item.x() and item.y() are top-left.
+            # center_y_visual = rect_item.y() + rect_item.boundingRect().height() / 2
+            # This might be tricky due to how InfoRectangleItem handles its internal geometry vs config.
+            # update_geometry_from_config() should have been called.
+
+    def test_vertical_alignment_logic(self, base_app_fixture, monkeypatch):
+        app_window = base_app_fixture
+        app_window.config['info_rectangles'] = []
+        app_window.item_map.clear()
+        app_window.scene.clear()
+        app_window.render_canvas_from_config()
+
+        rect_details = [
+            (50, 100, 80, 40, "R1"),
+            (100, 100, 80, 40, "R2"),
+            (150, 100, 80, 40, "R3")
+        ]
+        created_rects = self._add_and_select_rects(app_window, rect_details, monkeypatch)
+        assert len(app_window.scene.selectedItems()) == 3
+
+        sum_x = sum(r.config_data['center_x'] for r in created_rects)
+        expected_average_x = sum_x / len(created_rects)
+
+        initial_other_props = [{
+            'id': r.config_data['id'],
+            'center_y': r.config_data['center_y'],
+            'width': r.config_data['width'],
+            'height': r.config_data['height']
+        } for r in created_rects]
+
+        app_window.align_selected_rects_vertically()
+
+        for i, rect_item in enumerate(created_rects):
+            updated_config_in_app = next(c for c in app_window.config['info_rectangles'] if c['id'] == rect_item.config_data['id'])
+            assert updated_config_in_app['center_x'] == pytest.approx(expected_average_x)
+            assert rect_item.config_data['center_x'] == pytest.approx(expected_average_x)
+
+            original_props = next(p for p in initial_other_props if p['id'] == updated_config_in_app['id'])
+            assert updated_config_in_app['center_y'] == original_props['center_y']
+            assert updated_config_in_app['width'] == original_props['width']
+            assert updated_config_in_app['height'] == original_props['height']
+
+    def test_alignment_buttons_visibility(self, base_app_fixture, monkeypatch):
+        app_window = base_app_fixture
+
+        # Helper to clear items and config for this specific test
+        def clear_rects_and_update_panel():
+            app_window.config['info_rectangles'] = []
+            # Clear items from scene and map that might be InfoRectangles
+            ids_to_remove = [item_id for item_id, item_obj in app_window.item_map.items() if isinstance(item_obj, InfoRectangleItem)]
+            for item_id in ids_to_remove:
+                app_window.scene.removeItem(app_window.item_map[item_id])
+                del app_window.item_map[item_id]
+            app_window.scene.clearSelection() # Important
+            app_window.selected_item = None # Ensure no single item is 'the' selected_item
+            app_window.update_properties_panel()
+
+
+        # Initial state: 0 items
+        clear_rects_and_update_panel()
+        assert app_window.align_horizontal_button.isVisible() is False
+        assert app_window.align_vertical_button.isVisible() is False
+
+        # 1 item selected
+        clear_rects_and_update_panel()
+        self._add_and_select_rects(app_window, [(50, 50, 60, 30, "R1")], monkeypatch)
+        # _add_and_select_rects calls update_properties_panel via on_scene_selection_changed
+        assert app_window.align_horizontal_button.isVisible() is False
+        assert app_window.align_vertical_button.isVisible() is False
+
+        # 2 items selected
+        clear_rects_and_update_panel()
+        rects_2 = self._add_and_select_rects(app_window, [(50,50,60,30,"R1_2"),(100,50,60,30,"R2_2")], monkeypatch)
+        assert len(app_window.scene.selectedItems()) == 2
+        app_window.update_properties_panel() # Ensure it's called after selection is confirmed
+        assert app_window.align_horizontal_button.isVisible() is False
+        assert app_window.align_vertical_button.isVisible() is False
+
+        # 3 items selected
+        clear_rects_and_update_panel()
+        rects_3 = self._add_and_select_rects(app_window, [(50,50,60,30,"R1_3"),(100,50,60,30,"R2_3"),(150,50,60,30,"R3_3")], monkeypatch)
+        assert len(app_window.scene.selectedItems()) == 3
+        app_window.update_properties_panel()
+        assert app_window.align_horizontal_button.isVisible() is True
+        assert app_window.align_vertical_button.isVisible() is True
+
+        # Deselect one item (2 selected)
+        if rects_3:
+            rects_3[0].setSelected(False) # Deselect the first one
+            # Manually update selected_item if needed, though scene.selectedItems() is key
+            # app_window.selected_item = rects_3[1] if len(rects_3) > 1 else None
+            app_window.on_scene_selection_changed() # Trigger panel update
+            # Or app_window.update_properties_panel() directly
+
+        assert len(app_window.scene.selectedItems()) == 2
+        app_window.update_properties_panel() # Call again to be sure after deselection
+        assert app_window.align_horizontal_button.isVisible() is False
+        assert app_window.align_vertical_button.isVisible() is False

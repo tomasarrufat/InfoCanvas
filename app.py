@@ -383,6 +383,19 @@ class InteractiveToolApp(QMainWindow):
         rect_layout.addWidget(self.add_info_rect_button)
         self.info_rect_properties_widget = QWidget()
         rect_props_layout = QVBoxLayout(self.info_rect_properties_widget)
+
+        # Horizontal and Vertical Alignment Buttons
+        align_buttons_layout = QHBoxLayout()
+        self.align_horizontal_button = QPushButton("Align Items Horizontally")
+        self.align_horizontal_button.clicked.connect(self.align_selected_rects_horizontally)
+        self.align_horizontal_button.setVisible(False)
+        align_buttons_layout.addWidget(self.align_horizontal_button)
+
+        self.align_vertical_button = QPushButton("Align Items Vertically")
+        self.align_vertical_button.clicked.connect(self.align_selected_rects_vertically)
+        self.align_vertical_button.setVisible(False)
+        align_buttons_layout.addWidget(self.align_vertical_button)
+        rect_props_layout.addLayout(align_buttons_layout)
         
         self.info_rect_text_input = QTextEdit()
         self.info_rect_text_input.setPlaceholderText("Enter information here...")
@@ -865,9 +878,32 @@ class InteractiveToolApp(QMainWindow):
             self.info_rect_width_input.blockSignals(False)
             self.info_rect_height_input.blockSignals(False)
             self.info_rect_properties_widget.setVisible(True)
-        else: # Not an InfoRectangleItem or no selection
-             # Ensure formatting controls are hidden if no relevant item is selected
-            if hasattr(self, 'rect_h_align_combo'): # Check if one of the new controls exists
+
+        # Alignment buttons visibility
+        if hasattr(self, 'scene') and self.scene:
+            selected_graphics_items = self.scene.selectedItems()
+            selected_info_rect_count = 0
+            for item in selected_graphics_items:
+                if isinstance(item, InfoRectangleItem):
+                    selected_info_rect_count += 1
+
+            if selected_info_rect_count > 2:
+                self.align_horizontal_button.setVisible(True)
+                self.align_vertical_button.setVisible(True)
+            else:
+                self.align_horizontal_button.setVisible(False)
+                self.align_vertical_button.setVisible(False)
+        else:
+            self.align_horizontal_button.setVisible(False)
+            self.align_vertical_button.setVisible(False)
+
+        if not isinstance(self.selected_item, InfoRectangleItem) or self.current_mode == "view": # Also hide if not an InfoRect or in view mode
+             # This check is a bit redundant if info_rect_properties_widget is already hidden,
+             # but ensures buttons are hidden if the main widget for them is hidden.
+             self.align_horizontal_button.setVisible(False)
+             self.align_vertical_button.setVisible(False)
+             # The rest of the else block for non-InfoRectangleItem selection
+             if hasattr(self, 'rect_h_align_combo'): # Check if one of the new controls exists
                 # Find the parent QWidget for the text_format_group to hide it
                 # Assuming rect_props_layout.itemAt(1) is text_format_group (index might change based on final layout)
                 # A safer way would be to keep a reference to text_format_group if it's complex
@@ -876,6 +912,12 @@ class InteractiveToolApp(QMainWindow):
                 # The existing logic already hides info_rect_properties_widget if no item is selected or item is not InfoRect.
                 # So, specific hiding of text_format_group might not be needed if it's part of info_rect_properties_widget.
                 pass
+        # Final check: if the main properties widget is hidden, alignment buttons should also be hidden.
+        # This handles cases where self.selected_item might be None or not an InfoRectangleItem,
+        # leading to info_rect_properties_widget being hidden earlier in this method.
+        if not self.info_rect_properties_widget.isVisible():
+            self.align_horizontal_button.setVisible(False)
+            self.align_vertical_button.setVisible(False)
 
 
     # --- Handler for new formatting controls ---
@@ -1623,6 +1665,70 @@ class InteractiveToolApp(QMainWindow):
     def closeEvent(self, event):
         super().closeEvent(event)
 
+    # Placeholder methods for alignment
+    def align_selected_rects_horizontally(self):
+        if not hasattr(self, 'scene') or not self.scene:
+            return
+
+        selected_graphics_items = self.scene.selectedItems()
+        selected_info_rects = []
+        for item in selected_graphics_items:
+            if isinstance(item, InfoRectangleItem):
+                selected_info_rects.append(item)
+
+        if len(selected_info_rects) <= 2:
+            return
+
+        sum_y = 0
+        for rect in selected_info_rects:
+            sum_y += rect.config_data.get('center_y', 0) # Default to 0 if somehow missing
+
+        average_y = sum_y / len(selected_info_rects)
+
+        for rect in selected_info_rects:
+            rect.config_data['center_y'] = average_y
+            rect.update_geometry_from_config()
+            # Ensure properties_changed is emitted so save_config and UI updates are triggered
+            # if rect has such a signal and it's connected to on_graphics_item_properties_changed
+            if hasattr(rect, 'properties_changed') and hasattr(rect.properties_changed, 'emit'):
+                 rect.properties_changed.emit(rect)
+            # Fallback to directly calling on_graphics_item_properties_changed if signal not present/connected
+            # elif hasattr(self, 'on_graphics_item_properties_changed'):
+            #    self.on_graphics_item_properties_changed(rect)
+
+
+        # self.save_config() # This should be triggered by the properties_changed signal chain
+
+    def align_selected_rects_vertically(self):
+        if not hasattr(self, 'scene') or not self.scene:
+            return
+
+        selected_graphics_items = self.scene.selectedItems()
+        selected_info_rects = []
+        for item in selected_graphics_items:
+            if isinstance(item, InfoRectangleItem):
+                selected_info_rects.append(item)
+
+        if len(selected_info_rects) <= 2:
+            return
+
+        sum_x = 0
+        for rect in selected_info_rects:
+            sum_x += rect.config_data.get('center_x', 0) # Default to 0 if somehow missing
+
+        average_x = sum_x / len(selected_info_rects)
+
+        for rect in selected_info_rects:
+            rect.config_data['center_x'] = average_x
+            rect.update_geometry_from_config()
+            # Ensure properties_changed is emitted so save_config and UI updates are triggered
+            if hasattr(rect, 'properties_changed') and hasattr(rect.properties_changed, 'emit'):
+                 rect.properties_changed.emit(rect)
+            # Fallback for safety, though direct signal emission is preferred.
+            # elif hasattr(self, 'on_graphics_item_properties_changed'):
+            #    self.on_graphics_item_properties_changed(rect)
+
+        # self.save_config() # This should be triggered by the properties_changed signal chain
 
 if __name__ == '__main__':
     app = QApplication.instance() or QApplication(sys.argv)
