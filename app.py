@@ -27,6 +27,7 @@ from src.ui_builder import UIBuilder
 from src.item_operations import ItemOperations
 from src.text_style_manager import TextStyleManager
 from src.exporter import HtmlExporter # <--- NEW IMPORT
+from src.input_handler import InputHandler
 # --- Main Application Window ---
 class InteractiveToolApp(QMainWindow):
     def __init__(self):
@@ -50,6 +51,7 @@ class InteractiveToolApp(QMainWindow):
         self.text_style_manager = TextStyleManager(self) # Moved up
         UIBuilder(self).build()
         self.item_operations = ItemOperations(self)
+        self.input_handler = InputHandler(self)
         self.text_style_manager.load_styles_into_dropdown() # Ensure dropdown is populated early
         self.populate_controls_from_config()
         self.render_canvas_from_config()
@@ -652,24 +654,16 @@ class InteractiveToolApp(QMainWindow):
 
     # --- Z-order manipulation ---
     def bring_to_front(self):
-        if self.selected_item:
-            utils.bring_to_front(self.selected_item)
-            self.save_config()
+        self.input_handler.bring_to_front_selected()
 
     def send_to_back(self):
-        if self.selected_item:
-            utils.send_to_back(self.selected_item)
-            self.save_config()
+        self.input_handler.send_to_back_selected()
 
     def bring_forward(self):
-        if self.selected_item:
-            utils.bring_forward(self.selected_item)
-            self.save_config()
+        self.input_handler.bring_forward_selected()
 
     def send_backward(self):
-        if self.selected_item:
-            utils.send_backward(self.selected_item)
-            self.save_config()
+        self.input_handler.send_backward_selected()
 
     # --- Export functionality ---
     # def _generate_view_html(self): <--- THIS METHOD WILL BE ENTIRELY REMOVED
@@ -726,24 +720,8 @@ class InteractiveToolApp(QMainWindow):
 
 
     def keyPressEvent(self, event):
-        focused_widget = QApplication.focusWidget()
-        is_input_focused = isinstance(focused_widget, (QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox))
-
-        if event.modifiers() == Qt.ControlModifier:
-            if event.key() == Qt.Key_C:
-                if self.current_mode == "edit" and not is_input_focused and self.item_operations.copy_selected_item_to_clipboard():
-                    event.accept()
-                    return
-            elif event.key() == Qt.Key_V:
-                if self.current_mode == "edit" and not is_input_focused: # Basic check
-                    if self.item_operations.paste_item_from_clipboard(): # Directly call item_operations method
-                         event.accept()
-                         return
-        elif event.key() == Qt.Key_Delete or event.key() == Qt.Key_Backspace:
-            if self.current_mode == "edit" and not is_input_focused and self.item_operations.delete_selected_item_on_canvas():
-                event.accept()
-                return
-        super().keyPressEvent(event)
+        if not self.input_handler.handle_key_press(event):
+            super().keyPressEvent(event)
 
     def closeEvent(self, event):
         super().closeEvent(event)
