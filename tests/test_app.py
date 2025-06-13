@@ -101,7 +101,12 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
         self_app.item_map = {}
         self_app.selected_item = None
         self_app.current_mode = "edit" # Initialize current_mode before UI updates
-
+        # Ensure UIBuilder is called to initialize scene and other UI elements
+        # This is critical as ItemOperations now depends on self.scene
+        UIBuilder(self_app).build()
+        # Initialize item_operations after UI build and scene creation
+        from src.item_operations import ItemOperations # Local import
+        self_app.item_operations = ItemOperations(self_app)
         return True
 
     monkeypatch.setattr(InteractiveToolApp, "_initial_project_setup", mock_successful_initial_setup)
@@ -153,6 +158,9 @@ def app_for_initial_setup_test_environment(monkeypatch, tmp_path):
     monkeypatch.setattr(InteractiveToolApp, 'render_canvas_from_config', lambda self: None)
     monkeypatch.setattr(InteractiveToolApp, 'update_mode_ui', lambda self: None)
     monkeypatch.setattr(InteractiveToolApp, '_update_window_title', lambda self: None)
+
+    # Ensure scene is at least a MagicMock before ItemOperations is initialized
+    monkeypatch.setattr(InteractiveToolApp, 'scene', MagicMock(spec=QGraphicsScene), raising=False)
 
     # Mock ProjectIO.save_config as it's called by _switch_to_project
     save_config_calls = []

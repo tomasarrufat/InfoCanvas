@@ -46,6 +46,7 @@ class InteractiveToolApp(QMainWindow):
         self.selected_item = None
         self.item_map = {}
         UIBuilder(self).build()
+        self.item_operations = ItemOperations(self)
         self._load_text_styles_into_dropdown() # Ensure dropdown is populated early
         self.populate_controls_from_config()
         self.render_canvas_from_config()
@@ -1140,16 +1141,16 @@ class InteractiveToolApp(QMainWindow):
 
         if event.modifiers() == Qt.ControlModifier:
             if event.key() == Qt.Key_C:
-                if not is_input_focused and self.item_operations.copy_selected_item_to_clipboard():
+                if self.current_mode == "edit" and not is_input_focused and self.item_operations.copy_selected_item_to_clipboard():
                     event.accept()
                     return
             elif event.key() == Qt.Key_V:
-                if not is_input_focused: # Basic check
+                if self.current_mode == "edit" and not is_input_focused: # Basic check
                     if self.item_operations.paste_item_from_clipboard(): # Directly call item_operations method
                          event.accept()
                          return
         elif event.key() == Qt.Key_Delete or event.key() == Qt.Key_Backspace:
-            if not is_input_focused and self.item_operations.delete_selected_item_on_canvas():
+            if self.current_mode == "edit" and not is_input_focused and self.item_operations.delete_selected_item_on_canvas():
                 event.accept()
                 return
         super().keyPressEvent(event)

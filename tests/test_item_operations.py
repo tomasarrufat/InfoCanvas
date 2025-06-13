@@ -202,7 +202,9 @@ def test_delete_selected_image_success(mock_os_path_exists, mock_os_remove, mock
     mock_selected_item = MagicMock(spec=DraggableImageItem)
     mock_selected_item.config_data = image_config
     mock_app_instance.selected_item = mock_selected_item
-    mock_app_instance.item_map = {img_id_to_delete: mock_selected_item}
+    # Modify mock_app_instance.item_map in place
+    mock_app_instance.item_map.clear()
+    mock_app_instance.item_map[img_id_to_delete] = mock_selected_item
     original_selected_item_ref = mock_app_instance.selected_item
     initial_image_count = len(mock_app_instance.config['images'])
     item_ops.delete_selected_image()
@@ -270,7 +272,8 @@ def test_delete_selected_info_rect_success(mock_qmessagebox, item_ops, mock_app_
     mock_selected_item = MagicMock(spec=InfoRectangleItem)
     mock_selected_item.config_data = rect_config
     mock_app_instance.selected_item = mock_selected_item
-    mock_app_instance.item_map = {rect_id_to_delete: mock_selected_item}
+    mock_app_instance.item_map.clear()
+    mock_app_instance.item_map[rect_id_to_delete] = mock_selected_item
     original_selected_item_ref = mock_app_instance.selected_item
     initial_rect_count = len(mock_app_instance.config['info_rectangles'])
     item_ops.delete_selected_info_rect()
@@ -406,7 +409,8 @@ def test_delete_selected_item_on_canvas_image(mock_os_exists, mock_os_remove, mo
     }
     mock_app_instance.selected_item = mock_image_item
     mock_app_instance.config['images'] = [mock_image_item.config_data]
-    mock_app_instance.item_map = {img_id_to_delete: mock_image_item}
+    mock_app_instance.item_map.clear()
+    mock_app_instance.item_map[img_id_to_delete] = mock_image_item
     mock_app_instance.current_mode = "edit"
     original_selected_item_ref = mock_app_instance.selected_item
     deleted = item_ops.delete_selected_item_on_canvas()
@@ -430,7 +434,8 @@ def test_delete_selected_item_on_canvas_info_rect(mock_qmessagebox, item_ops, mo
     mock_rect_item.config_data = rect_config
     mock_app_instance.selected_item = mock_rect_item
     mock_app_instance.config['info_rectangles'] = [rect_config]
-    mock_app_instance.item_map = {rect_id_to_delete: mock_rect_item}
+    mock_app_instance.item_map.clear()
+    mock_app_instance.item_map[rect_id_to_delete] = mock_rect_item
     mock_app_instance.current_mode = "edit"
     original_selected_item_ref = mock_app_instance.selected_item
 
