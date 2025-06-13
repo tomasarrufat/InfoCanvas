@@ -1,22 +1,13 @@
 import sys
 import os
-import json
-import datetime
-import shutil  # For copying files
-import copy  # For deep copying objects
-import html
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QLineEdit, QColorDialog, QFileDialog, QGraphicsScene, QGraphicsView,
-    QGraphicsTextItem, QGraphicsItem, QDockWidget, QComboBox, QSpinBox,
-    QTextEdit, QMessageBox, QSizePolicy, QAction, QDoubleSpinBox,
-    QGraphicsObject, QDialog, QListWidget, QListWidgetItem, QInputDialog
+    QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox, QDialog
 )
 from PyQt5.QtGui import (
-    QPixmap, QColor, QBrush, QPen, QFont, QImageReader, QTransform, QPainter, QFontMetrics, QCursor
+    QPixmap, QColor, QBrush, QTransform
 )
-from PyQt5.QtCore import Qt, QRectF, QPointF, pyqtSignal, QObject, QRect, QTimer
+from PyQt5.QtCore import Qt, QTimer
 
 from src import utils
 from src.draggable_image_item import DraggableImageItem
@@ -87,7 +78,9 @@ class InteractiveToolApp(QMainWindow):
             self.update_properties_panel() # Hide properties panels
             self.edit_mode_controls_widget.setEnabled(False) # Disable edit controls
         self._update_window_title()
-        self.statusBar().showMessage("No project loaded. Please create or load a project from the File menu.")
+        status_bar = self.statusBar()
+        if status_bar is not None:
+            status_bar.showMessage("No project loaded. Please create or load a project from the File menu.")
         
         # Force user to select a project again
         QTimer.singleShot(100, self._show_project_manager_dialog_and_handle_outcome)
@@ -132,7 +125,9 @@ class InteractiveToolApp(QMainWindow):
             project_name = dialog.selected_project_name
             
             if project_name == self.current_project_name and os.path.exists(self._get_project_config_path(project_name)):
-                self.statusBar().showMessage(f"Project '{project_name}' is already loaded.", 2000)
+                status_bar = self.statusBar()
+                if status_bar is not None:
+                    status_bar.showMessage(f"Project '{project_name}' is already loaded.", 2000)
                 return
 
             is_new = not os.path.exists(os.path.join(utils.PROJECTS_BASE_DIR, project_name))
@@ -147,7 +142,9 @@ class InteractiveToolApp(QMainWindow):
                     self.update_mode_ui()
                     if hasattr(self, 'edit_mode_controls_widget'):
                         self.edit_mode_controls_widget.setEnabled(True) # Ensure controls are enabled
-                self.statusBar().showMessage(f"Switched to project: {project_name}", 3000)
+                status_bar = self.statusBar()
+                if hasattr(self, 'statusBar') and status_bar is not None:
+                    status_bar.showMessage(f"Switched to project: {project_name}", 3000)
             else:
                 QMessageBox.warning(self, "Project Switch Failed", f"Could not switch to project '{project_name}'.")
                 self._reset_application_to_no_project_state() # If switch fails, reset
@@ -213,10 +210,10 @@ class InteractiveToolApp(QMainWindow):
                     graphics_item.update_appearance(graphics_item.isSelected(), not is_edit_mode)
             
             if is_edit_mode:
-                 if isinstance(graphics_item, DraggableImageItem): 
-                    graphics_item.setCursor(Qt.PointingHandCursor if graphics_item.isEnabled() else Qt.ArrowCursor)
-            else: 
-                graphics_item.setCursor(Qt.ArrowCursor)
+                 if isinstance(graphics_item, DraggableImageItem):
+                    graphics_item.setCursor(Qt.CursorShape.PointingHandCursor if graphics_item.isEnabled() else Qt.CursorShape.ArrowCursor)
+            else:
+                graphics_item.setCursor(Qt.CursorShape.ArrowCursor)
                 if isinstance(graphics_item, InfoRectangleItem):
                     graphics_item.setToolTip(graphics_item.config_data.get('text', ''))
                 else:
@@ -229,6 +226,12 @@ class InteractiveToolApp(QMainWindow):
 
 
     def choose_bg_color(self):
+        # Ensure config and background section exist
+        if not isinstance(self.config, dict):
+            self.config = utils.get_default_config()
+        if 'background' not in self.config or not isinstance(self.config['background'], dict):
+            self.config['background'] = utils.get_default_config()['background']
+
         current_color_hex = self.config.get('background', {}).get('color', '#DDDDDD')
         current_color = QColor(current_color_hex)
         color = QColorDialog.getColor(current_color, self, "Choose Background Color")
@@ -245,7 +248,7 @@ class InteractiveToolApp(QMainWindow):
             self.scene.setSceneRect(0, 0,
                                      self.config['background']['width'],
                                      self.config['background']['height'])
-        if hasattr(self, 'view') and self.view : self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+        if hasattr(self, 'view') and self.view : self.view.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
         self.save_config()
 
     def render_canvas_from_config(self):
@@ -275,7 +278,7 @@ class InteractiveToolApp(QMainWindow):
             if pixmap.isNull():
                 print(f"Warning: Could not load image '{image_path_in_config}' from '{current_project_images_folder}'. Creating placeholder.")
                 pixmap = QPixmap(100, 100)
-                pixmap.fill(Qt.lightGray)
+                pixmap.fill(Qt.GlobalColor.lightGray)
                 if not img_conf.get('original_width') or img_conf.get('original_width',0) <=0 : img_conf['original_width'] = 100
                 if not img_conf.get('original_height') or img_conf.get('original_height',0) <=0 : img_conf['original_height'] = 100
             if not img_conf.get('original_width') or img_conf.get('original_width',0) <=0:
@@ -393,7 +396,7 @@ class InteractiveToolApp(QMainWindow):
             self.update_properties_panel()
             return
 
-        ctrl_pressed = QApplication.keyboardModifiers() & Qt.ControlModifier
+        ctrl_pressed = QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier
 
         if ctrl_pressed and isinstance(graphics_item, InfoRectangleItem):
             # Let Qt handle the selection toggle. Just update selected_item to
@@ -485,7 +488,8 @@ class InteractiveToolApp(QMainWindow):
             # Set style combo based on item's state
             determined_style_name = "Custom" # Default to custom
             if current_style_ref:
-                style_exists = any(s.get('name') == current_style_ref for s in self.config.get('text_styles', []))
+                # Ensure 's' is a dictionary before calling get()
+                style_exists = any(isinstance(s, dict) and s is not None and s.get('name') == current_style_ref for s in self.config.get('text_styles', []))
                 if style_exists:
                     # If text_style_ref is present and valid, use it.
                     # Changes by manager methods would clear text_style_ref if current props don't match.
@@ -719,12 +723,12 @@ class InteractiveToolApp(QMainWindow):
             QMessageBox.critical(self, "Export Error", f"An unexpected error occurred during export: {e}")
 
 
-    def keyPressEvent(self, event):
-        if not self.input_handler.handle_key_press(event):
-            super().keyPressEvent(event)
+    def keyPressEvent(self, a0):
+        if not self.input_handler.handle_key_press(a0):
+            super().keyPressEvent(a0)
 
-    def closeEvent(self, event):
-        super().closeEvent(event)
+    def closeEvent(self, a0):
+        super().closeEvent(a0)
 
     # Placeholder methods for alignment
     def align_selected_rects_horizontally(self):
@@ -742,7 +746,9 @@ class InteractiveToolApp(QMainWindow):
 
         if self.chronologically_first_selected_item is None or \
            self.chronologically_first_selected_item not in selected_info_rects:
-            self.statusBar().showMessage("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
+            status_bar = self.statusBar()
+            if status_bar is not None:
+                status_bar.showMessage("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
             return
 
         source_rect = self.chronologically_first_selected_item
@@ -778,7 +784,9 @@ class InteractiveToolApp(QMainWindow):
 
         if self.chronologically_first_selected_item is None or \
            self.chronologically_first_selected_item not in selected_info_rects:
-            self.statusBar().showMessage("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
+            status_bar = self.statusBar()
+            if status_bar is not None:
+                status_bar.showMessage("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
             return
 
         source_rect = self.chronologically_first_selected_item
