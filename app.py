@@ -22,12 +22,14 @@ from src import utils
 from src.draggable_image_item import DraggableImageItem
 from src.info_rectangle_item import InfoRectangleItem
 from src.project_manager_dialog import ProjectManagerDialog
+from src.project_io import ProjectIO
 # --- Main Application Window ---
 class InteractiveToolApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setGeometry(100, 100, 1200, 700)
         utils.ensure_base_projects_directory_exists()
+        self.project_io = ProjectIO()
         self.current_project_name = None
         self.current_project_path = None
         self.config = {}
@@ -48,18 +50,10 @@ class InteractiveToolApp(QMainWindow):
         self.update_mode_ui()
 
     def _get_project_config_path(self, project_name_or_path):
-        if os.path.isabs(project_name_or_path) and os.path.isdir(project_name_or_path):
-             path = project_name_or_path
-        else:
-             path = os.path.join(utils.PROJECTS_BASE_DIR, project_name_or_path)
-        return os.path.join(path, utils.PROJECT_CONFIG_FILENAME)
+        return self.project_io.get_project_config_path(project_name_or_path)
 
     def _get_project_images_folder(self, project_name_or_path):
-        if os.path.isabs(project_name_or_path) and os.path.isdir(project_name_or_path):
-             path = project_name_or_path
-        else:
-             path = os.path.join(utils.PROJECTS_BASE_DIR, project_name_or_path)
-        return os.path.join(path, utils.PROJECT_IMAGES_DIRNAME)
+        return self.project_io.get_project_images_folder(project_name_or_path)
 
     def _get_next_z_index(self):
          if hasattr(self, 'scene') and self.scene and self.scene.items():
@@ -67,14 +61,7 @@ class InteractiveToolApp(QMainWindow):
          return 0
 
     def _ensure_project_structure_exists(self, project_path):
-        if not project_path: return False
-        try:
-            os.makedirs(project_path, exist_ok=True)
-            os.makedirs(self._get_project_images_folder(project_path), exist_ok=True)
-            return True
-        except OSError as e:
-            QMessageBox.critical(self, "Directory Error", f"Could not create project directories for {os.path.basename(project_path)}: {e}")
-            return False
+        return self.project_io.ensure_project_structure_exists(project_path)
 
     def _update_window_title(self):
         if self.current_project_name:
@@ -163,115 +150,29 @@ class InteractiveToolApp(QMainWindow):
                 self._reset_application_to_no_project_state() # If switch fails, reset
 
     def _switch_to_project(self, project_name, is_new_project=False):
-        self.current_project_name = project_name
-        self.current_project_path = os.path.join(utils.PROJECTS_BASE_DIR, self.current_project_name)
-        if not self._ensure_project_structure_exists(self.current_project_path):
-            self.current_project_name = None
-            self.current_project_path = None
-            return False
-        if is_new_project:
-            self.config = utils.get_default_config()
-            self.config["project_name"] = self.current_project_name
-            if not self.save_config():
-                 QMessageBox.warning(self, "Save Error", f"Could not save initial configuration for new project '{project_name}'.")
-                 return False # Indicate failure if initial save fails
-        else:
-            loaded_config = self._load_config_for_current_project()
-            if loaded_config is None: # Indicates an error during load
-                # QMessageBox.warning(self, "Load Error", f"Could not load configuration for '{project_name}'. Using default.")
-                # self.config = get_default_config() # Already handled in _load_config
-                # self.config["project_name"] = self.current_project_name
-                # Forcing a default config might hide underlying issues. Better to signal failure.
-                self.config = None # Explicitly set config to None
-                return False # Indicate failure if config load fails
-            self.config = loaded_config
-        
-        self._update_window_title()
-        if hasattr(self, 'edit_mode_controls_widget'): # Ensure controls are enabled after successful switch
-            self.edit_mode_controls_widget.setEnabled(True)
-
-        self._load_text_styles_into_dropdown() # Load styles after config is ready
-        return True
+        success = self.project_io.switch_to_project(project_name, is_new_project)
+        self.current_project_name = self.project_io.current_project_name
+        self.current_project_path = self.project_io.current_project_path
+        self.config = self.project_io.config
+        if success:
+            self._update_window_title()
+            if hasattr(self, 'edit_mode_controls_widget'):
+                self.edit_mode_controls_widget.setEnabled(True)
+            self._load_text_styles_into_dropdown()
+        return success
 
     def _load_config_for_current_project(self):
-        if not self.current_project_path:
-            QMessageBox.critical(self, "Load Error", "No project path set. Cannot load configuration.")
-            return None # Indicate error
-        config_file_path = self._get_project_config_path(self.current_project_path)
-        if not os.path.exists(config_file_path):
-            print(f"Config file not found at {config_file_path}. Cannot load.")
-            QMessageBox.warning(self, "Load Error", f"Config file for '{self.current_project_name}' not found.")
-            return None # Indicate error
-        try:
-            with open(config_file_path, 'r') as f:
-                print(f"Loading config from {config_file_path}.")
-                loaded_data = json.load(f)
-                if not loaded_data:
-                    print("Config file is empty. Cannot load.")
-                    QMessageBox.warning(self, "Load Error", "Config file is empty.")
-                    return None # Indicate error
-                return loaded_data
-        except (IOError, json.JSONDecodeError) as e:
-            QMessageBox.warning(self, "Load Error", f"Error loading config file {config_file_path}: {e}.")
-            return None # Indicate error
+        return self.project_io.load_config_for_current_project()
 
     def save_config(self, config_data_to_save=None):
-        if not self.current_project_path:
-            # Allow saving default config if creating a new project even if path isn't fully set by user yet
-            # This is handled by _switch_to_project which calls save_config for new projects
-            if config_data_to_save and "project_name" in config_data_to_save: # Likely a new project default config
-                temp_project_path = os.path.join(utils.PROJECTS_BASE_DIR, config_data_to_save["project_name"])
-                if not self._ensure_project_structure_exists(temp_project_path): return False
-                config_file_path = self._get_project_config_path(temp_project_path)
-            else:
-                QMessageBox.critical(self, "Save Error", "No project selected. Cannot save configuration.")
-                return False
-        else: # Existing project
-            if not self._ensure_project_structure_exists(self.current_project_path):
-                return False
-            config_file_path = self._get_project_config_path(self.current_project_path)
-
         config_to_save = config_data_to_save if config_data_to_save is not None else self.config
-        
-        if not config_to_save: # Should not happen if logic is correct
-            print("Warning: Attempted to save empty or uninitialized configuration. Aborting save.")
-            return False
-
-        config_to_save["last_modified"] = datetime.datetime.utcnow().isoformat() + "Z"
-        if "project_name" not in config_to_save and self.current_project_name:
-            config_to_save["project_name"] = self.current_project_name
-        
-        current_project_images_folder = self._get_project_images_folder(self.current_project_path or config_to_save.get("project_name"))
-
-        for img_conf in config_to_save.get("images", []):
-            if not img_conf.get('original_width') or not img_conf.get('original_height'):
-                item = self.item_map.get(img_conf.get('id'))
-                if item and isinstance(item, DraggableImageItem) and not item.pixmap().isNull():
-                    img_conf['original_width'] = item.pixmap().width()
-                    img_conf['original_height'] = item.pixmap().height()
-                elif 'path' in img_conf and current_project_images_folder:
-                    image_file_path = os.path.join(current_project_images_folder, img_conf['path'])
-                    if os.path.exists(image_file_path):
-                        reader = QImageReader(image_file_path)
-                        if reader.canRead():
-                            size = reader.size()
-                            img_conf['original_width'] = size.width()
-                            img_conf['original_height'] = size.height()
-        try:
-            with open(config_file_path, 'w') as f:
-                json.dump(config_to_save, f, indent=2)
-            if hasattr(self, 'statusBar') and self.statusBar() is not None:
-                status_project_name = self.current_project_name or config_to_save.get("project_name", "Unknown Project")
-                self.statusBar().showMessage(f"Configuration for '{status_project_name}' saved.", 2000)
-            else:
-                print(f"Configuration for '{status_project_name}' saved (statusBar not available).")
-            return True
-        except IOError as e:
-            QMessageBox.critical(self, "Save Error", f"Error saving config file {config_file_path}: {e}.")
-            return False
-        except Exception as e:
-            QMessageBox.critical(self, "Save Error", f"An unexpected error occurred while saving: {e}.")
-            return False
+        return self.project_io.save_config(
+            self.current_project_path,
+            config_to_save,
+            item_map=self.item_map,
+            status_bar=self.statusBar() if hasattr(self, "statusBar") else None,
+            current_project_name=self.current_project_name,
+        )
 
     def setup_ui(self):
         if not self.current_project_name or not self.config:
