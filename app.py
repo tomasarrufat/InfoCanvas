@@ -25,6 +25,7 @@ from src.project_manager_dialog import ProjectManagerDialog
 from src.project_io import ProjectIO
 from src.ui_builder import UIBuilder
 from src.item_operations import ItemOperations
+from src.text_style_manager import TextStyleManager
 # --- Main Application Window ---
 class InteractiveToolApp(QMainWindow):
     def __init__(self):
@@ -45,9 +46,10 @@ class InteractiveToolApp(QMainWindow):
         self.current_mode = "edit"
         self.selected_item = None
         self.item_map = {}
+        self.text_style_manager = TextStyleManager(self) # Moved up
         UIBuilder(self).build()
         self.item_operations = ItemOperations(self)
-        self._load_text_styles_into_dropdown() # Ensure dropdown is populated early
+        self.text_style_manager.load_styles_into_dropdown() # Ensure dropdown is populated early
         self.populate_controls_from_config()
         self.render_canvas_from_config()
         self.update_mode_ui()
@@ -156,7 +158,8 @@ class InteractiveToolApp(QMainWindow):
             self._update_window_title()
             if hasattr(self, 'edit_mode_controls_widget'):
                 self.edit_mode_controls_widget.setEnabled(True)
-            self._load_text_styles_into_dropdown()
+            if hasattr(self, 'text_style_manager') and self.text_style_manager: # Defensive check
+                self.text_style_manager.load_styles_into_dropdown()
         return success
 
     def _load_config_for_current_project(self):
@@ -477,32 +480,40 @@ class InteractiveToolApp(QMainWindow):
             current_style_ref = rect_conf.get('text_style_ref')
 
             # Set style combo based on item's state
+            determined_style_name = "Custom" # Default to custom
             if current_style_ref:
-                style_idx = self.rect_style_combo.findText(current_style_ref)
-                if style_idx != -1:
-                    self.rect_style_combo.setCurrentIndex(style_idx)
-                else: # Style ref exists but not found (e.g. style was deleted)
-                    rect_conf.pop('text_style_ref', None) # Clear invalid ref
-                    # Now check if current config matches default or other saved style
-                    if self._does_current_rect_match_default_style(rect_conf):
-                        self.rect_style_combo.setCurrentText("Default")
-                    else:
-                        matched_style_name = self._find_matching_style_name(rect_conf)
-                        if matched_style_name:
-                            self.rect_style_combo.setCurrentText(matched_style_name)
-                            rect_conf['text_style_ref'] = matched_style_name # Re-assign if it matches another
-                        else:
-                            self.rect_style_combo.setCurrentText("Custom")
-            elif self._does_current_rect_match_default_style(rect_conf):
-                 self.rect_style_combo.setCurrentText("Default")
-            else:
-                matched_style_name = self._find_matching_style_name(rect_conf)
-                if matched_style_name:
-                    self.rect_style_combo.setCurrentText(matched_style_name)
-                    # Optionally set text_style_ref here if we want to "re-link" it implicitly
-                    # rect_conf['text_style_ref'] = matched_style_name
+                style_exists = any(s.get('name') == current_style_ref for s in self.config.get('text_styles', []))
+                if style_exists:
+                    # If text_style_ref is present and valid, use it.
+                    # Changes by manager methods would clear text_style_ref if current props don't match.
+                    determined_style_name = current_style_ref
                 else:
-                    self.rect_style_combo.setCurrentText("Custom")
+                    # Referenced style does not exist, clear the reference
+                    rect_conf.pop('text_style_ref', None)
+                    # Fall through to determine if it's Default or matches another saved style or Custom
+
+            if not rect_conf.get('text_style_ref'): # If no ref, or ref was just cleared
+                if self.text_style_manager.does_item_match_default_style(rect_conf):
+                    determined_style_name = "Default"
+                else:
+                    matched_style_name = self.text_style_manager.find_matching_style_name(rect_conf)
+                    if matched_style_name:
+                        determined_style_name = matched_style_name
+                        # If it matches a style, the manager might have already re-linked it.
+                        # Or, if we want to ensure it's linked when panel updates:
+                        # rect_conf['text_style_ref'] = matched_style_name
+                    else:
+                        determined_style_name = "Custom"
+
+            # Set the combo box
+            style_idx = self.rect_style_combo.findText(determined_style_name)
+            if style_idx != -1:
+                self.rect_style_combo.setCurrentIndex(style_idx)
+            else:
+                # Fallback to Custom if determined_style_name is somehow not in the combo
+                custom_idx = self.rect_style_combo.findText("Custom")
+                if custom_idx != -1:
+                    self.rect_style_combo.setCurrentIndex(custom_idx)
 
             h_align = rect_conf.get('horizontal_alignment', default_text_config['horizontal_alignment'])
             v_align = rect_conf.get('vertical_alignment', default_text_config['vertical_alignment'])
@@ -533,7 +544,7 @@ class InteractiveToolApp(QMainWindow):
 
             # Update font color button preview
             current_font_color = rect_conf.get('font_color', default_text_config['font_color'])
-            contrasting_color = self._get_contrasting_text_color(current_font_color)
+            contrasting_color = self.text_style_manager.get_contrasting_text_color(current_font_color)
             self.rect_font_color_button.setStyleSheet(
                 f"background-color: {current_font_color}; color: {contrasting_color};"
             )
@@ -586,341 +597,15 @@ class InteractiveToolApp(QMainWindow):
 
 
     # --- Handler for new formatting controls ---
-    def _on_rect_format_changed(self, value=None): # value can be text from ComboBox or not used if called by buttons
-        if isinstance(self.selected_item, InfoRectangleItem):
-            config = self.selected_item.config_data
-
-            # Horizontal Alignment
-            config['horizontal_alignment'] = self.rect_h_align_combo.currentText().lower()
-
-            # Vertical Alignment
-            config['vertical_alignment'] = self.rect_v_align_combo.currentText().lower()
-
-            # Font Size
-            font_size_text = self.rect_font_size_combo.currentText()
-            if font_size_text.isdigit():
-                config['font_size'] = f"{font_size_text}px"
-            else: # Reset to default or handle error if input is invalid
-                default_font_size = utils.get_default_config()["defaults"]["info_rectangle_text_display"]["font_size"]
-                config['font_size'] = default_font_size
-                self.rect_font_size_combo.blockSignals(True)
-                self.rect_font_size_combo.setCurrentText(default_font_size.replace("px",""))
-                self.rect_font_size_combo.blockSignals(False)
-
-            config.pop('text_style_ref', None) # Manual change, so remove style reference
-            self.selected_item.apply_style(config)
-
-            # Update style combo to "Custom" or matching style after manual change
-            self.rect_style_combo.blockSignals(True)
-            if self._does_current_rect_match_default_style(config):
-                self.rect_style_combo.setCurrentText("Default")
-            else:
-                matched_style_name = self._find_matching_style_name(config)
-                if matched_style_name:
-                    self.rect_style_combo.setCurrentText(matched_style_name)
-                else:
-                    self.rect_style_combo.setCurrentText("Custom")
-            self.rect_style_combo.blockSignals(False)
-            # self.save_config() is called by apply_style's emission
-
-    def _on_rect_font_style_changed(self, checked=None):
-        if isinstance(self.selected_item, InfoRectangleItem):
-            config = self.selected_item.config_data
-            is_bold = self.rect_font_bold_button.isChecked()
-            is_italic = self.rect_font_italic_button.isChecked()
-
-            if is_bold:
-                config['font_style'] = "bold"
-            elif is_italic:
-                config['font_style'] = "italic"
-            else:
-                config['font_style'] = "normal"
-
-            # If bold is checked, and italic is then checked, italic should take precedence or they should combine.
-            # Current InfoRectangleItem logic treats them exclusively (bold OR italic OR normal).
-            # For this iteration, if bold is checked, then italic is checked, italic wins.
-            # If italic is checked, then bold is checked, bold wins.
-            # If one is unchecked, it might become normal or the other style.
-            # This logic ensures only one state or normal is passed.
-            if is_bold and self.sender() == self.rect_font_bold_button:
-                self.rect_font_italic_button.blockSignals(True)
-                self.rect_font_italic_button.setChecked(False)
-                self.rect_font_italic_button.blockSignals(False)
-                config['font_style'] = "bold"
-            elif is_italic and self.sender() == self.rect_font_italic_button:
-                self.rect_font_bold_button.blockSignals(True)
-                self.rect_font_bold_button.setChecked(False)
-                self.rect_font_bold_button.blockSignals(False)
-                config['font_style'] = "italic"
-            elif not is_bold and not is_italic:
-                 config['font_style'] = "normal"
-            # If sender was unchecked, and the other button is still checked, that style should prevail.
-            elif not is_bold and is_italic: # Bold was unchecked
-                config['font_style'] = "italic"
-            elif not is_italic and is_bold: # Italic was unchecked or bold was re-checked
-                config['font_style'] = "bold"
-            else: # Should be normal if both somehow got unchecked not via sender or if logic is complex
-                config['font_style'] = "normal"
-
-
-            config.pop('text_style_ref', None) # Manual change, remove style reference
-            self.selected_item.apply_style(config)
-
-            # Update style combo to "Custom" or matching style after manual change
-            self.rect_style_combo.blockSignals(True)
-            if self._does_current_rect_match_default_style(config):
-                self.rect_style_combo.setCurrentText("Default")
-            else:
-                matched_style_name = self._find_matching_style_name(config)
-                if matched_style_name:
-                    self.rect_style_combo.setCurrentText(matched_style_name)
-                else:
-                    self.rect_style_combo.setCurrentText("Custom")
-            self.rect_style_combo.blockSignals(False)
-            # self.save_config() is called by apply_style's emission
-
-    def _on_rect_font_color_button_clicked(self):
-        # Placeholder: QColorDialog logic will be implemented in the next step
-        print("Font color button clicked - QColorDialog to be implemented here")
-        # For now, let's simulate a color change to see button update
-        # if self.selected_item and isinstance(self.selected_item, InfoRectangleItem):
-        #     self.selected_item.config_data['font_color'] = "#FF0000" # Simulate red
-        #     self.update_properties_panel() # To update the button color based on new config
-
-    def _get_contrasting_text_color(self, hex_color):
-        """Determines if black or white text is more readable against a given hex background color."""
-        try:
-            hex_color = hex_color.lstrip('#')
-            r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-            # Calculate luminance (standard formula)
-            luminance = (0.299 * r + 0.587 * g + 0.114 * b)
-            return "#FFFFFF" if luminance < 128 else "#000000"
-        except Exception:
-            return "#000000" # Default to black text on error
-
-    def _on_rect_font_color_button_clicked(self):
-        if not self.selected_item or not isinstance(self.selected_item, InfoRectangleItem):
-            return
-
-        item_config = self.selected_item.config_data
-        default_color = utils.get_default_config()["defaults"]["info_rectangle_text_display"]['font_color']
-        initial_color_str = item_config.get('font_color', default_color)
-
-        try:
-            q_initial_color = QColor(initial_color_str)
-            if not q_initial_color.isValid(): # Fallback if hex is somehow invalid
-                q_initial_color = QColor(default_color)
-        except Exception: # Catch any error during QColor creation from potentially bad hex
-            q_initial_color = QColor(default_color)
-
-        color = QColorDialog.getColor(q_initial_color, self, "Select Text Color")
-
-        if color.isValid():
-            new_color_hex = color.name()
-            item_config['font_color'] = new_color_hex
-            item_config.pop('text_style_ref', None) # Mark as custom modification
-
-            # Prepare a complete style dict to pass to apply_style
-            # This ensures all current text formatting aspects are preserved/updated
-            current_text_config = {
-                key: item_config.get(key, utils.get_default_config()["defaults"]["info_rectangle_text_display"][key])
-                for key in utils.get_default_config()["defaults"]["info_rectangle_text_display"].keys()
-            }
-            current_text_config['font_color'] = new_color_hex # Ensure the new color is in the dict for apply_style
-
-            self.selected_item.apply_style(current_text_config)
-            # apply_style calls properties_changed, which calls save_config and update_properties_panel.
-            # update_properties_panel will update the button color via its logic.
-            # Explicitly update button style here for immediate feedback if update_properties_panel is slow or deferred.
-            contrasting_text_color = self._get_contrasting_text_color(new_color_hex)
-            self.rect_font_color_button.setStyleSheet(
-                f"background-color: {new_color_hex}; color: {contrasting_text_color};"
-            )
-            # self.update_properties_panel() # This will be called by properties_changed signal
-
-    def _load_text_styles_into_dropdown(self):
-        if not hasattr(self, 'rect_style_combo'): return
-        self.rect_style_combo.blockSignals(True)
-        self.rect_style_combo.clear()
-        self.rect_style_combo.addItem("Default")
-        self.rect_style_combo.addItem("Custom") # For when config doesn't match any style or default
-
-        styles = self.config.get('text_styles', [])
-        for style in styles:
-            if isinstance(style, dict) and 'name' in style:
-                 self.rect_style_combo.addItem(style['name'])
-        self.rect_style_combo.blockSignals(False)
-
-    def _save_current_text_style(self):
-        if not isinstance(self.selected_item, InfoRectangleItem):
-            QMessageBox.warning(self, "Save Style", "Please select an Info Rectangle to save its style.")
-            return
-
-        item_config = self.selected_item.config_data
-        default_display_conf = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
-
-        style_name, ok = QInputDialog.getText(self, "Save Text Style", "Enter style name:")
-        if not ok or not style_name:
-            if ok and not style_name: # Only show warning if OK was pressed with empty name
-                QMessageBox.warning(self, "Save Style", "Style name cannot be empty.")
-            return
-
-        current_style_dict = {
-            "name": style_name, # Ensure name is part of the dict to be saved/updated
-            "font_color": item_config.get('font_color', default_display_conf['font_color']),
-            "font_size": item_config.get('font_size', default_display_conf['font_size']),
-            "font_style": item_config.get('font_style', default_display_conf['font_style']),
-            "horizontal_alignment": item_config.get('horizontal_alignment', default_display_conf['horizontal_alignment']),
-            "vertical_alignment": item_config.get('vertical_alignment', default_display_conf['vertical_alignment']),
-            "padding": item_config.get('padding', default_display_conf['padding']),
-        }
-
-        existing_styles = self.config.setdefault('text_styles', [])
-        style_object_updated = None # To hold the reference to the updated or new style object
-
-        found_existing_style_for_update = False
-        for s in existing_styles:
-            if s['name'] == style_name:
-                reply = QMessageBox.question(self, "Overwrite Style",
-                                             f"Style '{style_name}' already exists. Overwrite it?",
-                                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                if reply == QMessageBox.No:
-                    return
-                else: # Overwrite: UPDATE the existing dictionary in place
-                    s.clear() # Remove all old keys
-                    s.update(current_style_dict) # Add all new keys from current_style_dict
-                    # s['name'] = style_name # Ensured by current_style_dict having 'name'
-                    style_object_updated = s # Keep a reference to the updated style object
-                    found_existing_style_for_update = True
-                    break
-
-        if not found_existing_style_for_update: # Style name not found, so append new
-            existing_styles.append(current_style_dict)
-            style_object_updated = current_style_dict # The newly added style object
-
-        if style_object_updated is None: # Should not happen if logic is correct (e.g. user hit No and returned)
-            return
-
-        self.save_config() # Save changes to project config file
-        self._load_text_styles_into_dropdown() # Refresh dropdown
-
-        # Update all InfoRectangleItems that reference this style by name
-        for item_in_map in self.item_map.values(): # Iterate directly over values
-            if isinstance(item_in_map, InfoRectangleItem):
-                if item_in_map.config_data.get('text_style_ref') == style_name:
-                    # Force apply the canonical, possibly updated, style object
-                    # This ensures the item uses the canonical style object and refreshes.
-                    item_in_map.apply_style(style_object_updated)
-
-        # Ensure the selected item (which was the source of the style)
-        # is correctly referencing the potentially new style object and its UI is updated.
-        # This also updates its internal text_style_ref name.
-        # The loop above would have already handled self.selected_item if its text_style_ref matched.
-        # However, explicitly calling apply_style on self.selected_item ensures it's updated,
-        # particularly if its text_style_ref was just set or if it was a new style.
-        # This also updates its internal text_style_ref name.
-        self.selected_item.apply_style(style_object_updated)
-
-        self.rect_style_combo.blockSignals(True)
-        self.rect_style_combo.setCurrentText(style_name)
-        self.rect_style_combo.blockSignals(False)
-
-        self.statusBar().showMessage(f"Text style '{style_name}' saved and applied.", 2000)
-        # update_properties_panel will be called because selected_item.apply_style emits properties_changed.
-
-
-    def _on_rect_style_selected(self, style_name):
-        if not isinstance(self.selected_item, InfoRectangleItem) or not style_name :
-            return
-
-        # Block signals on all formatting controls during update
-        controls_to_block = [
-            self.rect_style_combo, self.rect_h_align_combo, self.rect_v_align_combo,
-            self.rect_font_size_combo, self.rect_font_bold_button, self.rect_font_italic_button
-        ]
-        for control in controls_to_block:
-            control.blockSignals(True)
-
-        item_config = self.selected_item.config_data
-        style_applied_or_defaulted = False
-
-        if style_name == "Default":
-            default_settings = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
-            style_to_apply = default_settings.copy()
-            item_config.pop('text_style_ref', None)
-            self.selected_item.apply_style(style_to_apply)
-            style_applied_or_defaulted = True
-        elif style_name == "Custom":
-            # "Custom" selection means no change to item's actual style properties.
-            # UI should already reflect item_config. If item had a style_ref, it might be cleared
-            # if a manual edit happened. update_properties_panel handles setting to "Custom".
-            pass # Essentially, do nothing to the item's properties.
-        else: # A named style is selected
-            found_style = None
-            for s in self.config.get('text_styles', []):
-                if isinstance(s, dict) and s.get('name') == style_name:
-                    found_style = s
-                    break
-            if found_style:
-                # Pass the direct reference to the style, not a copy.
-                style_to_apply = found_style
-                # item_config['text_style_ref'] = style_name # This is now handled by InfoRectangleItem.apply_style
-                self.selected_item.apply_style(style_to_apply)
-                style_applied_or_defaulted = True
-            else: # Style not found (e.g. if list got corrupted, or "Custom" was somehow passed here)
-                 pass # Do nothing if style isn't found
-
-        # Unblock signals
-        for control in controls_to_block:
-            control.blockSignals(False)
-
-        if style_applied_or_defaulted:
-            # This will re-read item's config (now updated by apply_style)
-            # and set all UI controls, including the style_combo itself.
-            self.update_properties_panel()
-        elif style_name == "Custom": # Ensure combo stays on custom if that was selected
-             self.rect_style_combo.blockSignals(True)
-             self.rect_style_combo.setCurrentText("Custom")
-             self.rect_style_combo.blockSignals(False)
-
-
-    def _does_current_rect_match_default_style(self, rect_config):
-        # Use a clean copy of default settings for comparison
-        defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"].copy()
-        # Keys that define a text style
-        style_keys = ["font_color", "font_size", "font_style",
-                      "horizontal_alignment", "vertical_alignment", "padding"]
-        for key in style_keys:
-            # If a key is missing in rect_config, it's considered default for that key.
-            # So, compare rect_config.get(key, defaults[key]) with defaults[key].
-            if rect_config.get(key, defaults[key]) != defaults[key]:
-                return False
-        return True
-
-    def _find_matching_style_name(self, rect_config):
-        """Checks if the rect_config matches any saved style."""
-        styles = self.config.get('text_styles', [])
-        # Keys that define a text style
-        style_keys_to_check = ["font_color", "font_size", "font_style",
-                               "horizontal_alignment", "vertical_alignment", "padding"]
-        for style_dict in styles:
-            if not isinstance(style_dict, dict): continue # Skip if style is not a dict
-            match = True
-            for key in style_keys_to_check:
-                # Use .get for rect_config as well, to handle cases where a key might be missing
-                # and should implicitly use the default (which might match the style's value if it's also default)
-                # However, styles should ideally be complete.
-                # For a style to match, all its defined properties must match the item's properties.
-                # If item is missing a property defined in style, it's not a match unless style's value is default for it.
-                # This simple check assumes styles are fully defined for these keys.
-                item_value = rect_config.get(key)
-                style_value = style_dict.get(key)
-                if item_value != style_value:
-                    match = False
-                    break
-            if match:
-                return style_dict.get('name')
-        return None
+    # def _on_rect_format_changed(self, value=None): # MOVED to TextStyleManager
+    # def _on_rect_font_style_changed(self, checked=None): # MOVED to TextStyleManager
+    # def _on_rect_font_color_button_clicked(self): # MOVED to TextStyleManager
+    # def _get_contrasting_text_color(self, hex_color): # MOVED to TextStyleManager
+    # def _load_text_styles_into_dropdown(self): # MOVED to TextStyleManager
+    # def _save_current_text_style(self): # MOVED to TextStyleManager
+    # def _on_rect_style_selected(self, style_name): # MOVED to TextStyleManager
+    # def _does_current_rect_match_default_style(self, rect_config): # MOVED to TextStyleManager
+    # def _find_matching_style_name(self, rect_config): # MOVED to TextStyleManager
 
     def upload_image(self):
         self.item_operations.upload_image()

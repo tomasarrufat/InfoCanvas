@@ -101,6 +101,9 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
         self_app.item_map = {}
         self_app.selected_item = None
         self_app.current_mode = "edit" # Initialize current_mode before UI updates
+        # Initialize text_style_manager before UIBuilder
+        from src.text_style_manager import TextStyleManager # Local import
+        self_app.text_style_manager = TextStyleManager(self_app)
         # Ensure UIBuilder is called to initialize scene and other UI elements
         # This is critical as ItemOperations now depends on self.scene
         UIBuilder(self_app).build()
@@ -159,6 +162,11 @@ def app_for_initial_setup_test_environment(monkeypatch, tmp_path):
     monkeypatch.setattr(InteractiveToolApp, 'update_mode_ui', lambda self: None)
     monkeypatch.setattr(InteractiveToolApp, '_update_window_title', lambda self: None)
 
+    # Patch TextStyleManager for the app module so that InteractiveToolApp instances get a mock.
+    # Using a plain MagicMock without spec as a last resort.
+    from src.text_style_manager import TextStyleManager # Still good to have for context, though spec is removed
+    monkeypatch.setattr('app.TextStyleManager', lambda app_arg: MagicMock())
+
     # Ensure scene is at least a MagicMock before ItemOperations is initialized
     monkeypatch.setattr(InteractiveToolApp, 'scene', MagicMock(spec=QGraphicsScene), raising=False)
 
@@ -195,6 +203,7 @@ def test_initial_setup_new_project(app_for_initial_setup_test_environment, monke
     monkeypatch.setattr(InteractiveToolApp, 'close', env["mock_close_method"]) # Patch close before creating instance
 
     test_app_new_project = InteractiveToolApp() # __init__ calls _initial_project_setup
+    # text_style_manager should be mocked by the app_for_initial_setup_test_environment fixture's patch
     qtbot.addWidget(test_app_new_project)
 
     assert test_app_new_project.current_project_name == "new_project_test"
@@ -229,6 +238,7 @@ def test_initial_setup_load_project(app_for_initial_setup_test_environment, monk
     monkeypatch.setattr(InteractiveToolApp, 'close', env["mock_close_method"])
 
     test_app_load_project = InteractiveToolApp()
+    # text_style_manager should be mocked by the app_for_initial_setup_test_environment fixture's patch
     qtbot.addWidget(test_app_load_project)
 
     assert test_app_load_project.current_project_name == existing_project_name
@@ -658,192 +668,8 @@ def test_key_press_shortcuts_input_focused(mock_focus_widget, base_app_fixture):
 # --- Tests for Image Management (Should be empty or only non-movable tests) --- #
 
 # --- Tests for Text Formatting UI --- #
-
-@patch('app.QColorDialog.getColor')
-def test_font_color_change_updates_item_and_ui(mock_get_color, base_app_fixture, qtbot, monkeypatch):
-    app = base_app_fixture
-    app._load_text_styles_into_dropdown()
-    rect_id = "rect_for_color_test"
-    initial_color = "#EFEFEF"
-    default_text_config = utils.get_default_config()['defaults']['info_rectangle_text_display']
-    rect_config = {
-        "id": rect_id, "text": "Color Test", "width": 150, "height": 70,
-        "center_x": 50, "center_y": 50, "z_index": 1,
-        "font_color": initial_color,
-        "font_size": default_text_config['font_size'],
-        "font_style": default_text_config['font_style'],
-        "horizontal_alignment": default_text_config['horizontal_alignment'],
-        "vertical_alignment": default_text_config['vertical_alignment'],
-        "padding": default_text_config['padding'],
-        "background_color": default_text_config['background_color']
-    }
-    app.config.setdefault('info_rectangles', []).append(rect_config)
-    app.render_canvas_from_config()
-    app.selected_item = app.item_map.get(rect_id)
-    assert isinstance(app.selected_item, InfoRectangleItem), f"Item '{rect_id}' not found or not an InfoRectangleItem after render."
-    if app.selected_item:
-        app.selected_item.setSelected(True)
-    app.update_properties_panel()
-    initial_button_style_processed = app.rect_font_color_button.styleSheet().replace(" ", "").lower()
-    expected_initial_text_color = app._get_contrasting_text_color(initial_color)
-    assert f"background-color:{initial_color}".lower() in initial_button_style_processed
-    assert f"color:{expected_initial_text_color}".lower() in initial_button_style_processed
-    new_test_color_hex = "#12ab34"
-    mock_get_color.return_value = QColor(new_test_color_hex)
-    monkeypatch.setattr(app, 'save_config', MagicMock())
-    app._on_rect_font_color_button_clicked()
-    mock_get_color.assert_called_once()
-    args, _ = mock_get_color.call_args
-    assert args[0].name().lower() == initial_color.lower()
-    selected_item_config = app.selected_item.config_data
-    assert selected_item_config['font_color'].lower() == new_test_color_hex.lower()
-    assert selected_item_config.get('text_style_ref') is None
-    app.save_config.assert_called_once()
-    current_button_style_processed = app.rect_font_color_button.styleSheet().replace(" ", "").lower()
-    expected_text_color_on_button = app._get_contrasting_text_color(new_test_color_hex)
-    assert f"background-color:{new_test_color_hex};".lower() in current_button_style_processed
-    assert f"color:{expected_text_color_on_button};".lower() in current_button_style_processed
-    app.update_properties_panel()
-    custom_item_found = False
-    for i in range(app.rect_style_combo.count()):
-        if app.rect_style_combo.itemText(i) == "Custom":
-            custom_item_found = True
-            break
-    assert custom_item_found, "The 'Custom' item is not in rect_style_combo"
-    if not app._does_current_rect_match_default_style(selected_item_config) and \
-       not app._find_matching_style_name(selected_item_config):
-        assert app.rect_style_combo.currentText() == "Custom"
-
-
-def test_project_load_style_application_and_update(qtbot, monkeypatch, tmp_path):
-    mock_projects_base_dir = tmp_path / "mock_projects"
-    mock_projects_base_dir.mkdir()
-    monkeypatch.setattr(utils, 'PROJECTS_BASE_DIR', str(mock_projects_base_dir))
-    project_name = "StyleRefTestProject"
-    tmpproject_path = mock_projects_base_dir / project_name
-    tmpproject_path.mkdir()
-    tmpproject_images_path = tmpproject_path / utils.PROJECT_IMAGES_DIRNAME
-    tmpproject_images_path.mkdir()
-    style1_initial_color = '#111111'
-    style1_initial_font_size = '12px'
-    style1_initial_font_size_int = 12
-    style1_initial_v_align = 'top'
-    style1_initial_h_align = 'left'
-    style1_initial_font_style = 'normal'
-    style1_initial_padding = '4px'
-    mock_config = {
-        "project_name": project_name,
-        "background": {"color": "#FFFFFF", "width": 800, "height": 600},
-        "text_styles": [
-            {
-                'name': 'TestStyle1',
-                'font_color': style1_initial_color,
-                'font_size': style1_initial_font_size,
-                'vertical_alignment': style1_initial_v_align,
-                'horizontal_alignment': style1_initial_h_align,
-                'font_style': style1_initial_font_style,
-                'padding': style1_initial_padding
-            }
-        ],
-        "info_rectangles": [
-            {'id': 'rect1', 'text': 'Rect 1', 'center_x': 100, 'center_y': 100, 'width': 100, 'height': 50, 'text_style_ref': 'TestStyle1'},
-            {'id': 'rect2', 'text': 'Rect 2', 'center_x': 200, 'center_y': 200, 'width': 120, 'height': 60, 'text_style_ref': 'TestStyle1'}
-        ],
-        "images": []
-    }
-    config_file_path = tmpproject_path / utils.PROJECT_CONFIG_FILENAME
-    with open(config_file_path, 'w') as f:
-        json.dump(mock_config, f)
-    mock_dialog_instance = MockProjectManagerDialog(None)
-    mock_dialog_instance.set_outcome(QDialog.Accepted, project_name)
-    monkeypatch.setattr('app.ProjectManagerDialog', lambda *args, **kwargs: mock_dialog_instance)
-    app_instance = InteractiveToolApp()
-    qtbot.addWidget(app_instance)
-    app_instance.show()
-    assert app_instance.current_project_name == project_name
-    assert len(app_instance.item_map) == 2
-    item1 = app_instance.item_map.get('rect1')
-    item2 = app_instance.item_map.get('rect2')
-    assert isinstance(item1, InfoRectangleItem)
-    assert isinstance(item2, InfoRectangleItem)
-    assert item1.text_item.defaultTextColor() == QColor(style1_initial_color)
-    assert item1.text_item.font().pointSize() == style1_initial_font_size_int
-    assert item1.vertical_alignment == style1_initial_v_align
-    assert item1.horizontal_alignment == style1_initial_h_align
-    assert item1.font_style == style1_initial_font_style
-    assert item1.config_data['font_color'] == style1_initial_color
-    assert item1.config_data['font_size'] == style1_initial_font_size
-    assert item1.config_data['vertical_alignment'] == style1_initial_v_align
-    assert item1.config_data['horizontal_alignment'] == style1_initial_h_align
-    assert item1.config_data['font_style'] == style1_initial_font_style
-    assert item1.config_data['padding'] == style1_initial_padding
-    assert item1.config_data.get('text_style_ref') == 'TestStyle1'
-    assert item2.text_item.defaultTextColor() == QColor(style1_initial_color)
-    assert item2.text_item.font().pointSize() == style1_initial_font_size_int
-    assert item2.vertical_alignment == style1_initial_v_align
-    assert item2.horizontal_alignment == style1_initial_h_align
-    assert item2.font_style == style1_initial_font_style
-    assert item2.config_data['font_color'] == style1_initial_color
-    assert item2.config_data['font_size'] == style1_initial_font_size
-    assert item2.config_data['vertical_alignment'] == style1_initial_v_align
-    assert item2.config_data['horizontal_alignment'] == style1_initial_h_align
-    assert item2.config_data['font_style'] == style1_initial_font_style
-    assert item2.config_data['padding'] == style1_initial_padding
-    assert item2.config_data.get('text_style_ref') == 'TestStyle1'
-    shared_style_object = app_instance.config['text_styles'][0]
-    assert item1._style_config_ref is shared_style_object
-    assert item2._style_config_ref is shared_style_object
-    app_instance.scene.clearSelection()
-    item1.setSelected(True)
-    app_instance.on_graphics_item_selected(item1)
-    assert app_instance.rect_style_combo.isEnabled()
-    expected_styles_in_combo = ["Default", "Custom", "TestStyle1"]
-    combo_items = [app_instance.rect_style_combo.itemText(i) for i in range(app_instance.rect_style_combo.count())]
-    for style_name_expected in expected_styles_in_combo:
-        assert style_name_expected in combo_items
-    assert app_instance.rect_style_combo.currentText() == item1.config_data.get('text_style_ref')
-    assert item1.config_data.get('text_style_ref') == "TestStyle1"
-    style1_updated_color = '#222222'
-    style1_updated_font_size = '18px'
-    style1_updated_font_size_int = 18
-    style1_updated_v_align = 'bottom'
-    style1_updated_h_align = 'center'
-    style1_updated_font_style = 'bold'
-    style1_updated_padding = '10px'
-    shared_style_object['font_color'] = style1_updated_color
-    shared_style_object['font_size'] = style1_updated_font_size
-    shared_style_object['vertical_alignment'] = style1_updated_v_align
-    shared_style_object['horizontal_alignment'] = style1_updated_h_align
-    shared_style_object['font_style'] = style1_updated_font_style
-    shared_style_object['padding'] = style1_updated_padding
-    item1.apply_style(shared_style_object)
-    item2.apply_style(shared_style_object)
-    assert item1.text_item.defaultTextColor() == QColor(style1_updated_color)
-    assert item1.text_item.font().pointSize() == style1_updated_font_size_int
-    assert item1.vertical_alignment == style1_updated_v_align
-    assert item1.horizontal_alignment == style1_updated_h_align
-    assert item1.font_style == style1_updated_font_style
-    assert item1.config_data['font_color'] == style1_updated_color
-    assert item1.config_data['font_size'] == style1_updated_font_size
-    assert item1.config_data['vertical_alignment'] == style1_updated_v_align
-    assert item1.config_data['horizontal_alignment'] == style1_updated_h_align
-    assert item1.config_data['font_style'] == style1_updated_font_style
-    assert item1.config_data['padding'] == style1_updated_padding
-    assert item1.config_data.get('text_style_ref') == 'TestStyle1'
-    assert item2.text_item.defaultTextColor() == QColor(style1_updated_color)
-    assert item2.text_item.font().pointSize() == style1_updated_font_size_int
-    assert item2.vertical_alignment == style1_updated_v_align
-    assert item2.horizontal_alignment == style1_updated_h_align
-    assert item2.font_style == style1_updated_font_style
-    assert item2.config_data['font_color'] == style1_updated_color
-    assert item2.config_data['font_size'] == style1_updated_font_size
-    assert item2.config_data['vertical_alignment'] == style1_updated_v_align
-    assert item2.config_data['horizontal_alignment'] == style1_updated_h_align
-    assert item2.config_data['font_style'] == style1_updated_font_style
-    assert item2.config_data['padding'] == style1_updated_padding
-    assert item2.config_data.get('text_style_ref') == 'TestStyle1'
-    assert item1._style_config_ref is shared_style_object
-    assert item2._style_config_ref is shared_style_object
+# Test 'test_font_color_change_updates_item_and_ui' was REMOVED as it's now in test_text_style_manager.py
+# Test 'test_project_load_style_application_and_update' was REMOVED as it's now in test_text_style_manager.py
 
 def test_ctrl_multi_select_info_rectangles(base_app_fixture, monkeypatch):
     app = base_app_fixture
