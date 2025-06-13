@@ -26,6 +26,7 @@ from src.project_io import ProjectIO
 from src.ui_builder import UIBuilder
 from src.item_operations import ItemOperations
 from src.text_style_manager import TextStyleManager
+from src.exporter import HtmlExporter # <--- NEW IMPORT
 # --- Main Application Window ---
 class InteractiveToolApp(QMainWindow):
     def __init__(self):
@@ -671,153 +672,57 @@ class InteractiveToolApp(QMainWindow):
             self.save_config()
 
     # --- Export functionality ---
-    def _generate_view_html(self):
-        """Create an interactive HTML representation of the current view."""
-        bg = self.config.get('background', {}) if self.config else {}
-        lines = [
-            "<!DOCTYPE html>",
-            "<html>",
-            "<head>",
-            "<meta charset='utf-8'>",
-            f"<title>{html.escape(self.current_project_name or 'Project')}</title>",
-            "<style>#canvas{position:relative;}\n.hotspot{position:absolute;}\n.tooltip{position:absolute;border:1px solid #333;padding:2px;background:rgba(255,255,255,0.9);display:none;z-index:1000;}\n</style>",
-            "</head>",
-            "<body>",
-            f"<div id='canvas' style='width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;background-color:{bg.get('color','#FFFFFF')};'>",
-        ]
+    # def _generate_view_html(self): <--- THIS METHOD WILL BE ENTIRELY REMOVED
 
-        for img_conf in self.config.get('images', []):
-            scale = img_conf.get('scale', 1.0)
-            width = img_conf.get('original_width', 0) * scale
-            height = img_conf.get('original_height', 0) * scale
-            left = img_conf.get('center_x', 0) - width / 2
-            top = img_conf.get('center_y', 0) - height / 2
-            src = os.path.join('images', img_conf.get('path', ''))
-            lines.append(
-                f"<img src='{src}' style='position:absolute;left:{left}px;top:{top}px;width:{width}px;height:{height}px;'>"
-            )
-
-        for rect_conf in self.config.get('info_rectangles', []):
-            rect_width = rect_conf.get('width', 0)
-            rect_height = rect_conf.get('height', 0)
-            left = rect_conf.get('center_x', 0) - rect_width / 2
-            top = rect_conf.get('center_y', 0) - rect_height / 2
-
-            default_text_config = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
-
-            text_content = html.escape(rect_conf.get('text', '')).replace('\n', '<br>')
-            font_color = rect_conf.get('font_color', default_text_config['font_color'])
-            font_size_str = rect_conf.get('font_size', default_text_config['font_size'])
-            # Ensure font_size has 'px'
-            if isinstance(font_size_str, (int, float)) or font_size_str.isdigit():
-                font_size = f"{font_size_str}px"
-            else:
-                font_size = font_size_str # Assume it already has units like 'px'
-
-            text_bg_color = rect_conf.get('background_color', default_text_config['background_color']) # This is text area background
-            padding_str = rect_conf.get('padding', default_text_config['padding'])
-            if isinstance(padding_str, (int, float)) or padding_str.isdigit():
-                padding = f"{padding_str}px"
-            else:
-                padding = padding_str
-
-
-            h_align = rect_conf.get('horizontal_alignment', default_text_config['horizontal_alignment']) # left, center, right
-            v_align = rect_conf.get('vertical_alignment', default_text_config['vertical_alignment']) # top, center, bottom
-            font_style_prop = rect_conf.get('font_style', default_text_config['font_style']) # normal, bold, italic
-
-            # Outer div styles (the rectangle itself)
-            outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex;"
-
-            if v_align == "top":
-                outer_style += "align-items:flex-start;"
-            elif v_align == "center" or v_align == "middle": # Handle "middle" as center
-                outer_style += "align-items:center;"
-            elif v_align == "bottom":
-                outer_style += "align-items:flex-end;"
-
-            # Inner div styles (text container)
-            inner_style = f"width:100%; box-sizing:border-box; overflow-wrap:break-word; word-wrap:break-word;" # Ensure text wraps and padding is contained
-            inner_style += f"color:{font_color};"
-            inner_style += f"font-size:{font_size};"
-            inner_style += "background-color:transparent;" # Unconditionally set to transparent
-            inner_style += f"padding:{padding};"
-            inner_style += f"text-align:{h_align};"
-
-            if font_style_prop == "bold":
-                inner_style += "font-weight:bold;"
-            elif font_style_prop == "italic":
-                inner_style += "font-style:italic;"
-            # Note: "bold italic" would require both if InfoRectangleItem supports it. Assuming it's one or the other or normal.
-
-            # The 'hotspot' class is used by the JS for hover interactions.
-            # Ensure 'info-rectangle-export' class is also present.
-            # The data-text attribute is no longer needed as text is in an inner div.
-            inner_style += " display: none;" # Hide text content by default
-
-            lines.append(
-                f"<div class='hotspot info-rectangle-export' style='{outer_style}'>" # Ensure both classes
-                f"<div class='text-content' style='{inner_style}'>{text_content}</div>" # Added display:none here
-                f"</div>"
-            )
-
-        lines.append("</div>")
-        # Tooltip div is no longer needed for info rectangles with the new hover mechanism
-        # lines.append("<div id='tooltip' class='tooltip'></div>") # Keep this line if other things use it, or remove if only for old info rects
-        lines.append("<script>")
-        lines.append("document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){")
-        lines.append("  var textContentDiv = h.querySelector('.text-content');")
-        lines.append("  if (!textContentDiv) return;") # Skip if no text content
-        lines.append("  h.addEventListener('mouseenter', function(e){")
-        lines.append("    textContentDiv.style.display = 'block';") # Or 'flex' if it was originally flex
-        lines.append("  });")
-        # mousemove listener removed as per requirements
-        lines.append("  h.addEventListener('mouseleave', function(e){")
-        lines.append("    textContentDiv.style.display = 'none';")
-        lines.append("  });")
-        lines.append("});")
-        lines.append("</script>")
-        lines.append("</body></html>")
-        return "\n".join(lines)
-
-    def export_to_html(self, filepath=None):
+    def export_to_html(self, filepath=None): # Argument can be bool due to signal connection
         """Export the current project view to an HTML file."""
-        if isinstance(filepath, bool):
-            filepath = None
-        if not self.config:
-            QMessageBox.warning(self, "Export Error", "No project loaded to export.")
-            return
-        if filepath is None:
-            default_name = f"{self.current_project_name or 'project'}.html"
-            filepath, _ = QFileDialog.getSaveFileName(
+        if isinstance(filepath, bool) or filepath is None: # Handle signal default arg or no arg
+            if not self.current_project_name: # Check if a project is loaded
+                QMessageBox.warning(self, "Export Error", "No project loaded to export.")
+                return
+
+            default_name = f"{self.current_project_name}.html"
+            filepath_tuple = QFileDialog.getSaveFileName(
                 self,
                 "Export to HTML",
                 default_name,
                 "HTML Files (*.html)",
                 options=QFileDialog.Options()
             )
-            if not filepath or filepath is False:
+            # QFileDialog.getSaveFileName returns a tuple (filepath, filter)
+            # or (False, False) if PySide/PyQt version differences, or just empty string
+            if isinstance(filepath_tuple, tuple):
+                filepath = filepath_tuple[0]
+            else: # Should be caught by the 'if not filepath' check anyway
+                filepath = str(filepath_tuple)
+
+
+            if not filepath: # User cancelled dialog or no path entered
                 return
-        html = self._generate_view_html()
-        dest_dir = os.path.dirname(str(filepath))
-        dest_images = os.path.join(dest_dir, 'images')
-        src_images = self._get_project_images_folder(self.current_project_path)
-        os.makedirs(dest_images, exist_ok=True)
-        for img_conf in self.config.get('images', []):
-            rel = img_conf.get('path', '')
-            if not rel:
-                continue
-            src_file = os.path.join(src_images, rel)
-            dest_file = os.path.join(dest_images, rel)
-            os.makedirs(os.path.dirname(dest_file), exist_ok=True)
-            if os.path.exists(src_file):
-                shutil.copy2(src_file, dest_file)
+
+        # Ensure config is present (though current_project_name check above often implies config exists)
+        if not self.config:
+            QMessageBox.warning(self, "Export Error", "Configuration is missing. Cannot export.")
+            return
+
+        # Ensure current_project_path is set, which HtmlExporter will need
+        if not self.current_project_path:
+            QMessageBox.warning(self, "Export Error", "Current project path is not set. Cannot export.")
+            return
+
         try:
-            with open(str(filepath), 'w', encoding='utf-8') as f:
-                f.write(html)
-            QMessageBox.information(self, "Export Complete", f"Exported to {filepath}")
+            exporter = HtmlExporter(config=self.config, project_path=self.current_project_path)
+            success = exporter.export(str(filepath)) # Ensure filepath is a string
+
+            if success:
+                QMessageBox.information(self, "Export Complete", f"Exported to {filepath}")
+            else:
+                # HtmlExporter.export() now prints its own errors to console.
+                # A general message here is still good for the UI.
+                QMessageBox.critical(self, "Export Error", f"Failed to export HTML to {filepath}. Check console for details.")
         except Exception as e:
-            QMessageBox.critical(self, "Export Error", f"Failed to write HTML file: {e}")
+            # Catch any unexpected errors during exporter instantiation or call
+            QMessageBox.critical(self, "Export Error", f"An unexpected error occurred during export: {e}")
 
 
     def keyPressEvent(self, event):
