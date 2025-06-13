@@ -163,7 +163,8 @@ class UIBuilder:
         h_align_layout.addWidget(QLabel("Horizontal Align:"))
         app.rect_h_align_combo = QComboBox()
         app.rect_h_align_combo.addItems(["Left", "Center", "Right"])
-        app.rect_h_align_combo.activated[str].connect(app._on_rect_format_changed)
+        # Changed: Connect to text_style_manager.handle_format_change
+        app.rect_h_align_combo.currentTextChanged.connect(app.text_style_manager.handle_format_change)
         h_align_layout.addWidget(app.rect_h_align_combo)
         text_format_layout.addLayout(h_align_layout)
 
@@ -171,7 +172,8 @@ class UIBuilder:
         v_align_layout.addWidget(QLabel("Vertical Align:"))
         app.rect_v_align_combo = QComboBox()
         app.rect_v_align_combo.addItems(["Top", "Center", "Bottom"])
-        app.rect_v_align_combo.activated[str].connect(app._on_rect_format_changed)
+        # Changed: Connect to text_style_manager.handle_format_change
+        app.rect_v_align_combo.currentTextChanged.connect(app.text_style_manager.handle_format_change)
         v_align_layout.addWidget(app.rect_v_align_combo)
         text_format_layout.addLayout(v_align_layout)
 
@@ -185,19 +187,30 @@ class UIBuilder:
         app.rect_font_size_combo.addItems(common_font_sizes)
         app.rect_font_size_combo.setEditable(True)
         app.rect_font_size_combo.lineEdit().setPlaceholderText("px")
-        app.rect_font_size_combo.activated[str].connect(app._on_rect_format_changed)
+        # Changed: Connect to text_style_manager.handle_format_change. Using currentTextChanged for consistency.
+        app.rect_font_size_combo.currentTextChanged.connect(app.text_style_manager.handle_format_change)
         font_size_layout.addWidget(app.rect_font_size_combo)
         text_format_layout.addLayout(font_size_layout)
 
         font_style_layout = QHBoxLayout()
         app.rect_font_bold_button = QPushButton("Bold")
         app.rect_font_bold_button.setCheckable(True)
-        app.rect_font_bold_button.toggled.connect(app._on_rect_font_style_changed)
+        # Changed: Connect to text_style_manager.handle_font_style_change, passing sender
+        app.rect_font_bold_button.clicked.connect(
+            lambda checked: app.text_style_manager.handle_font_style_change(
+                checked=checked, sender_widget=app.rect_font_bold_button
+            )
+        )
         font_style_layout.addWidget(app.rect_font_bold_button)
 
         app.rect_font_italic_button = QPushButton("Italic")
         app.rect_font_italic_button.setCheckable(True)
-        app.rect_font_italic_button.toggled.connect(app._on_rect_font_style_changed)
+        # Changed: Connect to text_style_manager.handle_font_style_change, passing sender
+        app.rect_font_italic_button.clicked.connect(
+            lambda checked: app.text_style_manager.handle_font_style_change(
+                checked=checked, sender_widget=app.rect_font_italic_button
+            )
+        )
         font_style_layout.addWidget(app.rect_font_italic_button)
         text_format_layout.addLayout(font_style_layout)
 
@@ -206,19 +219,24 @@ class UIBuilder:
         app.rect_font_color_button = QPushButton("Select Color")
         app.rect_font_color_button.setToolTip("Click to select text color")
         app.rect_font_color_button.setStyleSheet("background-color: #000000; color: white;")
-        app.rect_font_color_button.clicked.connect(app._on_rect_font_color_button_clicked)
+        # Changed: Connect to text_style_manager.handle_font_color_change
+        app.rect_font_color_button.clicked.connect(app.text_style_manager.handle_font_color_change)
         font_color_layout.addWidget(app.rect_font_color_button)
         text_format_layout.addLayout(font_color_layout)
 
         style_selection_layout = QHBoxLayout()
         style_selection_layout.addWidget(QLabel("Text Style:"))
         app.rect_style_combo = QComboBox()
-        app.rect_style_combo.activated[str].connect(app._on_rect_style_selected)
+        # Changed: Connect to text_style_manager.handle_style_selection
+        app.rect_style_combo.currentIndexChanged.connect(
+            lambda: app.text_style_manager.handle_style_selection(app.rect_style_combo.currentText())
+        )
         style_selection_layout.addWidget(app.rect_style_combo)
         text_format_layout.addLayout(style_selection_layout)
 
-        app.rect_save_style_button = QPushButton("Save Current as Style")
-        app.rect_save_style_button.clicked.connect(app._save_current_text_style)
+        app.rect_save_style_button = QPushButton("Save Current as Style") # Renamed from save_style_button for clarity
+        # Changed: Connect to text_style_manager.save_current_item_style
+        app.rect_save_style_button.clicked.connect(app.text_style_manager.save_current_item_style)
         text_format_layout.addWidget(app.rect_save_style_button)
 
         rect_props_layout.addWidget(text_format_group)

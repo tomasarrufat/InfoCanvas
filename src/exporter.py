@@ -1,0 +1,168 @@
+import os
+import shutil
+import html
+from . import utils # Assuming utils.py is in the same src directory
+
+class HtmlExporter:
+    def __init__(self, config, project_path):
+        self.config = config
+        self.project_path = project_path
+        self.default_text_config = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+
+    def _get_project_images_folder(self):
+        if not self.project_path:
+            print("Error: Project path is not set in HtmlExporter.")
+            return None
+        return os.path.join(self.project_path, utils.PROJECT_IMAGES_DIRNAME)
+
+    def _copy_project_images(self, output_dir):
+        if not self.config:
+            print("Warning: No config loaded in HtmlExporter, cannot copy images.")
+            return False
+        src_images_folder = self._get_project_images_folder()
+        if not src_images_folder or not os.path.isdir(src_images_folder):
+            print(f"Warning: Source images folder '{src_images_folder}' not found or not a directory. No images will be copied.")
+            return False
+        dest_images_folder = os.path.join(output_dir, 'images')
+        os.makedirs(dest_images_folder, exist_ok=True)
+        copied_any = False
+        image_configs = self.config.get('images', [])
+        if not image_configs:
+            print("No images listed in config to copy.")
+            return True # No images to copy, considered successful.
+
+        for img_conf in image_configs:
+            relative_image_path = img_conf.get('path', '')
+            if not relative_image_path:
+                print(f"Warning: Image config missing path for ID '{img_conf.get('id', 'Unknown')}'. Skipping copy.")
+                continue
+            src_file_path = os.path.join(src_images_folder, relative_image_path)
+            dest_file_path = os.path.join(dest_images_folder, relative_image_path)
+            os.makedirs(os.path.dirname(dest_file_path), exist_ok=True)
+            if os.path.exists(src_file_path):
+                try:
+                    shutil.copy2(src_file_path, dest_file_path)
+                    copied_any = True # Mark true if at least one copy action is attempted
+                except Exception as e:
+                    print(f"Error copying image '{src_file_path}' to '{dest_file_path}': {e}")
+                    # Depending on desired behavior, you might want to return False here or collect errors.
+            else:
+                print(f"Warning: Source image file not found: '{src_file_path}'. Skipping copy.")
+
+        # Return True if the process completed, even if some individual files were missing.
+        # The calling function can check logs for specific errors if needed.
+        return True
+
+
+    def _generate_html_content(self):
+        # ... (previous implementation from step 2 - content is long, so omitted for brevity in this subtask description) ...
+        # For the subtask runner, assume this method is already correctly defined as per previous steps.
+        # Actual content of _generate_html_content:
+        project_name = self.config.get('project_name', 'Project')
+        bg = self.config.get('background', {})
+        lines = [
+            "<!DOCTYPE html>", "<html>", "<head>", "<meta charset='utf-8'>",
+            f"<title>{html.escape(project_name)}</title>",
+            "<style>", "#canvas{position:relative;}", ".hotspot{position:absolute;}",
+            ".tooltip{position:absolute;border:1px solid #333;padding:2px;background:rgba(255,255,255,0.9);display:none;z-index:1000;}",
+            "</style>", "</head>", "<body>",
+            f"<div id='canvas' style='width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;background-color:{bg.get('color','#FFFFFF')};'>",
+        ]
+        for img_conf in self.config.get('images', []):
+            scale = img_conf.get('scale', 1.0)
+            width = img_conf.get('original_width', 0) * scale
+            height = img_conf.get('original_height', 0) * scale
+            left = img_conf.get('center_x', 0) - width / 2
+            top = img_conf.get('center_y', 0) - height / 2
+            src = os.path.join('images', img_conf.get('path', ''))
+            lines.append(
+                f"<img src='{html.escape(src)}' style='position:absolute;left:{left}px;top:{top}px;width:{width}px;height:{height}px;'>"
+            )
+        for rect_conf in self.config.get('info_rectangles', []):
+            rect_width = rect_conf.get('width', 0)
+            rect_height = rect_conf.get('height', 0)
+            left = rect_conf.get('center_x', 0) - rect_width / 2
+            top = rect_conf.get('center_y', 0) - rect_height / 2
+            text_content = html.escape(rect_conf.get('text', '')).replace('\n', '<br>')
+            font_color = rect_conf.get('font_color', self.default_text_config['font_color'])
+            font_size_str = rect_conf.get('font_size', self.default_text_config['font_size'])
+            if isinstance(font_size_str, (int, float)) or str(font_size_str).isdigit(): font_size = f"{font_size_str}px"
+            else: font_size = font_size_str
+            padding_str = rect_conf.get('padding', self.default_text_config['padding'])
+            if isinstance(padding_str, (int, float)) or str(padding_str).isdigit(): padding = f"{padding_str}px"
+            else: padding = padding_str
+            h_align = rect_conf.get('horizontal_alignment', self.default_text_config['horizontal_alignment'])
+            v_align = rect_conf.get('vertical_alignment', self.default_text_config['vertical_alignment'])
+            font_style_prop = rect_conf.get('font_style', self.default_text_config['font_style'])
+            outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex; box-sizing: border-box;"
+            if v_align == "top": outer_style += "align-items:flex-start;"
+            elif v_align == "center" or v_align == "middle": outer_style += "align-items:center;"
+            elif v_align == "bottom": outer_style += "align-items:flex-end;"
+            inner_style_list = [
+                "width:100%;", "box-sizing:border-box;", "overflow-wrap:break-word;", "word-wrap:break-word;",
+                f"color:{font_color};", f"font-size:{font_size};", "background-color:transparent;",
+                f"padding:{padding};", f"text-align:{h_align};"
+            ]
+            if font_style_prop == "bold": inner_style_list.append("font-weight:bold;")
+            elif font_style_prop == "italic": inner_style_list.append("font-style:italic;")
+            current_inner_style = "".join(inner_style_list)
+            text_content_div_style = current_inner_style + " display: none;"
+            lines.append(
+                f"<div class='hotspot info-rectangle-export' style='{outer_style}'>"
+                f"<div class='text-content' style='{text_content_div_style}'>{text_content}</div></div>"
+            )
+        lines.extend([
+            "</div>", "<script>",
+            "document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
+            "  var textContentDiv = h.querySelector('.text-content');",
+            "  if (!textContentDiv) return;",
+            "  h.addEventListener('mouseenter', function(e){ textContentDiv.style.display = 'block'; });",
+            "  h.addEventListener('mouseleave', function(e){ textContentDiv.style.display = 'none'; });",
+            "});", "</script>", "</body></html>"
+        ])
+        return "\n".join(lines)
+
+    def export(self, output_html_path):
+        """
+        Exports the project view to an HTML file and copies associated images.
+
+        Args:
+            output_html_path (str): The full path where the HTML file will be saved.
+
+        Returns:
+            bool: True if export was successful (HTML written, images attempted to be copied),
+                  False otherwise (e.g., error writing HTML).
+        """
+        if not output_html_path:
+            print("Error: Output HTML path is not provided to HtmlExporter.export().")
+            return False
+
+        html_content = self._generate_html_content()
+        output_dir = os.path.dirname(str(output_html_path))
+
+        # Create output directory if it doesn't exist (e.g., if output_html_path is "new_folder/export.html")
+        # This should usually be handled by QFileDialog or the caller, but good to ensure.
+        if not os.path.exists(output_dir):
+            try:
+                os.makedirs(output_dir, exist_ok=True)
+            except Exception as e:
+                print(f"Error creating output directory '{output_dir}': {e}")
+                return False # Cannot proceed if output directory cannot be created
+
+        # Copy images
+        # The success of image copying might not necessarily halt the HTML export,
+        # but errors/warnings will be printed by _copy_project_images.
+        self._copy_project_images(output_dir) # We can check its return value if needed
+
+        # Write the HTML file
+        try:
+            with open(str(output_html_path), 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            print(f"HTML content successfully written to {output_html_path}")
+            return True
+        except Exception as e:
+            print(f"Error writing HTML file to '{output_html_path}': {e}")
+            return False
+
+if __name__ == '__main__':
+    print("HtmlExporter class defined. To be used by the main application.")
