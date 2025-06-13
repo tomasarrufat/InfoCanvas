@@ -25,6 +25,7 @@ from src.project_manager_dialog import ProjectManagerDialog # For mocking
 from src.draggable_image_item import DraggableImageItem # Added
 from src.info_rectangle_item import InfoRectangleItem # Added
 from src.project_io import ProjectIO
+from src.ui_builder import UIBuilder
 
 # Mock global functions or classes that interact with filesystem or UI dialogs early
 @pytest.fixture(autouse=True)
@@ -101,12 +102,6 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
         self_app.selected_item = None
         self_app.current_mode = "edit" # Initialize current_mode before UI updates
 
-        self_app.setup_ui()
-        self_app.populate_controls_from_config()
-        self_app.render_canvas_from_config() # This populates item_map
-        self_app._load_text_styles_into_dropdown() # Populate style combo
-        self_app.update_mode_ui() # This calls update_properties_panel
-        self_app._update_window_title()
         return True
 
     monkeypatch.setattr(InteractiveToolApp, "_initial_project_setup", mock_successful_initial_setup)
@@ -153,7 +148,7 @@ def app_for_initial_setup_test_environment(monkeypatch, tmp_path):
         closed_flags['closed'] = True
 
     # Prevent UI methods from running during these specific tests
-    monkeypatch.setattr(InteractiveToolApp, 'setup_ui', lambda self: None)
+    monkeypatch.setattr(UIBuilder, 'build', lambda self: None)
     monkeypatch.setattr(InteractiveToolApp, 'populate_controls_from_config', lambda self: None)
     monkeypatch.setattr(InteractiveToolApp, 'render_canvas_from_config', lambda self: None)
     monkeypatch.setattr(InteractiveToolApp, 'update_mode_ui', lambda self: None)
