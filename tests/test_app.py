@@ -477,100 +477,6 @@ def test_update_selected_rect_dimensions(base_app_fixture, monkeypatch):
     selected_rect_item.update_geometry_from_config.assert_called_once()
 
 
-# --- Tests for Z-Order Manipulation --- #
-
-@patch('app.utils.bring_to_front')
-def test_bring_to_front_action(mock_util_bring_to_front, base_app_fixture, monkeypatch):
-    app = base_app_fixture
-    app.selected_item = MagicMock()
-    monkeypatch.setattr(app, 'save_config', MagicMock())
-    app.bring_to_front()
-    mock_util_bring_to_front.assert_called_once_with(app.selected_item)
-    app.save_config.assert_called_once()
-
-@patch('app.utils.send_to_back')
-def test_send_to_back_action(mock_util_send_to_back, base_app_fixture, monkeypatch):
-    app = base_app_fixture
-    app.selected_item = MagicMock()
-    monkeypatch.setattr(app, 'save_config', MagicMock())
-    app.send_to_back()
-    mock_util_send_to_back.assert_called_once_with(app.selected_item)
-    app.save_config.assert_called_once()
-
-@patch('app.utils.bring_forward')
-def test_bring_forward_action(mock_util_bring_forward, base_app_fixture, monkeypatch):
-    app = base_app_fixture
-    app.selected_item = MagicMock()
-    monkeypatch.setattr(app, 'save_config', MagicMock())
-    app.bring_forward()
-    mock_util_bring_forward.assert_called_once_with(app.selected_item)
-    app.save_config.assert_called_once()
-
-@patch('app.utils.send_backward')
-def test_send_backward_action(mock_util_send_backward, base_app_fixture, monkeypatch):
-    app = base_app_fixture
-    app.selected_item = MagicMock()
-    monkeypatch.setattr(app, 'save_config', MagicMock())
-    app.send_backward()
-    mock_util_send_backward.assert_called_once_with(app.selected_item)
-    app.save_config.assert_called_once()
-
-
-def test_z_order_actions_no_selected_item(base_app_fixture, monkeypatch):
-    app = base_app_fixture
-    app.selected_item = None
-    mock_btf = MagicMock()
-    monkeypatch.setattr('src.utils.bring_to_front', mock_btf)
-    mock_stb = MagicMock()
-    monkeypatch.setattr('src.utils.send_to_back', mock_stb)
-    mock_bf = MagicMock()
-    monkeypatch.setattr('src.utils.bring_forward', mock_bf)
-    mock_sb = MagicMock()
-    monkeypatch.setattr('src.utils.send_backward', mock_sb)
-    mock_save = MagicMock()
-    monkeypatch.setattr(app, 'save_config', mock_save)
-    app.bring_to_front()
-    app.send_to_back()
-    app.bring_forward()
-    app.send_backward()
-    mock_btf.assert_not_called()
-    mock_stb.assert_not_called()
-    mock_bf.assert_not_called()
-    mock_sb.assert_not_called()
-    mock_save.assert_not_called()
-
-
-# --- Tests for Keyboard Shortcuts (those remaining in app.py or general handling) --- #
-
-def create_key_event(key, modifiers=Qt.NoModifier, text=""):
-    return QKeyEvent(QKeyEvent.KeyPress, key, modifiers, text)
-
-@patch('app.QApplication.focusWidget')
-def test_key_press_shortcuts_wrong_mode(mock_focus_widget, base_app_fixture):
-    app = base_app_fixture
-    mock_focus_widget.return_value = app.view
-    app.current_mode = "view"
-    app.selected_item = MagicMock(spec=InfoRectangleItem)
-    app.clipboard_data = None
-    # Mock the item_operations methods directly to check if they are NOT called
-    app.item_operations.copy_selected_item_to_clipboard = MagicMock(return_value=False)
-    app.item_operations.paste_item_from_clipboard = MagicMock(return_value=False)
-    app.item_operations.delete_selected_item_on_canvas = MagicMock(return_value=False)
-
-    event_copy = create_key_event(Qt.Key_C, modifiers=Qt.ControlModifier)
-    app.keyPressEvent(event_copy)
-    app.item_operations.copy_selected_item_to_clipboard.assert_not_called()
-    assert not event_copy.isAccepted()
-
-    event_paste = create_key_event(Qt.Key_V, modifiers=Qt.ControlModifier)
-    app.keyPressEvent(event_paste)
-    app.item_operations.paste_item_from_clipboard.assert_not_called()
-    assert not event_paste.isAccepted()
-
-    event_delete = create_key_event(Qt.Key_Delete)
-    app.keyPressEvent(event_delete)
-    app.item_operations.delete_selected_item_on_canvas.assert_not_called()
-    assert not event_delete.isAccepted()
 
 
 # --- Tests for Application State Reset --- #
@@ -635,34 +541,6 @@ def test_handle_deleted_other_project(base_app_fixture, monkeypatch):
     app._handle_deleted_current_project("some_other_deleted_project")
     mock_reset_method.assert_not_called()
 
-@patch('app.QApplication.focusWidget')
-def test_key_press_shortcuts_input_focused(mock_focus_widget, base_app_fixture):
-    app = base_app_fixture
-    mock_focus_widget.return_value = MagicMock(spec=['__class__', '__name__'])
-    from PyQt5.QtWidgets import QLineEdit # Local import
-    mock_focus_widget.return_value.__class__ = QLineEdit
-    app.current_mode = "edit"
-    app.selected_item = MagicMock(spec=InfoRectangleItem)
-    app.clipboard_data = None
-    # Mock item_operations methods
-    app.item_operations.copy_selected_item_to_clipboard = MagicMock(return_value=False)
-    app.item_operations.paste_item_from_clipboard = MagicMock(return_value=False)
-    app.item_operations.delete_selected_item_on_canvas = MagicMock(return_value=False)
-
-    event_copy = create_key_event(Qt.Key_C, modifiers=Qt.ControlModifier)
-    app.keyPressEvent(event_copy)
-    app.item_operations.copy_selected_item_to_clipboard.assert_not_called()
-    assert not event_copy.isAccepted()
-
-    event_paste = create_key_event(Qt.Key_V, modifiers=Qt.ControlModifier)
-    app.keyPressEvent(event_paste)
-    app.item_operations.paste_item_from_clipboard.assert_not_called()
-    assert not event_paste.isAccepted()
-
-    event_delete = create_key_event(Qt.Key_Delete)
-    app.keyPressEvent(event_delete)
-    app.item_operations.delete_selected_item_on_canvas.assert_not_called()
-    assert not event_delete.isAccepted()
 
 
 # --- Tests for Image Management (Should be empty or only non-movable tests) --- #
