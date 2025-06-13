@@ -1,4 +1,4 @@
-# Interactive Image Tool: Requirements & JSON Configuration
+# InfoCanvas: Requirements & JSON Configuration
 
 This document outlines the requirements for a web-based Python tool designed for creating interactive images with informational overlays. It also proposes a JSON format for storing the configuration data.
 

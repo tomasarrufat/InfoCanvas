@@ -9,7 +9,7 @@ from .info_rectangle_item import InfoRectangleItem
 
 
 class CanvasManager(QObject):
-    """Encapsulates QGraphicsScene related logic for InteractiveToolApp."""
+    """Encapsulates QGraphicsScene related logic for InfoCanvasApp."""
 
     selection_changed = pyqtSignal()
 
