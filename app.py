@@ -330,7 +330,7 @@ class InfoCanvasApp(QMainWindow):
 
             h_align = rect_conf.get('horizontal_alignment', default_text_config['horizontal_alignment'])
             v_align = rect_conf.get('vertical_alignment', default_text_config['vertical_alignment'])
-            font_style = rect_conf.get('font_style', default_text_config['font_style'])
+            font_style = rect_conf.get('font_style', default_text_config.get('font_style', 'normal'))
             font_size = str(rect_conf.get('font_size', default_text_config['font_size'])).replace("px", "")
 
             self.rect_h_align_combo.setCurrentText(h_align.capitalize())

@@ -38,7 +38,7 @@ class InfoRectangleItem(QGraphicsObject):
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
         self.vertical_alignment = self.config_data.get('vertical_alignment', text_format_defaults['vertical_alignment'])
         self.horizontal_alignment = self.config_data.get('horizontal_alignment', text_format_defaults['horizontal_alignment'])
-        self.font_style = self.config_data.get('font_style', text_format_defaults['font_style'])
+        self.font_style = self.config_data.get('font_style', text_format_defaults.get('font_style', 'normal'))
 
         self.setFlags(QGraphicsItem.ItemIsSelectable |
                       QGraphicsItem.ItemIsMovable |
@@ -292,7 +292,7 @@ class InfoRectangleItem(QGraphicsObject):
 
         self.vertical_alignment = self._get_style_value('vertical_alignment', text_format_defaults['vertical_alignment'])
         self.horizontal_alignment = self._get_style_value('horizontal_alignment', text_format_defaults['horizontal_alignment'])
-        self.font_style = self._get_style_value('font_style', text_format_defaults['font_style'])
+        self.font_style = self._get_style_value('font_style', text_format_defaults.get('font_style', 'normal'))
         font_color = self._get_style_value('font_color', text_format_defaults['font_color'])
         font_size_str = self._get_style_value('font_size', text_format_defaults['font_size'])
 

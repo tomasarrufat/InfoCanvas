@@ -44,7 +44,7 @@ def create_item_with_scene(default_text_config_values, qtbot, mock_parent_window
             'font_color': default_text_config_values['font_color'], 'font_size': default_text_config_values['font_size'],
             'background_color': default_text_config_values['background_color'], 'padding': default_text_config_values['padding'],
             'vertical_alignment': default_text_config_values['vertical_alignment'],
-            'horizontal_alignment': default_text_config_values['horizontal_alignment'], 'font_style': default_text_config_values['font_style'],
+            'horizontal_alignment': default_text_config_values['horizontal_alignment'],
         }
         if custom_config:
             base_config.update(custom_config)
@@ -461,13 +461,10 @@ def test_apply_style_key_precedence(item_fixture, default_text_config_values):
 
     assert item.config_data['text'] == "Styled Text"
     assert item.config_data['font_size'] == "20px"
-    assert item.config_data['font_style'] == default_text_config_values['font_style']
+    assert 'font_style' not in item.config_data
     assert item.text_item.toPlainText() == "Styled Text"
     assert item.text_item.font().pointSize() == 20
-    if default_text_config_values['font_style'] == "normal":
-        assert not item.text_item.font().bold() and not item.text_item.font().italic()
-    elif default_text_config_values['font_style'] == "bold":
-        assert item.text_item.font().bold()
+    assert not item.text_item.font().bold() and not item.text_item.font().italic()
 
 def test_apply_style_emits_properties_changed(item_fixture):
     item = item_fixture

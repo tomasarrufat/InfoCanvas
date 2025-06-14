@@ -36,8 +36,7 @@ def get_default_config():
                 "box_width": 200,
                 "padding": "5px",
                 "vertical_alignment": "top",
-                "horizontal_alignment": "left",
-                "font_style": "normal"
+                "horizontal_alignment": "left"
             }
         },
         "text_styles": [],

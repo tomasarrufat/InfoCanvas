@@ -83,7 +83,7 @@ class TextStyleManager:
             "name": style_name,
             "font_color": item_config.get('font_color', default_display_conf['font_color']),
             "font_size": item_config.get('font_size', default_display_conf['font_size']),
-            "font_style": item_config.get('font_style', default_display_conf['font_style']),
+            "font_style": item_config.get('font_style', default_display_conf.get('font_style', 'normal')),
             "horizontal_alignment": item_config.get('horizontal_alignment', default_display_conf['horizontal_alignment']),
             "vertical_alignment": item_config.get('vertical_alignment', default_display_conf['vertical_alignment']),
             "padding": item_config.get('padding', default_display_conf['padding']),

@@ -93,7 +93,7 @@ class HtmlExporter:
             else: padding = padding_str
             h_align = rect_conf.get('horizontal_alignment', self.default_text_config['horizontal_alignment'])
             v_align = rect_conf.get('vertical_alignment', self.default_text_config['vertical_alignment'])
-            font_style_prop = rect_conf.get('font_style', self.default_text_config['font_style'])
+            font_style_prop = rect_conf.get('font_style', self.default_text_config.get('font_style', 'normal'))
             outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex; box-sizing: border-box;"
             if v_align == "top": outer_style += "align-items:flex-start;"
             elif v_align == "center" or v_align == "middle": outer_style += "align-items:center;"
