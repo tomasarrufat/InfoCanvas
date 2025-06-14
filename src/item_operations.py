@@ -209,6 +209,7 @@ class ItemOperations:
             "width": default_display_conf.get("box_width", 150), # Use resolved default
             "height": 50, # Default height
             "text": "New Information",
+            "show_on_hover": True,
             "z_index": self._get_next_z_index(), # Local method
         }
 

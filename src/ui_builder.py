@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QDockWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QComboBox, QSpinBox, QTextEdit, QAction, QGraphicsScene,
-    QGraphicsView, QDoubleSpinBox, QMessageBox, QStackedLayout
+    QGraphicsView, QDoubleSpinBox, QMessageBox, QStackedLayout, QCheckBox
 )
 try:
     from PyQt5.QtWebEngineWidgets import QWebEngineView
@@ -251,6 +251,10 @@ class UIBuilder:
         app.info_rect_height_input.valueChanged.connect(app.update_selected_rect_dimensions)
         rect_height_layout.addWidget(app.info_rect_height_input)
         rect_props_layout.addLayout(rect_height_layout)
+
+        app.rect_show_on_hover_checkbox = QCheckBox("Show text on hover only")
+        app.rect_show_on_hover_checkbox.stateChanged.connect(app.update_selected_rect_show_on_hover)
+        rect_props_layout.addWidget(app.rect_show_on_hover_checkbox)
 
         app.delete_info_rect_button = QPushButton("Delete Selected Info Rect")
         app.delete_info_rect_button.setStyleSheet("background-color: #dc3545; color: white;")

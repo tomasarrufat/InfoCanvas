@@ -252,6 +252,7 @@ def test_add_info_rectangle(item_ops, mock_app_instance, monkeypatch):
     expected_width = mock_app_instance.config.get("defaults", {}).get("info_rectangle_text_display", {}).get("box_width", 150)
     assert new_rect_config['width'] == expected_width
     assert new_rect_config['height'] == 50
+    assert new_rect_config['show_on_hover'] is True
     assert new_rect_config['z_index'] == 5
     assert new_rect_config['id'] in mock_app_instance.item_map
     new_item = mock_app_instance.item_map[new_rect_config['id']]
