@@ -1,5 +1,6 @@
 import sys
 import os
+import copy
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox, QDialog
@@ -30,6 +31,7 @@ class InfoCanvasApp(QMainWindow):
         self.current_project_name = None
         self.current_project_path = None
         self.config = {}
+        self.config_history = []
         self.clipboard_data = None
         self.chronologically_first_selected_item = None
 
@@ -70,6 +72,7 @@ class InfoCanvasApp(QMainWindow):
         self.current_project_name = None
         self.current_project_path = None
         self.config = {}
+        self.config_history = []
         self.selected_item = None
         self.item_map.clear()
         if hasattr(self, 'scene') and self.scene:
@@ -156,6 +159,7 @@ class InfoCanvasApp(QMainWindow):
         self.current_project_name = self.project_io.current_project_name
         self.current_project_path = self.project_io.current_project_path
         self.config = self.project_io.config
+        self.config_history = [copy.deepcopy(self.config)]
         if success:
             self._update_window_title()
             if hasattr(self, 'edit_mode_controls_widget'):
@@ -167,15 +171,18 @@ class InfoCanvasApp(QMainWindow):
     def _load_config_for_current_project(self):
         return self.project_io.load_config_for_current_project()
 
-    def save_config(self, config_data_to_save=None):
+    def save_config(self, config_data_to_save=None, push_to_history=True):
         config_to_save = config_data_to_save if config_data_to_save is not None else self.config
-        return self.project_io.save_config(
+        result = self.project_io.save_config(
             self.current_project_path,
             config_to_save,
             item_map=self.item_map,
             status_bar=self.statusBar() if hasattr(self, "statusBar") else None,
             current_project_name=self.current_project_name,
         )
+        if push_to_history and result:
+            self.config_history.append(copy.deepcopy(config_to_save))
+        return result
 
     def setup_ui(self):
         UIBuilder(self).build()
@@ -532,6 +539,17 @@ class InfoCanvasApp(QMainWindow):
         except Exception as e:
             # Catch any unexpected errors during exporter instantiation or call
             QMessageBox.critical(self, "Export Error", f"An unexpected error occurred during export: {e}")
+
+    def undo_last_action(self):
+        """Revert to the previous saved configuration if available."""
+        if len(self.config_history) < 2:
+            return
+        self.config_history.pop()
+        self.config = copy.deepcopy(self.config_history[-1])
+        self.populate_controls_from_config()
+        self.render_canvas_from_config()
+        self.save_config(push_to_history=False)
+
 
 
     def keyPressEvent(self, a0):

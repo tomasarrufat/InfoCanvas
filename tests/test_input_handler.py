@@ -139,3 +139,41 @@ def test_key_press_shortcuts_input_focused(mock_focus_widget, base_app_fixture):
     handled = handler.handle_key_press(event_delete)
     app.item_operations.delete_selected_item_on_canvas.assert_not_called()
     assert not event_delete.isAccepted() and handled is False
+
+
+@patch('src.input_handler.QApplication.focusWidget')
+def test_ctrl_z_triggers_undo(mock_focus_widget, base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    handler = app.input_handler
+    mock_focus_widget.return_value = app.view
+    app.current_mode = "edit"
+    undo_mock = MagicMock()
+    monkeypatch.setattr(app, 'undo_last_action', undo_mock)
+    event = create_key_event(Qt.Key_Z, modifiers=Qt.ControlModifier)
+    handled = handler.handle_key_press(event)
+    undo_mock.assert_called_once()
+    assert event.isAccepted() and handled is True
+
+
+@patch('src.input_handler.QApplication.focusWidget')
+def test_ctrl_z_ignored_wrong_mode_or_input(mock_focus_widget, base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    handler = app.input_handler
+    undo_mock = MagicMock()
+    monkeypatch.setattr(app, 'undo_last_action', undo_mock)
+
+    mock_focus_widget.return_value = app.view
+    app.current_mode = "view"
+    event = create_key_event(Qt.Key_Z, modifiers=Qt.ControlModifier)
+    handled = handler.handle_key_press(event)
+    assert not event.isAccepted() and handled is False
+    undo_mock.assert_not_called()
+
+    undo_mock.reset_mock()
+    mock_focus_widget.return_value = MagicMock(spec=['__class__'])
+    mock_focus_widget.return_value.__class__ = QLineEdit
+    app.current_mode = "edit"
+    event2 = create_key_event(Qt.Key_Z, modifiers=Qt.ControlModifier)
+    handled2 = handler.handle_key_press(event2)
+    assert not event2.isAccepted() and handled2 is False
+    undo_mock.assert_not_called()

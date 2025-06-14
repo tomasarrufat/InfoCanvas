@@ -1,6 +1,7 @@
 import os
 import sys
 import pytest
+import copy
 from PyQt5.QtWidgets import QApplication, QDialog
 from app import InfoCanvasApp
 from src import utils
@@ -94,6 +95,7 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
             json.dump(default_config, f)
 
         self_app.config = default_config
+        self_app.config_history = [copy.deepcopy(default_config)]
         self_app.item_map = {}
         self_app.selected_item = None
         self_app.current_mode = "edit" # Initialize current_mode before UI updates

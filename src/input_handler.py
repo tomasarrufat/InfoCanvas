@@ -33,6 +33,11 @@ class InputHandler:
                     if self.app.item_operations.paste_item_from_clipboard():
                         event.accept()
                         return True
+            elif event.key() == Qt.Key_Z:
+                if self.app.current_mode == "edit" and not is_input_focused:
+                    self.app.undo_last_action()
+                    event.accept()
+                    return True
         elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             if (
                 self.app.current_mode == "edit"

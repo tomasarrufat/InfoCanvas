@@ -98,6 +98,7 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
             json.dump(default_config, f)
 
         self_app.config = default_config
+        self_app.config_history = [copy.deepcopy(default_config)]
         self_app.item_map = {}
         self_app.selected_item = None
         self_app.current_mode = "edit" # Initialize current_mode before UI updates
@@ -511,6 +512,31 @@ def test_update_selected_rect_dimensions(base_app_fixture, monkeypatch):
     mock_slot_for_properties_changed.assert_called_once_with(selected_rect_item)
     app.save_config.assert_called_once()
     selected_rect_item.update_geometry_from_config.assert_called_once()
+
+
+def test_config_history_and_undo(base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    monkeypatch.setattr(app.project_io, 'save_config', MagicMock(return_value=True))
+    monkeypatch.setattr(app, 'render_canvas_from_config', MagicMock())
+    monkeypatch.setattr(app, 'populate_controls_from_config', MagicMock())
+
+    assert len(app.config_history) == 1
+
+    app.config['background']['width'] = 900
+    app.save_config()
+    assert len(app.config_history) == 2
+    assert app.config_history[-1]['background']['width'] == 900
+
+    app.config['background']['width'] = 1000
+    app.save_config()
+    assert len(app.config_history) == 3
+    assert app.config_history[-1]['background']['width'] == 1000
+
+    app.undo_last_action()
+    assert app.config['background']['width'] == 900
+    assert len(app.config_history) == 2
+    app.render_canvas_from_config.assert_called()
+    app.populate_controls_from_config.assert_called()
 
 
 
