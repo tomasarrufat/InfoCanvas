@@ -304,7 +304,7 @@ class InfoRectangleItem(QGraphicsObject):
                 font_size = 14
 
         font = self.text_item.font()
-        font.setPointSize(font_size)
+        font.setPixelSize(font_size)
 
         self.text_item.setFont(font)
         self.text_item.setDefaultTextColor(QColor(font_color))

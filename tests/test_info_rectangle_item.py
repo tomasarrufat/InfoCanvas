@@ -415,13 +415,13 @@ def test_update_text_from_config_invalid_font_size(create_item_with_scene, defau
 
     with patch('src.info_rectangle_item.utils.get_default_config', return_value=mock_defaults):
         item.update_text_from_config()
-    assert item.text_item.font().pointSize() == 12
+    assert item.text_item.font().pixelSize() == 12
 
     item.config_data['font_size'] = "another_invalid"
     mock_defaults["defaults"]["info_rectangle_text_display"]['font_size'] = "bad_default_px"
     with patch('src.info_rectangle_item.utils.get_default_config', return_value=mock_defaults):
         item.update_text_from_config()
-    assert item.text_item.font().pointSize() == 14
+    assert item.text_item.font().pixelSize() == 14
 
 # --- Test apply_style Method ---
 def test_apply_style_with_name(item_fixture):
@@ -432,7 +432,7 @@ def test_apply_style_with_name(item_fixture):
     assert item._style_config_ref == style
     assert item.config_data['font_color'] == "#111111"
     assert item.text_item.defaultTextColor() == QColor("#111111")
-    assert item.text_item.font().pointSize() == 16
+    assert item.text_item.font().pixelSize() == 16
 
 def test_apply_style_none_removes_ref(item_fixture, default_text_config_values):
     item = item_fixture
@@ -447,7 +447,7 @@ def test_apply_style_none_removes_ref(item_fixture, default_text_config_values):
     assert item._style_config_ref is None
     assert item.text_item.defaultTextColor() == QColor("#ABCDEF")
     expected_default_size = int(default_text_config_values['font_size'].replace('px',''))
-    assert item.text_item.font().pointSize() == expected_default_size
+    assert item.text_item.font().pixelSize() == expected_default_size
 
 
 def test_apply_style_key_precedence(item_fixture, default_text_config_values):
@@ -461,7 +461,7 @@ def test_apply_style_key_precedence(item_fixture, default_text_config_values):
     assert item.config_data['text'] == "Styled Text"
     assert item.config_data['font_size'] == "20px"
     assert item.text_item.toPlainText() == "Styled Text"
-    assert item.text_item.font().pointSize() == 20
+    assert item.text_item.font().pixelSize() == 20
 
 def test_markdown_rendering_in_scene(item_fixture):
     item = item_fixture
