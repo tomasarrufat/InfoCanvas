@@ -23,7 +23,7 @@ from src.input_handler import InputHandler
 from src.canvas_manager import CanvasManager
 # --- Main Application Window ---
 class InfoCanvasApp(QMainWindow):
-    MAX_UNDO_HISTORY = 20
+    MAX_UNDO_HISTORY = 100 # Maximum number of undo snapshots to keep
     def __init__(self):
         super().__init__()
         self.setGeometry(100, 100, 1200, 700)
@@ -175,18 +175,25 @@ class InfoCanvasApp(QMainWindow):
 
     def save_config(self, config_data_to_save=None):
         config_to_save = config_data_to_save if config_data_to_save is not None else self.config
-        # Keep a history of configuration states for undo functionality
-        if not self.config_snapshot_stack or config_to_save != self.config_snapshot_stack[-1]:
-            self.config_snapshot_stack.append(copy.deepcopy(config_to_save))
-            if len(self.config_snapshot_stack) > self.MAX_UNDO_HISTORY:
-                self.config_snapshot_stack.pop(0)
-        return self.project_io.save_config(
+        
+        
+        # Save the config and check if it was actually saved
+        was_saved = self.project_io.save_config(
             self.current_project_path,
             config_to_save,
             item_map=self.item_map,
-            status_bar=self.statusBar() if hasattr(self, "statusBar") else None,
+            status_bar=self.statusBar(),
             current_project_name=self.current_project_name,
         )
+
+        # Only update the snapshot stack if the config was actually saved
+        if was_saved and (not self.config_snapshot_stack or config_to_save != self.config_snapshot_stack[-1]):
+            print(f"Saving config for project '{self.current_project_name}' at path '{self.current_project_path}'")
+            self.config_snapshot_stack.append(copy.deepcopy(config_to_save))
+            if len(self.config_snapshot_stack) > self.MAX_UNDO_HISTORY:
+                self.config_snapshot_stack.pop(0)
+        
+        return was_saved
 
     def undo_last_action(self):
         """Revert to the previous configuration state if available."""
@@ -194,6 +201,7 @@ class InfoCanvasApp(QMainWindow):
             return
         # Remove the most recent state and restore the previous one
         self.config_snapshot_stack.pop()
+        print(f"Undo: Restoring previous config state. Stack size: {len(self.config_snapshot_stack)}")
         self.config = copy.deepcopy(self.config_snapshot_stack[-1])
         self.populate_controls_from_config()
         self.render_canvas_from_config()

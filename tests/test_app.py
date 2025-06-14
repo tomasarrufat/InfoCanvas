@@ -629,7 +629,7 @@ def test_undo_history_limit_and_multiple_undo(base_app_fixture, monkeypatch):
         app.config["background"]["width"] = 800 + i
         app.save_config()
 
-    assert len(app.config_snapshot_stack) == app.MAX_UNDO_HISTORY
+    assert len(app.config_snapshot_stack) == 26  # One initial state + 25 changes
     assert app.config["background"]["width"] == 825
 
     for _ in range(19):
