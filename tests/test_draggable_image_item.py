@@ -1,5 +1,7 @@
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QGraphicsScene
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsItem
+from PyQt5.QtCore import Qt
+from unittest.mock import Mock, patch
 
 from src.draggable_image_item import DraggableImageItem
 
@@ -52,6 +54,10 @@ def test_item_moved_signal_emitted(qtbot):
     moved = []
     item.item_moved.connect(lambda obj: moved.append(True))
     item.setPos(3, 4)
+    release_event = Mock()
+    release_event.button.return_value = Qt.LeftButton
+    with patch.object(QGraphicsItem, "mouseReleaseEvent", return_value=None):
+        item.mouseReleaseEvent(release_event)
     assert moved and cfg['center_x'] == 3 + 5 and cfg['center_y'] == 4 + 5
 
 def test_item_position_scaled_update(qtbot):

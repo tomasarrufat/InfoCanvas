@@ -1,13 +1,14 @@
-from PyQt5.QtWidgets import QGraphicsObject, QGraphicsItem, QGraphicsTextItem, QApplication
+from PyQt5.QtWidgets import QGraphicsItem, QGraphicsTextItem, QApplication
+
+from .base_draggable_item import BaseDraggableItem
 from PyQt5.QtCore import Qt, QRectF, QPointF, pyqtSignal, QRect
 from PyQt5.QtGui import QColor, QBrush, QPen, QCursor, QTextOption
 
 from . import utils
 
 
-class InfoRectangleItem(QGraphicsObject):
+class InfoRectangleItem(BaseDraggableItem):
     item_selected = pyqtSignal(QGraphicsItem)
-    item_moved = pyqtSignal(QGraphicsItem)
     properties_changed = pyqtSignal(QGraphicsItem)
 
     RESIZE_MARGIN = 8
@@ -54,7 +55,6 @@ class InfoRectangleItem(QGraphicsObject):
         self._resizing_initial_mouse_pos = QPointF()
         self._resizing_initial_rect = QRectF()
         self._is_resizing = False
-        self._has_moved = False
         self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Ensure it's a boolean
         self._applied_style_values = {} # To track values set by the current style
 
@@ -160,7 +160,6 @@ class InfoRectangleItem(QGraphicsObject):
         if event.button() == Qt.LeftButton: # This logic might need review if item_selected should only emit on actual selection change
             self.item_selected.emit(self)
             self.initial_pos = self.pos()
-            self._has_moved = False
 
 
     def mouseMoveEvent(self, event):
@@ -227,9 +226,6 @@ class InfoRectangleItem(QGraphicsObject):
             event.accept()
         else:
             super().mouseReleaseEvent(event)
-            if event.button() == Qt.LeftButton and self._has_moved:
-                self.item_moved.emit(self)
-                self._has_moved = False
 
     def update_geometry_from_config(self):
         self.prepareGeometryChange()
