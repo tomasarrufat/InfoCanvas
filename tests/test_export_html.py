@@ -109,6 +109,30 @@ def test_export_html_markdown(tmp_path_factory, tmp_path):
     assert '<span style=" font-weight' in content
     assert '**bold**' not in content
 
+def test_export_html_heading_font_sizes(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_heading")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config['project_name'] = "Heading Test"
+    sample_config.setdefault('info_rectangles', []).append({
+        'id': 'h1',
+        'center_x': 5,
+        'center_y': 5,
+        'width': 20,
+        'height': 20,
+        'text': '# Heading',
+        'font_color': '#000000'
+    })
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "export_heading.html"
+
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert 'font-size:xx-large' not in content
+    assert 'font-size:28px' in content
+
 def test_export_html_always_visible(tmp_path_factory, tmp_path):
     project_path = tmp_path_factory.mktemp("project_always")
     os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
