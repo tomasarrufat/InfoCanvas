@@ -19,7 +19,7 @@ import copy # Ensure copy is imported for clipboard data
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from app import InteractiveToolApp
+from app import InfoCanvasApp
 from src import utils # For utils.PROJECTS_BASE_DIR etc.
 from src.project_manager_dialog import ProjectManagerDialog # For mocking
 from src.draggable_image_item import DraggableImageItem # Added
@@ -65,7 +65,7 @@ def mock_project_manager_dialog(monkeypatch):
 @pytest.fixture
 def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_factory):
     """
-    Fixture to create a basic InteractiveToolApp instance for testing.
+    Fixture to create a basic InfoCanvasApp instance for testing.
     It simulates a successful initial project setup by default.
     Tests that need different initial dialog outcomes should create their own app instance
     or use monkeypatch to alter the dialog's behavior before app creation.
@@ -112,9 +112,9 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
         self_app.item_operations = ItemOperations(self_app)
         return True
 
-    monkeypatch.setattr(InteractiveToolApp, "_initial_project_setup", mock_successful_initial_setup)
+    monkeypatch.setattr(InfoCanvasApp, "_initial_project_setup", mock_successful_initial_setup)
 
-    test_app = InteractiveToolApp()
+    test_app = InfoCanvasApp()
     qtbot.addWidget(test_app)
     test_app.show()
 
@@ -157,18 +157,18 @@ def app_for_initial_setup_test_environment(monkeypatch, tmp_path):
 
     # Prevent UI methods from running during these specific tests
     monkeypatch.setattr(UIBuilder, 'build', lambda self: None)
-    monkeypatch.setattr(InteractiveToolApp, 'populate_controls_from_config', lambda self: None)
-    monkeypatch.setattr(InteractiveToolApp, 'render_canvas_from_config', lambda self: None)
-    monkeypatch.setattr(InteractiveToolApp, 'update_mode_ui', lambda self: None)
-    monkeypatch.setattr(InteractiveToolApp, '_update_window_title', lambda self: None)
+    monkeypatch.setattr(InfoCanvasApp, 'populate_controls_from_config', lambda self: None)
+    monkeypatch.setattr(InfoCanvasApp, 'render_canvas_from_config', lambda self: None)
+    monkeypatch.setattr(InfoCanvasApp, 'update_mode_ui', lambda self: None)
+    monkeypatch.setattr(InfoCanvasApp, '_update_window_title', lambda self: None)
 
-    # Patch TextStyleManager for the app module so that InteractiveToolApp instances get a mock.
+    # Patch TextStyleManager for the app module so that InfoCanvasApp instances get a mock.
     # Using a plain MagicMock without spec as a last resort.
     from src.text_style_manager import TextStyleManager # Still good to have for context, though spec is removed
     monkeypatch.setattr('app.TextStyleManager', lambda app_arg: MagicMock())
 
     # Ensure scene is at least a MagicMock before ItemOperations is initialized
-    monkeypatch.setattr(InteractiveToolApp, 'scene', MagicMock(spec=QGraphicsScene), raising=False)
+    monkeypatch.setattr(InfoCanvasApp, 'scene', MagicMock(spec=QGraphicsScene), raising=False)
 
     # Mock ProjectIO.save_config as it's called by _switch_to_project
     save_config_calls = []
@@ -200,9 +200,9 @@ def test_initial_setup_new_project(app_for_initial_setup_test_environment, monke
     mock_dialog_instance = mock_dialog_class(None)
     mock_dialog_instance.set_outcome(QDialog.Accepted, "new_project_test")
     monkeypatch.setattr('app.ProjectManagerDialog', lambda *args, **kwargs: mock_dialog_instance)
-    monkeypatch.setattr(InteractiveToolApp, 'close', env["mock_close_method"]) # Patch close before creating instance
+    monkeypatch.setattr(InfoCanvasApp, 'close', env["mock_close_method"]) # Patch close before creating instance
 
-    test_app_new_project = InteractiveToolApp() # __init__ calls _initial_project_setup
+    test_app_new_project = InfoCanvasApp() # __init__ calls _initial_project_setup
     # text_style_manager should be mocked by the app_for_initial_setup_test_environment fixture's patch
     qtbot.addWidget(test_app_new_project)
 
@@ -235,9 +235,9 @@ def test_initial_setup_load_project(app_for_initial_setup_test_environment, monk
     mock_dialog_instance = mock_dialog_class(None)
     mock_dialog_instance.set_outcome(QDialog.Accepted, existing_project_name)
     monkeypatch.setattr('app.ProjectManagerDialog', lambda *args, **kwargs: mock_dialog_instance)
-    monkeypatch.setattr(InteractiveToolApp, 'close', env["mock_close_method"])
+    monkeypatch.setattr(InfoCanvasApp, 'close', env["mock_close_method"])
 
-    test_app_load_project = InteractiveToolApp()
+    test_app_load_project = InfoCanvasApp()
     # text_style_manager should be mocked by the app_for_initial_setup_test_environment fixture's patch
     qtbot.addWidget(test_app_load_project)
 
@@ -256,7 +256,7 @@ def test_initial_setup_cancel(app_for_initial_setup_test_environment, monkeypatc
     mock_dialog_instance = mock_dialog_class(None)
     mock_dialog_instance.set_outcome(QDialog.Rejected) # Simulate user cancelling
     monkeypatch.setattr('app.ProjectManagerDialog', lambda *args, **kwargs: mock_dialog_instance)
-    monkeypatch.setattr(InteractiveToolApp, 'close', env["mock_close_method"]) # Use the flag-setting close
+    monkeypatch.setattr(InfoCanvasApp, 'close', env["mock_close_method"]) # Use the flag-setting close
 
     expected_underlying_function = env["mock_close_method"]
 
@@ -265,7 +265,7 @@ def test_initial_setup_cancel(app_for_initial_setup_test_environment, monkeypatc
     def mock_singleShot_capture(delay, callback_func):
         if hasattr(callback_func, '__func__') and \
            hasattr(callback_func, '__self__') and \
-           isinstance(callback_func.__self__, InteractiveToolApp) and \
+           isinstance(callback_func.__self__, InfoCanvasApp) and \
            callback_func.__func__ is expected_underlying_function:
             timer_fired_close['called'] = True
             callback_func()
@@ -274,7 +274,7 @@ def test_initial_setup_cancel(app_for_initial_setup_test_environment, monkeypatc
 
     monkeypatch.setattr('app.QTimer.singleShot', mock_singleShot_capture)
 
-    test_app_cancel = InteractiveToolApp()
+    test_app_cancel = InfoCanvasApp()
     qtbot.addWidget(test_app_cancel)
 
     assert timer_fired_close['called'] is True, "QTimer.singleShot with app.close was not called"
@@ -523,7 +523,7 @@ def test_reset_application_to_no_project_state(mock_qtimer_singleshot, base_app_
     assert mock_qtimer_singleshot.call_args[0][1].__name__ == '_show_project_manager_dialog_and_handle_outcome'
 
 @patch('app.QMessageBox.information')
-@patch.object(InteractiveToolApp, '_reset_application_to_no_project_state')
+@patch.object(InfoCanvasApp, '_reset_application_to_no_project_state')
 def test_handle_deleted_current_project(mock_reset_method, mock_qmessagebox_info, base_app_fixture):
     app = base_app_fixture
     deleted_project_name = "current_deleted_project"

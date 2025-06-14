@@ -2,7 +2,7 @@ import os
 import sys
 import pytest
 from PyQt5.QtWidgets import QApplication, QDialog
-from app import InteractiveToolApp
+from app import InfoCanvasApp
 from src import utils
 
 class DummyQtBot:
@@ -51,7 +51,7 @@ def mock_project_manager_dialog(monkeypatch):
 @pytest.fixture
 def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_factory):
     """
-    Fixture to create a basic InteractiveToolApp instance for testing.
+    Fixture to create a basic InfoCanvasApp instance for testing.
     It simulates a successful initial project setup by default.
     Tests that need different initial dialog outcomes should create their own app instance
     or use monkeypatch to alter the dialog's behavior before app creation.
@@ -90,9 +90,9 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
 
         return True
 
-    monkeypatch.setattr(InteractiveToolApp, "_initial_project_setup", mock_successful_initial_setup)
+    monkeypatch.setattr(InfoCanvasApp, "_initial_project_setup", mock_successful_initial_setup)
 
-    test_app = InteractiveToolApp()
+    test_app = InfoCanvasApp()
     qtbot.addWidget(test_app)
     test_app.show()
 

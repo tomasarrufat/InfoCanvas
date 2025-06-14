@@ -17,7 +17,7 @@ This tool is a desktop application built with PyQt5 for creating interactive lea
 The project follows this basic structure:
 
 ```
-/interactive-image-tool/
+/InfoCanvas/
 |-- .gitignore             # Specifies intentionally untracked files that Git should ignore
 |-- app.py                 # Main entry point for the PyQt5 application
 |-- requirements.txt       # Python package dependencies
@@ -65,7 +65,7 @@ The project follows this basic structure:
 
 1.  **Clone or Download:** Get the project files onto your local machine.
     
-2.  **Navigate:** Open a terminal or command prompt and navigate into the project's root directory (`/interactive-image-tool/`).
+2.  **Navigate:** Open a terminal or command prompt and navigate into the project's root directory (`/InfoCanvas/`).
     
 3.  **Create Virtual Environment (Recommended):**
     
