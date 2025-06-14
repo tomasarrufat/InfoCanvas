@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import (
     QColor, QBrush
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QUrl
 
 from src import utils
 from src.draggable_image_item import DraggableImageItem
@@ -197,6 +197,21 @@ class InfoCanvasApp(QMainWindow):
             self.current_mode = "view"
         self.update_mode_ui()
         self.render_canvas_from_config()
+
+        if self.current_mode == "view" and hasattr(self, "web_view"):
+            exporter = HtmlExporter(config=self.config, project_path=self.current_project_path)
+            html_content = exporter._generate_html_content()
+            base_url = QUrl.fromLocalFile(os.path.join(self.current_project_path, ""))
+            self.web_view.setHtml(html_content, base_url)
+            if hasattr(self, "central_layout"):
+                self.central_layout.setCurrentWidget(self.web_view)
+            self.view.hide()
+            self.web_view.show()
+        elif self.current_mode == "edit" and hasattr(self, "web_view"):
+            if hasattr(self, "central_layout"):
+                self.central_layout.setCurrentWidget(self.view)
+            self.web_view.hide()
+            self.view.show()
 
     def update_mode_ui(self):
         if not hasattr(self, 'edit_mode_controls_widget'): return

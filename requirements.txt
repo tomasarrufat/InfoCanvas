@@ -1,4 +1,5 @@
 PyQt5>=5.15
+PyQtWebEngine
 pytest
 pytest-qt
 pytest-cov

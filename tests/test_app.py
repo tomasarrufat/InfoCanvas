@@ -4,8 +4,8 @@ import datetime # Ensure datetime is imported
 from unittest.mock import mock_open, patch, MagicMock, ANY # Ensure ANY is imported
 import pytest
 from pytestqt.qt_compat import qt_api
-from PyQt5.QtWidgets import QApplication, QDialog, QGraphicsScene, QGraphicsView, QMessageBox, QLineEdit
-from PyQt5.QtCore import QTimer, Qt, QRectF
+from PyQt5.QtWidgets import QApplication, QDialog, QGraphicsScene, QGraphicsView, QMessageBox, QLineEdit, QWidget
+from PyQt5.QtCore import QTimer, Qt, QRectF, QUrl
 from PyQt5.QtGui import QColor, QKeyEvent # Added QKeyEvent
 
 import shutil
@@ -104,9 +104,26 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
         # Initialize text_style_manager before UIBuilder
         from src.text_style_manager import TextStyleManager # Local import
         self_app.text_style_manager = TextStyleManager(self_app)
+
+        # Patch QWebEngineView used in UIBuilder to avoid heavy initialization
+        created_web_view = []
+        class DummyWebView(QWidget):
+            def __init__(self, *a, **k):
+                super().__init__(*a, **k)
+                self.setHtml = MagicMock()
+                self.show = MagicMock()
+                self.hide = MagicMock()
+        def create_web_view(*a, **k):
+            vw = DummyWebView()
+            created_web_view.append(vw)
+            return vw
+
+        monkeypatch.setattr('src.ui_builder.QWebEngineView', create_web_view)
+
         # Ensure UIBuilder is called to initialize scene and other UI elements
         # This is critical as ItemOperations now depends on self.scene
         UIBuilder(self_app).build()
+        self_app.web_view = created_web_view[0]
         # Initialize item_operations after UI build and scene creation
         from src.item_operations import ItemOperations # Local import
         self_app.item_operations = ItemOperations(self_app)
@@ -287,6 +304,16 @@ def test_initial_setup_cancel(app_for_initial_setup_test_environment, monkeypatc
 def test_on_mode_changed(base_app_fixture, monkeypatch):
     app = base_app_fixture
     monkeypatch.setattr(app, 'render_canvas_from_config', MagicMock())
+    html_content = "<html>content</html>"
+    mock_exporter_instance = MagicMock()
+    mock_exporter_instance._generate_html_content.return_value = html_content
+    mock_exporter_cls = MagicMock(return_value=mock_exporter_instance)
+    monkeypatch.setattr('app.HtmlExporter', mock_exporter_cls)
+    app.web_view.show = MagicMock()
+    app.web_view.hide = MagicMock()
+    app.web_view.setHtml = MagicMock()
+    app.view.show = MagicMock()
+    app.view.hide = MagicMock()
     mock_image_item = MagicMock(spec=DraggableImageItem)
     mock_image_item.config_data = {'id': 'img1'}
     mock_image_item.isEnabled.return_value = True
@@ -303,7 +330,6 @@ def test_on_mode_changed(base_app_fixture, monkeypatch):
     mock_info_rect_item.reset_mock()
     mock_info_rect_item.isSelected.return_value = False
 
-    app.mode_switcher.setCurrentText("Edit Mode")
     app.on_mode_changed("Edit Mode")
 
     assert app.current_mode == "edit"
@@ -316,7 +342,6 @@ def test_on_mode_changed(base_app_fixture, monkeypatch):
     mock_image_item.reset_mock()
     mock_info_rect_item.reset_mock()
     mock_info_rect_item.isSelected.return_value = False
-    app.mode_switcher.setCurrentText("View Mode")
     app.on_mode_changed("View Mode")
     assert app.current_mode == "view"
     assert app.edit_mode_controls_widget.isVisible() is False
@@ -328,10 +353,19 @@ def test_on_mode_changed(base_app_fixture, monkeypatch):
     mock_info_rect_item.setCursor.assert_called_with(Qt.ArrowCursor)
     mock_info_rect_item.setToolTip.assert_called()
 
+    mock_exporter_cls.assert_called_once_with(config=app.config, project_path=app.current_project_path)
+    mock_exporter_instance._generate_html_content.assert_called_once()
+    app.web_view.setHtml.assert_called_once()
+    set_html_args = app.web_view.setHtml.call_args[0]
+    assert html_content in set_html_args[0]
+    expected_base_url = QUrl.fromLocalFile(os.path.join(app.current_project_path, ""))
+    assert set_html_args[1] == expected_base_url
+    app.web_view.show.assert_called_once()
+    app.view.hide.assert_called_once()
+
     mock_image_item.reset_mock()
     mock_info_rect_item.reset_mock()
     mock_info_rect_item.isSelected.return_value = False
-    app.mode_switcher.setCurrentText("Edit Mode")
     app.on_mode_changed("Edit Mode") # Call it again to ensure it switches back
     assert app.current_mode == "edit"
     assert app.edit_mode_controls_widget.isVisible() is True
@@ -339,6 +373,8 @@ def test_on_mode_changed(base_app_fixture, monkeypatch):
     mock_info_rect_item.setEnabled.assert_called_with(True)
     mock_image_item.setCursor.assert_called_with(Qt.PointingHandCursor)
     mock_info_rect_item.update_appearance.assert_called_with(mock_info_rect_item.isSelected(), False)
+    app.web_view.hide.assert_called()
+    app.view.show.assert_called()
 
 
 @patch('app.QColorDialog.getColor')

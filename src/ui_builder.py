@@ -1,8 +1,14 @@
 from PyQt5.QtWidgets import (
     QWidget, QDockWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QComboBox, QSpinBox, QTextEdit, QAction, QGraphicsScene,
-    QGraphicsView, QDoubleSpinBox, QMessageBox
+    QGraphicsView, QDoubleSpinBox, QMessageBox, QStackedLayout
 )
+try:
+    from PyQt5.QtWebEngineWidgets import QWebEngineView
+except Exception:  # pragma: no cover - optional dependency
+    class QWebEngineView(QWidget):
+        def setHtml(self, *args, **kwargs):
+            pass
 from PyQt5.QtGui import QColor, QBrush, QPainter
 from PyQt5.QtCore import Qt
 
@@ -27,9 +33,18 @@ class UIBuilder:
         app.scene.selectionChanged.connect(app.on_scene_selection_changed)
         app.scene.parent_window = app
 
+        # Central widget with stacked layout to switch between graphics and web views
+        central_widget = QWidget()
+        app.central_layout = QStackedLayout(central_widget)
+
         app.view = QGraphicsView(app.scene)
         app.view.setRenderHint(QPainter.SmoothPixmapTransform)
-        app.setCentralWidget(app.view)
+        app.central_layout.addWidget(app.view)
+
+        app.web_view = QWebEngineView()
+        app.central_layout.addWidget(app.web_view)
+        app.central_layout.setCurrentWidget(app.view)
+        app.setCentralWidget(central_widget)
 
         app.controls_dock = QDockWidget("Controls", app)
         app.controls_dock.setFixedWidth(350)
