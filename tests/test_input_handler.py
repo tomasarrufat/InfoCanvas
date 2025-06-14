@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeyEvent
-from PyQt5.QtWidgets import QLineEdit
+from PyQt5.QtWidgets import QLineEdit, QSpinBox
 
 from src.input_handler import InputHandler
 from src.info_rectangle_item import InfoRectangleItem
@@ -146,6 +146,20 @@ def test_ctrl_z_triggers_undo(mock_focus_widget, base_app_fixture, monkeypatch):
     app = base_app_fixture
     handler = app.input_handler
     mock_focus_widget.return_value = app.view
+    app.current_mode = "edit"
+    monkeypatch.setattr(app, 'undo_last_action', MagicMock())
+
+    event_undo = create_key_event(Qt.Key_Z, modifiers=Qt.ControlModifier)
+    handled = handler.handle_key_press(event_undo)
+    app.undo_last_action.assert_called_once()
+    assert event_undo.isAccepted() and handled is True
+
+
+@patch('src.input_handler.QApplication.focusWidget')
+def test_ctrl_z_triggers_undo_with_spinbox_focus(mock_focus_widget, base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    handler = app.input_handler
+    mock_focus_widget.return_value = QSpinBox()
     app.current_mode = "edit"
     monkeypatch.setattr(app, 'undo_last_action', MagicMock())
 
