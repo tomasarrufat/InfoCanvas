@@ -326,7 +326,7 @@ def test_on_mode_changed(base_app_fixture, monkeypatch):
     mock_info_rect_item.update_appearance.assert_called_with(mock_info_rect_item.isSelected(), True)
     mock_image_item.setCursor.assert_called_with(Qt.ArrowCursor)
     mock_info_rect_item.setCursor.assert_called_with(Qt.ArrowCursor)
-    mock_info_rect_item.setToolTip.assert_called()
+    mock_info_rect_item.setToolTip.assert_called_with('')
 
     mock_image_item.reset_mock()
     mock_info_rect_item.reset_mock()

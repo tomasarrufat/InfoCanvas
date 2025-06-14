@@ -216,10 +216,7 @@ class InfoCanvasApp(QMainWindow):
                     graphics_item.setCursor(Qt.CursorShape.PointingHandCursor if graphics_item.isEnabled() else Qt.CursorShape.ArrowCursor)
             else:
                 graphics_item.setCursor(Qt.CursorShape.ArrowCursor)
-                if isinstance(graphics_item, InfoRectangleItem):
-                    graphics_item.setToolTip(graphics_item.config_data.get('text', ''))
-                else:
-                    graphics_item.setToolTip('')
+                graphics_item.setToolTip('')
 
         if not is_edit_mode:
             if hasattr(self, 'scene') and self.scene: self.scene.clearSelection()

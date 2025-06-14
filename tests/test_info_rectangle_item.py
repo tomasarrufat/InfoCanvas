@@ -500,3 +500,20 @@ def test_item_change_position_not_resizing(item_fixture):
     assert item.config_data['center_y'] == expected_cy
     assert item.config_data['center_x'] != initial_cx
     assert item.config_data['center_y'] != initial_cy
+
+
+def test_hover_enter_leave_view_mode_shows_text(create_item_with_scene):
+    item, scene, mock_parent_window = create_item_with_scene()
+    mock_parent_window.current_mode = "view"
+    item.update_appearance(False, True)
+    assert item.text_item.isVisible() is False
+
+    hover_pos = item.boundingRect().center()
+    event = create_mock_hover_event(hover_pos, scene_pos=item.mapToScene(hover_pos))
+    with patch.object(QGraphicsItem, 'hoverEnterEvent', Mock()):
+        item.hoverEnterEvent(event)
+    assert item.text_item.isVisible() is True
+
+    with patch.object(QGraphicsItem, 'hoverLeaveEvent', Mock()):
+        item.hoverLeaveEvent(event)
+    assert item.text_item.isVisible() is False

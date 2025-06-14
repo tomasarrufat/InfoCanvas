@@ -118,10 +118,23 @@ class InfoRectangleItem(QGraphicsObject):
                 self.setCursor(QCursor(default_cursor_shape))
         super().hoverMoveEvent(event)
 
+    def hoverEnterEvent(self, event):
+        parent_win = None
+        if self.scene() and hasattr(self.scene(), 'parent_window'):
+            parent_win = self.scene().parent_window
+        if parent_win and parent_win.current_mode == "view":
+            self.text_item.setVisible(True)
+        super().hoverEnterEvent(event)
+
     def hoverLeaveEvent(self, event):
+        parent_win = None
+        if self.scene() and hasattr(self.scene(), 'parent_window'):
+            parent_win = self.scene().parent_window
+        if parent_win and parent_win.current_mode == "view":
+            self.text_item.setVisible(False)
         if not self._is_resizing:
             default_cursor_shape = Qt.ArrowCursor
-            if self.scene() and hasattr(self.scene(), 'parent_window') and self.scene().parent_window.current_mode == "edit" and (self.flags() & QGraphicsItem.ItemIsMovable):
+            if parent_win and parent_win.current_mode == "edit" and (self.flags() & QGraphicsItem.ItemIsMovable):
                 default_cursor_shape = Qt.PointingHandCursor
             self.setCursor(QCursor(default_cursor_shape))
         super().hoverLeaveEvent(event)
