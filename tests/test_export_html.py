@@ -38,6 +38,7 @@ def test_export_to_html_writes_file(tmp_path_factory, tmp_path): # No base_app_f
     assert style_end != -1
     style_attribute_content = content[start_index + len(text_content_div_start_str):style_end]
     assert "display: none;" in style_attribute_content
+    assert "data-show-on-hover='true'" in content
     assert "hello</p></div>" in content
 
 def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base_app_fixture
@@ -84,6 +85,7 @@ def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base
         assert part in style_attribute_content, f"Expected style part '{part}' not found in '{style_attribute_content}'"
     assert 'Formatted Text With Newlines &amp; &lt;HTML&gt;!' in content
     assert 'data-text="Formatted Text' not in content
+    assert "data-show-on-hover='true'" in content
 
 def test_export_html_markdown(tmp_path_factory, tmp_path):
     project_path = tmp_path_factory.mktemp("project_md")
@@ -106,6 +108,22 @@ def test_export_html_markdown(tmp_path_factory, tmp_path):
     content = out_file.read_text()
     assert '<span style=" font-weight' in content
     assert '**bold**' not in content
+
+def test_export_html_always_visible(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_always")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+    sample_config = utils.get_default_config()
+    sample_config['project_name'] = "Always"
+    sample_config.setdefault('info_rectangles', []).append({
+        'id': 'r1', 'center_x': 10, 'center_y': 10, 'width': 30, 'height': 20,
+        'text': 'show', 'show_on_hover': False
+    })
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "export_always.html"
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert "data-show-on-hover='false'" in content
+    assert "display: block;" in content
 
 def test_export_to_html_write_error(base_app_fixture, monkeypatch):
     app = base_app_fixture

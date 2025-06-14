@@ -259,7 +259,10 @@ class InfoCanvasApp(QMainWindow):
             else:
                 graphics_item.setCursor(Qt.CursorShape.ArrowCursor)
                 if isinstance(graphics_item, InfoRectangleItem):
-                    graphics_item.setToolTip(graphics_item.config_data.get('text', ''))
+                    if graphics_item.config_data.get('show_on_hover', True):
+                        graphics_item.setToolTip(graphics_item.config_data.get('text', ''))
+                    else:
+                        graphics_item.setToolTip('')
                 else:
                     graphics_item.setToolTip('')
 
@@ -321,6 +324,9 @@ class InfoCanvasApp(QMainWindow):
             self.info_rect_text_input.setPlainText(rect_conf.get('text', ''))
             self.info_rect_width_input.setValue(int(rect_conf.get('width', 100)))
             self.info_rect_height_input.setValue(int(rect_conf.get('height', 50)))
+            self.rect_show_on_hover_checkbox.blockSignals(True)
+            self.rect_show_on_hover_checkbox.setChecked(rect_conf.get('show_on_hover', True))
+            self.rect_show_on_hover_checkbox.blockSignals(False)
 
             # Update new formatting controls
             self.rect_h_align_combo.blockSignals(True)
@@ -475,7 +481,7 @@ class InfoCanvasApp(QMainWindow):
                 self.selected_item.set_display_text(new_text) 
                 self.save_config() 
 
-    def update_selected_rect_dimensions(self): 
+    def update_selected_rect_dimensions(self):
         """Called when width/height spinboxes in the properties panel change."""
         if isinstance(self.selected_item, InfoRectangleItem):
             rect_conf = self.selected_item.config_data
@@ -486,6 +492,13 @@ class InfoCanvasApp(QMainWindow):
             rect_conf['height'] = max(self.selected_item.MIN_HEIGHT, new_height)
             
             self.selected_item.properties_changed.emit(self.selected_item)
+
+    def update_selected_rect_show_on_hover(self, state):
+        if isinstance(self.selected_item, InfoRectangleItem):
+            rect_conf = self.selected_item.config_data
+            rect_conf['show_on_hover'] = bool(state)
+            self.selected_item.update_appearance(self.selected_item.isSelected(), self.current_mode == "view")
+            self.save_config()
 
 
     def delete_selected_info_rect(self):

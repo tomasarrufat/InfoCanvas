@@ -29,6 +29,7 @@ class InfoRectangleItem(BaseDraggableItem):
     def __init__(self, rect_config, parent_item=None):
         super().__init__(parent_item)
         self.config_data = rect_config
+        self.config_data.setdefault('show_on_hover', True)
         self._style_config_ref = None
         self._w = self.config_data.get('width', 100)
         self._h = self.config_data.get('height', 50)
@@ -325,7 +326,7 @@ class InfoRectangleItem(BaseDraggableItem):
         if is_view_mode:
             self._pen = QPen(Qt.transparent)
             self._brush = QBrush(Qt.transparent)
-            self.text_item.setVisible(False)
+            self.text_item.setVisible(not self.config_data.get('show_on_hover', True))
         else:
             self.text_item.setVisible(True)
             if is_selected:

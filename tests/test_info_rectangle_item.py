@@ -523,3 +523,12 @@ def test_item_moved_emitted_on_mouse_release(create_item_with_scene):
         mock_super.assert_called_once()
 
     mock_slot.assert_called_once_with(item)
+
+def test_update_appearance_view_mode_visibility(create_item_with_scene):
+    item_hover, _, _ = create_item_with_scene(custom_config={'show_on_hover': True})
+    item_hover.update_appearance(False, True)
+    assert not item_hover.text_item.isVisible()
+
+    item_always, _, _ = create_item_with_scene(custom_config={'show_on_hover': False})
+    item_always.update_appearance(False, True)
+    assert item_always.text_item.isVisible()

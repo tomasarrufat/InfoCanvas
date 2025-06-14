@@ -113,9 +113,12 @@ class HtmlExporter:
                 f"padding:{padding};", f"text-align:{h_align};"
             ]
             current_inner_style = "".join(inner_style_list)
-            text_content_div_style = current_inner_style + " display: none;"
+            show_on_hover = rect_conf.get('show_on_hover', True)
+            display_style = 'none' if show_on_hover else 'block'
+            text_content_div_style = current_inner_style + f" display: {display_style};"
+            data_attr = f"data-show-on-hover='{str(show_on_hover).lower()}'"
             lines.append(
-                f"<div class='hotspot info-rectangle-export' style='{outer_style}'>"
+                f"<div class='hotspot info-rectangle-export' {data_attr} style='{outer_style}'>"
                 f"<div class='text-content' style='{text_content_div_style}'>{text_content}</div></div>"
             )
         lines.extend([
@@ -123,8 +126,10 @@ class HtmlExporter:
             "document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
             "  var textContentDiv = h.querySelector('.text-content');",
             "  if (!textContentDiv) return;",
-            "  h.addEventListener('mouseenter', function(e){ textContentDiv.style.display = 'block'; });",
-            "  h.addEventListener('mouseleave', function(e){ textContentDiv.style.display = 'none'; });",
+            "  if (h.dataset.showOnHover !== 'false') {",
+            "    h.addEventListener('mouseenter', function(e){ textContentDiv.style.display = 'block'; });",
+            "    h.addEventListener('mouseleave', function(e){ textContentDiv.style.display = 'none'; });",
+            "  }",
             "});", "</script>", "</body></html>"
         ])
         return "\n".join(lines)
