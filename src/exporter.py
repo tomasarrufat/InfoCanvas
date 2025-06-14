@@ -10,6 +10,22 @@ class HtmlExporter:
         self.project_path = project_path
         self.default_text_config = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
+    def _replace_relative_font_sizes(self, html_fragment, base_font_px):
+        """Convert CSS relative font sizes like 'xx-large' to pixel values."""
+        size_map = {
+            "xx-small": 0.6,
+            "x-small": 0.75,
+            "small": 0.8,
+            "medium": 1.0,
+            "large": 1.2,
+            "x-large": 1.5,
+            "xx-large": 2.0,
+        }
+        for name, factor in size_map.items():
+            px = int(round(base_font_px * factor))
+            html_fragment = html_fragment.replace(f"font-size:{name};", f"font-size:{px}px;")
+        return html_fragment
+
     def _get_project_images_folder(self):
         if not self.project_path:
             print("Error: Project path is not set in HtmlExporter.")
@@ -96,8 +112,16 @@ class HtmlExporter:
                 text_content = full_html
             font_color = rect_conf.get('font_color', self.default_text_config['font_color'])
             font_size_str = rect_conf.get('font_size', self.default_text_config['font_size'])
-            if isinstance(font_size_str, (int, float)) or str(font_size_str).isdigit(): font_size = f"{font_size_str}px"
-            else: font_size = font_size_str
+            if isinstance(font_size_str, (int, float)) or str(font_size_str).isdigit():
+                base_font_px = int(float(font_size_str))
+                font_size = f"{font_size_str}px"
+            else:
+                try:
+                    base_font_px = int(str(font_size_str).replace('px', ''))
+                except ValueError:
+                    base_font_px = int(str(self.default_text_config['font_size']).replace('px', ''))
+                font_size = font_size_str
+            text_content = self._replace_relative_font_sizes(text_content, base_font_px)
             padding_str = rect_conf.get('padding', self.default_text_config['padding'])
             if isinstance(padding_str, (int, float)) or str(padding_str).isdigit(): padding = f"{padding_str}px"
             else: padding = padding_str
