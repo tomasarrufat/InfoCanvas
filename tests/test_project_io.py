@@ -223,3 +223,128 @@ def test_save_config_populates_missing_image_dimensions(mock_reader_cls, mock_fi
     img_conf = data["images"][0]
     assert img_conf["original_width"] == 800
     assert img_conf["original_height"] == 600
+
+
+# --- copy_project_data tests ---
+
+SOURCE_PROJECT_NAME = "test_source_project"
+NEW_PROJECT_NAME = "test_new_project"
+IMAGE_FILENAME = "image1.png"
+SOURCE_CONFIG_DATA = {
+    "project_name": SOURCE_PROJECT_NAME,
+    "version": "1.0",
+    "last_modified": "2023-01-01T00:00:00Z",
+    "images": [{"id": "img1", "path": IMAGE_FILENAME, "original_width": 100, "original_height": 100, "x": 5, "y": 5, "scale": 1.0, "rotation": 0.0}],
+    "scene_items": [{"type": "image", "id": "img1", "x": 10, "y": 10, "scale": 1.0, "rotation": 0}],
+    "background": {"color": "#FFFFFF", "grid_visible": True, "grid_spacing": 10},
+    "camera": {"x":0, "y":0, "zoom":1.0}
+}
+
+def setup_source_project(base_path, project_name, config_data, image_filename=None):
+    """Helper to create a source project structure."""
+    source_project_path = os.path.join(base_path, project_name)
+    source_images_path = os.path.join(source_project_path, utils.PROJECT_IMAGES_DIRNAME)
+    os.makedirs(source_images_path, exist_ok=True)
+
+    with open(os.path.join(source_project_path, utils.PROJECT_CONFIG_FILENAME), 'w') as f:
+        json.dump(config_data, f, indent=2)
+
+    if image_filename:
+        with open(os.path.join(source_images_path, image_filename), 'w') as f:
+            f.write("dummy image data") # Content doesn't matter for copy2
+    return source_project_path
+
+
+def test_copy_project_data_successful_copy(project_io_fixture, monkeypatch):
+    pio = project_io_fixture # project_io_fixture already patches utils.PROJECTS_BASE_DIR
+
+    mock_q_critical = MagicMock()
+    monkeypatch.setattr('src.project_io.QMessageBox.critical', mock_q_critical)
+
+    # Setup source project
+    setup_source_project(utils.PROJECTS_BASE_DIR, SOURCE_PROJECT_NAME, SOURCE_CONFIG_DATA, IMAGE_FILENAME)
+    original_last_modified = SOURCE_CONFIG_DATA["last_modified"]
+
+    # Perform copy operation
+    result = pio.copy_project_data(SOURCE_PROJECT_NAME, NEW_PROJECT_NAME)
+
+    # Assertions
+    assert result is True
+    mock_q_critical.assert_not_called()
+
+    new_project_path = os.path.join(utils.PROJECTS_BASE_DIR, NEW_PROJECT_NAME)
+    new_images_path = os.path.join(new_project_path, utils.PROJECT_IMAGES_DIRNAME)
+    new_config_path = os.path.join(new_project_path, utils.PROJECT_CONFIG_FILENAME)
+
+    assert os.path.isdir(new_project_path)
+    assert os.path.isdir(new_images_path)
+    assert os.path.isfile(new_config_path)
+    assert os.path.isfile(os.path.join(new_images_path, IMAGE_FILENAME))
+
+    with open(new_config_path, 'r') as f:
+        new_config_data = json.load(f)
+
+    assert new_config_data["project_name"] == NEW_PROJECT_NAME
+    assert new_config_data["last_modified"] != original_last_modified
+    # Could add a more specific time check if necessary, e.g., using datetime.fromisoformat
+    assert new_config_data["images"] == SOURCE_CONFIG_DATA["images"] # Should be an exact copy
+    assert new_config_data["scene_items"] == SOURCE_CONFIG_DATA["scene_items"] # Should be an exact copy
+    assert new_config_data["background"] == SOURCE_CONFIG_DATA["background"]
+    assert new_config_data["camera"] == SOURCE_CONFIG_DATA["camera"]
+    assert new_config_data["version"] == SOURCE_CONFIG_DATA["version"]
+
+
+def test_copy_project_data_source_project_does_not_exist(project_io_fixture, monkeypatch):
+    pio = project_io_fixture
+    mock_q_critical = MagicMock()
+    monkeypatch.setattr('src.project_io.QMessageBox.critical', mock_q_critical)
+
+    result = pio.copy_project_data("non_existent_source", NEW_PROJECT_NAME)
+
+    assert result is False
+    new_project_path = os.path.join(utils.PROJECTS_BASE_DIR, NEW_PROJECT_NAME)
+    assert not os.path.exists(new_project_path)
+
+    # Check that QMessageBox.critical was called.
+    # The ProjectIO.copy_project_data first checks for source_config_file existence.
+    mock_q_critical.assert_called_once()
+    # Example: assert "Source project configuration file not found" in mock_q_critical.call_args[0][1]
+    # We rely on the method's internal logging/messaging for specific error.
+    # The key is that it failed and reported an error.
+
+
+def test_copy_project_data_empty_images_directory(project_io_fixture, monkeypatch):
+    pio = project_io_fixture
+    mock_q_critical = MagicMock()
+    monkeypatch.setattr('src.project_io.QMessageBox.critical', mock_q_critical)
+
+    source_empty_img_project_name = "source_empty_images"
+    config_empty_images = SOURCE_CONFIG_DATA.copy()
+    config_empty_images["project_name"] = source_empty_img_project_name
+    config_empty_images["images"] = [] # No images in config
+    config_empty_images["scene_items"] = [] # No scene items referencing images
+
+    # Setup source project without image file, and config reflecting no images
+    setup_source_project(utils.PROJECTS_BASE_DIR, source_empty_img_project_name, config_empty_images, image_filename=None)
+
+    target_project_name = "new_empty_images_target"
+    result = pio.copy_project_data(source_empty_img_project_name, target_project_name)
+
+    assert result is True
+    mock_q_critical.assert_not_called()
+
+    new_project_path = os.path.join(utils.PROJECTS_BASE_DIR, target_project_name)
+    new_images_path = os.path.join(new_project_path, utils.PROJECT_IMAGES_DIRNAME)
+    new_config_path = os.path.join(new_project_path, utils.PROJECT_CONFIG_FILENAME)
+
+    assert os.path.isdir(new_project_path)
+    assert os.path.isdir(new_images_path)
+    assert not os.listdir(new_images_path) # Images directory should be empty
+    assert os.path.isfile(new_config_path)
+
+    with open(new_config_path, 'r') as f:
+        new_config_data = json.load(f)
+
+    assert new_config_data["project_name"] == target_project_name
+    assert new_config_data["images"] == [] # Preserved empty images list
+    assert new_config_data["scene_items"] == [] # Preserved empty scene_items list
