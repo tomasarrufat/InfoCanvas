@@ -636,3 +636,14 @@ def test_undo_history_limit_and_multiple_undo(base_app_fixture, monkeypatch):
         app.undo_last_action()
 
     assert app.config["background"]["width"] == 806
+
+
+def test_save_config_does_not_duplicate_snapshot(base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    monkeypatch.setattr(app.project_io, "save_config", MagicMock(return_value=True))
+    app.config_snapshot_stack = [copy.deepcopy(app.config)]
+
+    app.save_config()  # Saving without changes should not add a new snapshot
+    app.save_config()
+
+    assert len(app.config_snapshot_stack) == 1

@@ -176,9 +176,10 @@ class InfoCanvasApp(QMainWindow):
     def save_config(self, config_data_to_save=None):
         config_to_save = config_data_to_save if config_data_to_save is not None else self.config
         # Keep a history of configuration states for undo functionality
-        self.config_snapshot_stack.append(copy.deepcopy(config_to_save))
-        if len(self.config_snapshot_stack) > self.MAX_UNDO_HISTORY:
-            self.config_snapshot_stack.pop(0)
+        if not self.config_snapshot_stack or config_to_save != self.config_snapshot_stack[-1]:
+            self.config_snapshot_stack.append(copy.deepcopy(config_to_save))
+            if len(self.config_snapshot_stack) > self.MAX_UNDO_HISTORY:
+                self.config_snapshot_stack.pop(0)
         return self.project_io.save_config(
             self.current_project_path,
             config_to_save,
