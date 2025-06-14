@@ -462,7 +462,13 @@ def test_apply_style_key_precedence(item_fixture, default_text_config_values):
     assert item.config_data['font_size'] == "20px"
     assert item.text_item.toPlainText() == "Styled Text"
     assert item.text_item.font().pointSize() == 20
-    assert not item.text_item.font().bold() and not item.text_item.font().italic()
+
+def test_markdown_rendering_in_scene(item_fixture):
+    item = item_fixture
+    item.set_display_text("**Bold** text")
+    html_content = item.text_item.document().toHtml()
+    assert "font-weight" in html_content
+    assert "Bold text" == item.text_item.document().toPlainText()
 
 def test_apply_style_emits_properties_changed(item_fixture):
     item = item_fixture

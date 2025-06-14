@@ -85,6 +85,28 @@ def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base
     assert 'Formatted Text With Newlines &amp; &lt;HTML&gt;!' in content
     assert 'data-text="Formatted Text' not in content
 
+def test_export_html_markdown(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_md")
+    project_images_dir = project_path / utils.PROJECT_IMAGES_DIRNAME
+    os.makedirs(project_images_dir, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config['project_name'] = "MD Test"
+    sample_config.setdefault('info_rectangles', []).append({
+        'id': 'md1', 'center_x': 10, 'center_y': 10, 'width': 50, 'height': 20,
+        'text': 'This is **bold**', 'font_color': '#000000'
+    })
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "export_md.html"
+
+    success = exporter.export(str(out_file))
+    assert success is True
+
+    content = out_file.read_text()
+    assert '<span style=" font-weight' in content
+    assert '**bold**' not in content
+
 def test_export_to_html_write_error(base_app_fixture, monkeypatch):
     app = base_app_fixture
     mock_critical = MagicMock()
