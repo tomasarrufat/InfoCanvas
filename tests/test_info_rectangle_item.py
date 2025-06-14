@@ -1,326 +1,501 @@
 import pytest
-from PyQt5.QtCore import QPointF, Qt
-from PyQt5.QtGui import QColor, QFont, QTextOption
-from PyQt5.QtWidgets import QGraphicsScene
+from PyQt5.QtCore import QPointF, Qt, QRectF, QPoint
+from PyQt5.QtGui import QColor, QFont, QTextOption, QCursor
+from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsView, QGraphicsSceneMouseEvent, QGraphicsSceneHoverEvent, QGraphicsItem
+from pytestqt.qt_compat import qt_api
+from unittest.mock import Mock, patch
 
 from src.info_rectangle_item import InfoRectangleItem
 from src import utils # For default config
 
+# QApplication instance is typically managed by pytest-qt's qapp fixture.
+
+# Constants for resize handles
+TOP_LEFT = InfoRectangleItem.ResizeHandle.TOP_LEFT
+TOP = InfoRectangleItem.ResizeHandle.TOP
+TOP_RIGHT = InfoRectangleItem.ResizeHandle.TOP_RIGHT
+LEFT = InfoRectangleItem.ResizeHandle.LEFT
+RIGHT = InfoRectangleItem.ResizeHandle.RIGHT
+BOTTOM_LEFT = InfoRectangleItem.ResizeHandle.BOTTOM_LEFT
+BOTTOM = InfoRectangleItem.ResizeHandle.BOTTOM
+BOTTOM_RIGHT = InfoRectangleItem.ResizeHandle.BOTTOM_RIGHT
+NONE = InfoRectangleItem.ResizeHandle.NONE
+
+
 @pytest.fixture
-def default_text_config():
+def default_text_config_values(): # Renamed to avoid conflict with a potential fixture named default_text_config
     return utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
 @pytest.fixture
-def create_item_with_scene(default_text_config, qtbot): # qtbot can manage scene lifetime
-    def _create_item_with_scene(custom_config=None):
+def mock_parent_window():
+    window = Mock()
+    window.current_mode = "edit" # Default to edit mode
+    mock_scene = Mock(spec=QGraphicsScene)
+    mock_scene.parent_window = window
+    window.scene = Mock(return_value=mock_scene)
+    return window
+
+@pytest.fixture
+def create_item_with_scene(default_text_config_values, qtbot, mock_parent_window):
+    def _create_item_with_scene(custom_config=None, add_to_scene=True, selectable=False, parent_window=mock_parent_window):
         base_config = {
-            'id': 'rect1',
-            'width': 100,
-            'height': 80,
-            'center_x': 50,
-            'center_y': 40,
-            'text': 'hello world',
-            'font_color': default_text_config['font_color'],
-            'font_size': default_text_config['font_size'],
-            'background_color': default_text_config['background_color'],
-            'padding': default_text_config['padding'],
-            'vertical_alignment': default_text_config['vertical_alignment'],
-            'horizontal_alignment': default_text_config['horizontal_alignment'],
-            'font_style': default_text_config['font_style'],
+            'id': 'rect1', 'width': 100, 'height': 50,
+            'center_x': 50, 'center_y': 25, 'text': 'hello world',
+            'font_color': default_text_config_values['font_color'], 'font_size': default_text_config_values['font_size'],
+            'background_color': default_text_config_values['background_color'], 'padding': default_text_config_values['padding'],
+            'vertical_alignment': default_text_config_values['vertical_alignment'],
+            'horizontal_alignment': default_text_config_values['horizontal_alignment'], 'font_style': default_text_config_values['font_style'],
         }
         if custom_config:
             base_config.update(custom_config)
 
-        # Scene managed by test scope or qtbot if possible. Here, let's ensure it's returned.
-        scene = QGraphicsScene()
         item = InfoRectangleItem(base_config)
-        scene.addItem(item)
-        # Keep the scene alive by making it an attribute of the item for test duration
-        # This is a common workaround for tests to prevent premature garbage collection.
-        item._test_scene_ref = scene
-        return item
+        item.parent_window = parent_window
+
+        if add_to_scene:
+            scene = QGraphicsScene()
+            scene.setSceneRect(0, 0, 200, 200)
+            scene.parent_window = parent_window
+            scene.addItem(item)
+
+            view = QGraphicsView(scene)
+            view.setMouseTracking(True)
+            qtbot.addWidget(view)
+            view.show()
+            view.resize(300,300)
+            item._test_scene_ref = scene
+            item._test_view_ref = view
+
+        if selectable:
+            item.setFlag(QGraphicsItem.ItemIsSelectable, True)
+
+        return item, scene, parent_window
     return _create_item_with_scene
 
-# Old fixture name, updated to use the new one that returns item with scene ref
 @pytest.fixture
-def create_item(create_item_with_scene): # create_item_with_scene now just returns item
-    def _create_item_wrapper(custom_config=None):
-        item = create_item_with_scene(custom_config)
-        return item
-    return _create_item_wrapper
+def item_fixture(create_item_with_scene):
+    item, _, _ = create_item_with_scene()
+    return item
 
 
-def test_update_geometry_from_config(qtbot, create_item):
-    item = create_item()
-    item.config_data['width'] = 150
-    item.config_data['height'] = 60 # Keep height reasonable for text
-    item.config_data['center_x'] = 80
-    item.config_data['center_y'] = 40
-    item.update_geometry_from_config()
-    assert item.boundingRect().width() == 150
-    assert item.pos() == QPointF(80 - 150/2, 40 - 60/2)
+# --- Test _get_resize_handle_at (Re-verified) ---
+@pytest.mark.parametrize("pos, expected_handle, item_width, item_height", [
+    (QPointF(1, 1), TOP_LEFT, 100, 50),
+    (QPointF(50, 1), TOP, 100, 50),
+    (QPointF(99, 1), TOP_RIGHT, 100, 50),
+    (QPointF(99, 25), RIGHT, 100, 50),
+    (QPointF(99, 49), BOTTOM_RIGHT, 100, 50),
+    (QPointF(50, 49), BOTTOM, 100, 50),
+    (QPointF(1, 49), BOTTOM_LEFT, 100, 50),
+    (QPointF(1, 25), LEFT, 100, 50),
+    (QPointF(InfoRectangleItem.RESIZE_MARGIN + 5, InfoRectangleItem.RESIZE_MARGIN + 5), NONE, 100, 50),
+    (QPointF(50, 25), NONE, 100, 50),
+])
+def test_get_all_resize_handles(create_item_with_scene, pos, expected_handle, item_width, item_height):
+    item, _, _ = create_item_with_scene(custom_config={'width': item_width, 'height': item_height})
+    assert item._get_resize_handle_at(pos) == expected_handle
 
 
-def test_set_display_text(qtbot, create_item):
-    item = create_item()
-    item.set_display_text('updated')
-    assert item.text_item.toPlainText() == 'updated'
-    assert item.config_data['text'] == 'updated' # Check config_data update
+# Helper to create mock mouse events (remains unchanged from previous state)
+def create_mock_mouse_event(event_type, pos, button=Qt.LeftButton, scene_pos=None, modifiers=Qt.NoModifier):
+    event = Mock(spec=QGraphicsSceneMouseEvent)
+    event.type.return_value = event_type
+    event.button.return_value = button
+    event.buttons.return_value = button if event_type == QGraphicsSceneMouseEvent.MouseButtonPress else Qt.NoButton
+    event.pos.return_value = pos
+    event.scenePos.return_value = scene_pos if scene_pos is not None else pos
+    event.screenPos.return_value = QPointF()
+    event.lastPos.return_value = QPointF()
+    event.lastScenePos.return_value = QPointF()
+    event.lastScreenPos.return_value = QPointF()
+    event.modifiers.return_value = modifiers
+    event.accepted = False
+    event.accept = Mock(side_effect=lambda: setattr(event, 'accepted', True))
+    event.ignore = Mock(side_effect=lambda: setattr(event, 'accepted', False))
+    event.isAccepted = Mock(side_effect=lambda: event.accepted)
+    return event
+
+# Helper to create mock hover events (remains unchanged)
+def create_mock_hover_event(pos, scene_pos=None):
+    event = Mock(spec=QGraphicsSceneHoverEvent)
+    event.pos.return_value = pos
+    event.scenePos.return_value = scene_pos if scene_pos is not None else pos
+    event.lastPos.return_value = QPointF()
+    event.lastScenePos.return_value = QPointF()
+    event.modifiers.return_value = Qt.NoModifier
+    return event
 
 
-def test_update_text_from_config(qtbot, create_item):
-    item = create_item()
-    item.config_data['text'] = 'again'
-    item.update_text_from_config() # This should also update formatting options
-    assert item.text_item.toPlainText() == 'again'
+# --- Test mousePressEvent (Focus on Resize Logic, Direct Call) ---
+@pytest.mark.parametrize("handle_type, press_pos, expected_cursor_shape", [
+    (InfoRectangleItem.ResizeHandle.TOP_LEFT, QPointF(1,1), Qt.SizeFDiagCursor),
+    (InfoRectangleItem.ResizeHandle.TOP, QPointF(50,1), Qt.SizeVerCursor),
+    (InfoRectangleItem.ResizeHandle.TOP_RIGHT, QPointF(99,1), Qt.SizeBDiagCursor),
+    (InfoRectangleItem.ResizeHandle.LEFT, QPointF(1,25), Qt.SizeHorCursor),
+    (InfoRectangleItem.ResizeHandle.RIGHT, QPointF(99,25), Qt.SizeHorCursor),
+    (InfoRectangleItem.ResizeHandle.BOTTOM_LEFT, QPointF(1,49), Qt.SizeBDiagCursor),
+    (InfoRectangleItem.ResizeHandle.BOTTOM, QPointF(50,49), Qt.SizeVerCursor),
+    (InfoRectangleItem.ResizeHandle.BOTTOM_RIGHT, QPointF(99,49), Qt.SizeFDiagCursor),
+])
+def test_mouse_press_on_resize_handles(create_item_with_scene, handle_type, press_pos, expected_cursor_shape):
+    item, scene, mock_parent_window = create_item_with_scene(custom_config={'width':100, 'height':50})
+    mock_parent_window.current_mode = "edit"
+    item.setSelected(True)
+    item.setFlag(QGraphicsItem.ItemIsMovable, True)
+    was_movable_before_press = bool(item.flags() & QGraphicsItem.ItemIsMovable)
+
+    event_scene_pos = item.mapToScene(press_pos)
+    event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_pos, scene_pos=event_scene_pos)
+
+    with patch.object(InfoRectangleItem, 'super', create=True) as mock_super:
+        mock_super.return_value.mousePressEvent = Mock()
+        item.mousePressEvent(event)
+        if handle_type != NONE:
+             mock_super().mousePressEvent.assert_not_called()
+
+    assert item._is_resizing is True
+    assert item._current_resize_handle == handle_type
+    assert item._resizing_initial_mouse_pos == event_scene_pos
+    assert item._resizing_initial_rect == item.sceneBoundingRect()
+    assert not (item.flags() & QGraphicsItem.ItemIsMovable)
+    assert item._was_movable == was_movable_before_press
+    assert item.cursor().shape() == expected_cursor_shape
+    assert event.isAccepted() is True
+
+def test_mouse_press_not_on_handle_emits_selected_and_calls_super(create_item_with_scene):
+    item, scene, mock_parent_window = create_item_with_scene(custom_config={'width':100, 'height':50})
+    mock_parent_window.current_mode = "edit"
+    item.setSelected(False)
+    item.setFlag(QGraphicsItem.ItemIsSelectable, True)
+
+    press_pos = item.boundingRect().center()
+    event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_pos, scene_pos=item.mapToScene(press_pos))
+
+    mock_slot = Mock()
+    item.item_selected.connect(mock_slot)
+
+    with patch.object(QGraphicsItem, 'mousePressEvent', Mock()) as mock_super_press:
+        item.mousePressEvent(event)
+        mock_super_press.assert_called_once_with(event)
+
+    assert item._is_resizing is False
+    mock_slot.assert_called_once_with(item)
 
 
-def test_update_appearance_selected(qtbot, create_item):
-    item = create_item()
-    item.update_appearance(is_selected=True, is_view_mode=False)
-    assert item._pen.color() == QColor(255, 0, 0, 200)
+# --- Test hoverMoveEvent (Focus on Cursor Setting for Handles, Direct Call) ---
+@pytest.mark.parametrize("hover_pos, expected_cursor_shape", [
+    (QPointF(1,1), Qt.SizeFDiagCursor), (QPointF(50,1), Qt.SizeVerCursor), (QPointF(99,1), Qt.SizeBDiagCursor),
+    (QPointF(1,25), Qt.SizeHorCursor), (QPointF(99,25), Qt.SizeHorCursor),
+    (QPointF(1,49), Qt.SizeBDiagCursor), (QPointF(50,49), Qt.SizeVerCursor), (QPointF(99,49), Qt.SizeFDiagCursor),
+])
+def test_hover_over_resize_handles_sets_cursor(create_item_with_scene, hover_pos, expected_cursor_shape):
+    item, scene, mock_parent_window = create_item_with_scene(custom_config={'width':100, 'height':50})
+    mock_parent_window.current_mode = "edit"
+    item.setSelected(True)
+    item._is_resizing = False
+    item.setAcceptHoverEvents(True)
+
+    event = create_mock_hover_event(hover_pos, scene_pos=item.mapToScene(hover_pos))
+
+    with patch.object(QGraphicsItem, 'hoverMoveEvent', Mock()) as mock_super_hover:
+        item.hoverMoveEvent(event)
+    assert item.cursor().shape() == expected_cursor_shape
+
+def test_hover_not_on_handle_movable_item_sets_pointing_hand(create_item_with_scene):
+    item, scene, mock_parent_window = create_item_with_scene(custom_config={'width':100, 'height':50})
+    mock_parent_window.current_mode = "edit"
+    item.setSelected(True)
+    item._is_resizing = False
+    item.setFlag(QGraphicsItem.ItemIsMovable, True)
+    item.setAcceptHoverEvents(True)
+
+    hover_pos = item.boundingRect().center()
+    event = create_mock_hover_event(hover_pos, scene_pos=item.mapToScene(hover_pos))
+    with patch.object(QGraphicsItem, 'hoverMoveEvent', Mock()) as mock_super_hover:
+        item.hoverMoveEvent(event)
+    assert item.cursor().shape() == Qt.PointingHandCursor
+
+def test_hover_not_on_handle_not_movable_item_sets_arrow_cursor(create_item_with_scene):
+    item, scene, mock_parent_window = create_item_with_scene(custom_config={'width':100, 'height':50})
+    mock_parent_window.current_mode = "edit"
+    item.setSelected(True)
+    item._is_resizing = False
+    item.setFlag(QGraphicsItem.ItemIsMovable, False)
+    item.setAcceptHoverEvents(True)
+
+    hover_pos = item.boundingRect().center()
+    event = create_mock_hover_event(hover_pos, scene_pos=item.mapToScene(hover_pos))
+    with patch.object(QGraphicsItem, 'hoverMoveEvent', Mock()) as mock_super_hover:
+        item.hoverMoveEvent(event)
+    assert item.cursor().shape() == Qt.ArrowCursor
+
+# --- Test mouseMoveEvent (Resizing Logic - Direct Call with Mocks) ---
+@pytest.mark.parametrize("handle_type, initial_item_pos_scene, initial_width, initial_height, mouse_delta_scene, expected_final_pos_scene, expected_final_width, expected_final_height", [
+    (TOP_LEFT, QPointF(50,50), 100, 50, QPointF(-10,-10), QPointF(40,40), 110, 60),
+    (BOTTOM_RIGHT, QPointF(50,50), 100, 50, QPointF(20,15), QPointF(50,50), 120, 65),
+    (TOP, QPointF(50,50), 100, 50, QPointF(0,-5), QPointF(50,45), 100, 55),
+    (RIGHT, QPointF(50,50), 100, 50, QPointF(12,0), QPointF(50,50), 112, 50),
+])
+def test_mouse_move_resizing_handles(create_item_with_scene, handle_type, initial_item_pos_scene, initial_width, initial_height, mouse_delta_scene, expected_final_pos_scene, expected_final_width, expected_final_height):
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'width': initial_width, 'height': initial_height,
+                       'center_x': initial_item_pos_scene.x() + initial_width/2,
+                       'center_y': initial_item_pos_scene.y() + initial_height/2}
+    )
+    mock_parent_window.current_mode = "edit"
+    item.setSelected(True)
+    item.setPos(initial_item_pos_scene)
+
+    item._is_resizing = True
+    item._current_resize_handle = handle_type
+    item._resizing_initial_rect = item.sceneBoundingRect()
+    item._resizing_initial_mouse_pos = item.sceneBoundingRect().center()
+
+    event_scene_pos = item._resizing_initial_mouse_pos + mouse_delta_scene
+    event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(), scene_pos=event_scene_pos, button=Qt.LeftButton)
+
+    with patch.object(QGraphicsItem, 'mouseMoveEvent', Mock()) as mock_super_move:
+        item.mouseMoveEvent(event)
+        mock_super_move.assert_not_called()
+
+    assert item.pos() == expected_final_pos_scene
+    assert item.boundingRect().width() == pytest.approx(expected_final_width)
+    assert item.boundingRect().height() == pytest.approx(expected_final_height)
+    assert item.text_item.textWidth() == pytest.approx(expected_final_width)
+    assert event.isAccepted() is True
+
+@pytest.mark.parametrize("handle_type, mouse_delta_scene, expected_dim, expected_val, final_pos_attr, final_pos_val", [
+    (LEFT, QPointF(90,0), "_w", InfoRectangleItem.MIN_WIDTH, "x", 50 + 100 - InfoRectangleItem.MIN_WIDTH),
+    (RIGHT, QPointF(-90,0), "_w", InfoRectangleItem.MIN_WIDTH, "x", 50),
+    (TOP, QPointF(0,40), "_h", InfoRectangleItem.MIN_HEIGHT, "y", 50 + 50 - InfoRectangleItem.MIN_HEIGHT),
+    (BOTTOM, QPointF(0,-40), "_h", InfoRectangleItem.MIN_HEIGHT, "y", 50),
+])
+def test_mouse_move_resizing_min_constraints(create_item_with_scene, handle_type, mouse_delta_scene, expected_dim, expected_val, final_pos_attr, final_pos_val):
+    initial_pos = QPointF(50,50)
+    initial_width = 100
+    initial_height = 50
+    item, _, _ = create_item_with_scene(custom_config={'width': initial_width, 'height': initial_height, 'center_x': initial_pos.x()+initial_width/2, 'center_y': initial_pos.y()+initial_height/2})
+    item.setSelected(True); item.parent_window.current_mode = "edit"; item.setPos(initial_pos)
+
+    item._is_resizing = True
+    item._current_resize_handle = handle_type
+    item._resizing_initial_rect = item.sceneBoundingRect()
+    item._resizing_initial_mouse_pos = item.sceneBoundingRect().center()
+
+    event_scene_pos = item._resizing_initial_mouse_pos + mouse_delta_scene
+    event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(), scene_pos=event_scene_pos, button=Qt.LeftButton)
+
+    with patch.object(QGraphicsItem, 'mouseMoveEvent', Mock()):
+        item.mouseMoveEvent(event)
+
+    assert getattr(item, expected_dim) == expected_val
+    if final_pos_attr == "x":
+        assert item.pos().x() == pytest.approx(final_pos_val)
+    else:
+        assert item.pos().y() == pytest.approx(final_pos_val)
 
 
-def test_get_resize_handle_at(qtbot, create_item):
-    item = create_item()
-    pos = QPointF(1, 1)
-    assert item._get_resize_handle_at(pos) == InfoRectangleItem.ResizeHandle.TOP_LEFT
+# --- Test mouseReleaseEvent (After Resizing - Direct Call with Mocks) ---
+def test_mouse_release_after_resizing(create_item_with_scene):
+    item, scene, mock_parent_window = create_item_with_scene()
+    mock_parent_window.current_mode = "edit"
+    item.setSelected(True)
+    item.setFlag(QGraphicsItem.ItemIsMovable, True)
 
-def test_item_change_updates_config(qtbot, create_item):
-    item = create_item()
-    # scene = QGraphicsScene() # Item already added to scene in fixture
-    # scene.addItem(item)
-    item.setPos(10, 15)
-    assert item.config_data['center_x'] == 10 + item.boundingRect().width() / 2
-    assert item.config_data['center_y'] == 15 + item.boundingRect().height() / 2
+    item.setPos(10,20); item._w = 120; item._h = 60
+    item.text_item.setTextWidth(item._w)
+    scene.update()
+    QApplication.processEvents()
 
-def test_update_appearance_view_mode(qtbot, create_item):
-    item = create_item()
-    item.update_appearance(is_view_mode=True)
-    assert not item.text_item.isVisible()
-    assert item._pen.color() == QColor(0, 0, 0, 0)
+    item._is_resizing = True
+    item._current_resize_handle = InfoRectangleItem.ResizeHandle.BOTTOM_RIGHT
+    item._was_movable = bool(item.flags() & QGraphicsItem.ItemIsMovable)
+    item.setFlag(QGraphicsItem.ItemIsMovable, False)
 
-def test_center_text_respects_padding(qtbot, create_item):
-    item = create_item({'padding': '20px'}) # Pass padding in custom_config
-    item.set_display_text('multi\nline text') # This calls _center_text
-    # item._center_text() # Call explicitly if set_display_text doesn't or for clarity
-    assert item.text_item.y() >= 20
+    event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseRelease, QPointF(), button=Qt.LeftButton)
 
-def test_item_moved_signal_emitted(qtbot, create_item):
-    item = create_item()
-    # scene = QGraphicsScene() # Item already added to scene in fixture
-    # scene.addItem(item)
-    moved = []
-    item.item_moved.connect(lambda obj: moved.append(True))
-    item.setPos(5, 5)
-    assert moved and item.config_data['center_x'] == 5 + item.boundingRect().width() / 2
+    mock_slot = Mock()
+    item.properties_changed.connect(mock_slot)
 
-# --- New Tests for Rich Text Formatting ---
+    with patch.object(QGraphicsItem, 'mouseReleaseEvent', Mock()) as mock_super_release:
+        item.mouseReleaseEvent(event)
+        mock_super_release.assert_not_called()
 
-def test_default_values_applied(qtbot, default_text_config):
-    # Create item with minimal config, let it pick up defaults
-    minimal_config = {
-        'id': 'rect_minimal',
-        'width': 100, 'height': 50, 'center_x': 50, 'center_y': 25, 'text': 'test'
-    }
-    item = InfoRectangleItem(minimal_config)
-    # scene = QGraphicsScene(); scene.addItem(item) # Add to scene if needed for full init
+    assert item._is_resizing is False
+    assert bool(item.flags() & QGraphicsItem.ItemIsMovable) == item._was_movable
+    assert item.config_data['width'] == item._w
+    assert item.config_data['height'] == item._h
+    expected_center_x = item.pos().x() + item._w / 2
+    expected_center_y = item.pos().y() + item._h / 2
+    assert item.config_data['center_x'] == expected_center_x
+    assert item.config_data['center_y'] == expected_center_y
+    mock_slot.assert_called_once_with(item)
+    assert event.isAccepted() is True
+    assert item.cursor().shape() == (Qt.PointingHandCursor if item._was_movable else Qt.ArrowCursor)
 
-    assert item.vertical_alignment == default_text_config['vertical_alignment']
-    assert item.horizontal_alignment == default_text_config['horizontal_alignment']
-    assert item.font_style == default_text_config['font_style']
-    assert item.text_item.font().pointSize() == int(default_text_config['font_size'].replace('px',''))
-    assert item.text_item.defaultTextColor() == QColor(default_text_config['font_color'])
+# --- Tests for _get_style_value ---
+def test_get_style_value_logic(item_fixture, default_text_config_values):
+    item = item_fixture
+    default_font_color = default_text_config_values['font_color']
 
-    # Check text_item properties (after update_text_from_config which is called in __init__)
-    expected_h_align = Qt.AlignLeft # Default
-    if default_text_config['horizontal_alignment'] == "center": expected_h_align = Qt.AlignCenter
-    elif default_text_config['horizontal_alignment'] == "right": expected_h_align = Qt.AlignRight
-    assert item.text_item.document().defaultTextOption().alignment() == expected_h_align
+    # 1. Item has _style_config_ref and key is in it
+    item._style_config_ref = {"font_color": "#111111"}
+    item.config_data = {"font_color": "#222222"}
+    assert item._get_style_value("font_color", default_font_color) == "#111111"
 
-    assert not item.text_item.font().bold() # Default is normal
-    assert not item.text_item.font().italic() # Default is normal
+    # 2. Item has _style_config_ref, key not in it, but key is in item.config_data
+    item._style_config_ref = {"font_size": "12px"}
+    item.config_data = {"font_color": "#333333"}
+    assert item._get_style_value("font_color", default_font_color) == "#333333"
 
+    # 3. Item has _style_config_ref, key not in it, key not in item.config_data
+    item._style_config_ref = {"font_size": "12px"}
+    item.config_data = {"font_size": "10px"}
+    assert item._get_style_value("font_color", default_font_color) == default_font_color
 
-def test_apply_vertical_alignment(qtbot, create_item):
-    item = create_item({'height': 100, 'padding': '10px', 'font_size': '10px'})
-    item.text_item.setPlainText("Line1\nLine2") # Ensure some text height
+    # 4. Item _style_config_ref is None, key is in item.config_data
+    item._style_config_ref = None
+    item.config_data = {"font_color": "#444444"}
+    assert item._get_style_value("font_color", default_font_color) == "#444444"
 
-    # Approximate text height (very rough, use fixed value for reliable test if needed)
-    # For more precise testing, mock QFontMetrics or use a known font and text.
-    # Let's assume text_height is roughly 2 lines * 10px font = 20-25px
-    # However, _center_text calculates this, so we check resulting y.
+    # 5. Item _style_config_ref is None, key not in item.config_data
+    item._style_config_ref = None
+    item.config_data = {"font_size": "10px"}
+    assert item._get_style_value("font_color", default_font_color) == default_font_color
 
-    # Top alignment
-    item.config_data['vertical_alignment'] = 'top'
-    item.vertical_alignment = 'top'
+# --- Tests for _center_text ---
+def test_center_text_no_text_item(item_fixture):
+    item = item_fixture
+    item.text_item = None
+    try:
+        item._center_text()
+    except Exception as e:
+        pytest.fail(f"_center_text raised an exception with no text_item: {e}")
+
+def test_center_text_invalid_padding(item_fixture, default_text_config_values):
+    item = item_fixture
+    item.config_data['padding'] = "invalid_value"
+    item.text_item.setPlainText("Test")
     item._center_text()
-    assert item.text_item.y() == 10 # Should be at top padding
+    assert item.text_item.y() >= 5
 
-    # Center alignment
-    item.config_data['vertical_alignment'] = 'center'
-    item.vertical_alignment = 'center'
+@pytest.mark.parametrize("v_align", ["top", "center", "bottom"])
+@pytest.mark.parametrize("h_align", ["left", "center", "right"])
+def test_center_text_all_alignments(create_item_with_scene, v_align, h_align):
+    item, _, _ = create_item_with_scene(custom_config={'height': 100, 'padding': '10px'})
+    item.text_item.setPlainText("Line1\nLine2")
+
+    item.vertical_alignment = v_align
+    item.horizontal_alignment = h_align
     item._center_text()
-    # y should be (item_height - text_block_height)/2, but >= padding_top
-    # (100 - text_height)/2. If text_height is ~25, (100-25)/2 = 37.5
-    assert item.text_item.y() > 10
-    # More specific check would require knowing text_height accurately
 
-    # Bottom alignment
-    item.config_data['vertical_alignment'] = 'bottom'
-    item.vertical_alignment = 'bottom'
-    item._center_text()
-    # y should be item_height - text_block_height - padding_bottom
-    # 100 - text_height - 10. If text_height ~25, 100 - 25 - 10 = 65
-    # This needs QFontMetrics to be accurate, so we check it's greater than center pos
-    assert item.text_item.y() > 30 # Greater than a typical centered position
+    h_align_map = {"left": Qt.AlignLeft, "center": Qt.AlignCenter, "right": Qt.AlignRight}
+    assert item.text_item.document().defaultTextOption().alignment() == h_align_map[h_align]
 
-
-def test_apply_horizontal_alignment(qtbot, create_item):
-    item = create_item()
-
-    item.config_data['horizontal_alignment'] = 'left'
-    item.update_text_from_config() # This applies the alignment
-    assert item.text_item.document().defaultTextOption().alignment() == Qt.AlignLeft
-
-    item.config_data['horizontal_alignment'] = 'center'
-    item.update_text_from_config()
-    assert item.text_item.document().defaultTextOption().alignment() == Qt.AlignCenter
-
-    item.config_data['horizontal_alignment'] = 'right'
-    item.update_text_from_config()
-    assert item.text_item.document().defaultTextOption().alignment() == Qt.AlignRight
+    y_pos = item.text_item.y()
+    if v_align == "top":
+        assert y_pos == pytest.approx(10)
+    elif v_align == "center":
+        assert 10 < y_pos < (100 - item.text_item.boundingRect().height() - 10)
+    elif v_align == "bottom":
+        padding_val = 10
+        text_bottom_edge = item.text_item.y() + item.text_item.boundingRect().height()
+        expected_bottom_edge = item._h - padding_val
+        assert abs(text_bottom_edge - expected_bottom_edge) < 2.0
 
 
-def test_apply_font_style(qtbot, create_item):
-    item = create_item()
+# --- Test update_text_from_config Error Handling ---
+def test_update_text_from_config_invalid_font_size(create_item_with_scene, default_text_config_values):
+    item, _, _ = create_item_with_scene()
 
-    item.config_data['font_style'] = 'normal'
-    item.update_text_from_config()
-    assert not item.text_item.font().bold()
-    assert not item.text_item.font().italic()
+    item.config_data['font_size'] = "invalid_size"
 
-    item.config_data['font_style'] = 'bold'
-    item.update_text_from_config()
-    assert item.text_item.font().bold()
-    assert not item.text_item.font().italic()
+    mock_defaults = {"defaults": {"info_rectangle_text_display": default_text_config_values.copy()}}
+    mock_defaults["defaults"]["info_rectangle_text_display"]['font_size'] = "12px"
 
-    item.config_data['font_style'] = 'italic'
-    item.update_text_from_config()
-    assert not item.text_item.font().bold()
-    assert item.text_item.font().italic()
+    with patch('src.info_rectangle_item.utils.get_default_config', return_value=mock_defaults):
+        item.update_text_from_config()
+    assert item.text_item.font().pointSize() == 12
 
-    # If InfoRectangleItem comes to support "bold italic"
-    # item.config_data['font_style'] = 'bold italic'
-    # item.update_text_from_config()
-    # assert item.text_item.font().bold()
-    # assert item.text_item.font().italic()
+    item.config_data['font_size'] = "another_invalid"
+    mock_defaults["defaults"]["info_rectangle_text_display"]['font_size'] = "bad_default_px"
+    with patch('src.info_rectangle_item.utils.get_default_config', return_value=mock_defaults):
+        item.update_text_from_config()
+    assert item.text_item.font().pointSize() == 14
 
-def test_apply_font_size_and_color(qtbot, create_item):
-    item = create_item()
-    item.config_data['font_size'] = '22px'
-    item.config_data['font_color'] = '#FF00FF'
-    item.update_text_from_config()
-    # Qt might use pointSize or pixelSize depending on how font was set.
-    # If set with setPointSize, pointSize is primary. If setPixelSize, pixelSize.
-    # InfoRectangleItem uses setPointSize after parsing "px" value.
-    assert item.text_item.font().pointSize() == 22
-    assert item.text_item.defaultTextColor() == QColor("#FF00FF")
+# --- Test apply_style Method ---
+def test_apply_style_with_name(item_fixture):
+    item = item_fixture
+    style = {"name": "MyStyle", "font_color": "#111111", "font_size": "16px"}
+    item.apply_style(style)
+    assert item.config_data['text_style_ref'] == "MyStyle"
+    assert item._style_config_ref == style
+    assert item.config_data['font_color'] == "#111111"
+    assert item.text_item.defaultTextColor() == QColor("#111111")
+    assert item.text_item.font().pointSize() == 16
 
+def test_apply_style_none_removes_ref(item_fixture, default_text_config_values):
+    item = item_fixture
+    style = {"name": "MyStyle", "font_color": "#123456", "font_size": "22px"}
+    item.apply_style(style)
+    assert item.config_data.get('text_style_ref') == "MyStyle"
 
-def test_apply_style_method(qtbot, create_item):
-    item = create_item()
-    style_config = {
-        "font_color": "#112233",
-        "font_size": "18px",
-        "font_style": "bold",
-        "horizontal_alignment": "center",
-        "vertical_alignment": "bottom",
-        "padding": "8px",
-        # "background_color" # This is part of rect_config, not a style applied by apply_style directly to item.text_item's font/alignment
-    }
+    item.config_data['font_color'] = "#ABCDEF"
+    item.apply_style(None)
 
-    item.apply_style(style_config)
-
-    # Assert that item.config_data now reflects the flattened style properties.
-    assert item.config_data['font_color'] == style_config["font_color"]
-    assert item.config_data['font_size'] == style_config["font_size"]
-    assert item.config_data['font_style'] == style_config["font_style"]
-    assert item.config_data['horizontal_alignment'] == style_config["horizontal_alignment"]
-    assert item.config_data['vertical_alignment'] == style_config["vertical_alignment"]
-    assert item.config_data['padding'] == style_config["padding"]
-
-    # Since style_config is anonymous (no 'name'), 'text_style_ref' should be None or not present.
-    assert item.config_data.get('text_style_ref') is None
-
-    # The item's direct attributes (like self.font_style) ARE updated by update_text_from_config
-    # which is called by apply_style and now reads from the updated self.config_data (via _get_style_value's fallback).
-    assert item.font_style == "bold"
-    assert item.horizontal_alignment == "center"
-    assert item.vertical_alignment == "bottom"
-
-    # Check QGraphicsTextItem properties
-    assert item.text_item.defaultTextColor() == QColor("#112233")
-    assert item.text_item.font().pointSize() == 18
-    assert item.text_item.font().bold()
-    assert not item.text_item.font().italic()
-    assert item.text_item.document().defaultTextOption().alignment() == Qt.AlignCenter
-    # Vertical alignment check for text_item.y() would be similar to test_apply_vertical_alignment
-    # and depends on item height and text block height.
-    # For now, checking the internal attribute is sufficient for apply_style coverage.
+    assert 'text_style_ref' not in item.config_data
+    assert item._style_config_ref is None
+    assert item.text_item.defaultTextColor() == QColor("#ABCDEF")
+    expected_default_size = int(default_text_config_values['font_size'].replace('px',''))
+    assert item.text_item.font().pointSize() == expected_default_size
 
 
-def test_style_updates_reflect_on_items(qtbot, create_item_with_scene):
-    """
-    Tests that if the style dictionary held by _style_config_ref is modified externally,
-    the item reflects these changes after its update methods are called.
-    """
-    # 1. Create two InfoRectangleItem instances with minimal config
-    item1_config = {'id': 'item1', 'width': 100, 'height': 50, 'center_x': 50, 'center_y': 25, 'text': 'Initial1'}
-    item2_config = {'id': 'item2', 'width': 120, 'height': 60, 'center_x': 60, 'center_y': 30, 'text': 'Initial2'}
-    item1 = create_item_with_scene(item1_config)
-    item2 = create_item_with_scene(item2_config)
+def test_apply_style_key_precedence(item_fixture, default_text_config_values):
+    item = item_fixture
+    item.config_data['text'] = "Original Text"
+    item.config_data['font_size'] = "10px"
+    item.config_data['font_style'] = "italic"
 
-    # 2. Define and apply original_style
-    original_style = {
-        'font_color': '#FF0000',  # Red
-        'font_size': '12px',
-        'text': 'Styled Text'  # Style can also set text
-    }
-    item1.apply_style(original_style)
-    item2.apply_style(original_style)
-    # apply_style calls update_text_from_config, so properties should be set
+    style = {"font_size": "20px", "text": "Styled Text"}
+    item.apply_style(style)
 
-    # 3. Initial Assertions
-    assert item1.text_item.defaultTextColor() == QColor('#FF0000')
-    assert item1.text_item.font().pointSize() == 12
-    assert item1.text_item.toPlainText() == 'Styled Text'
+    assert item.config_data['text'] == "Styled Text"
+    assert item.config_data['font_size'] == "20px"
+    assert item.config_data['font_style'] == default_text_config_values['font_style']
+    assert item.text_item.toPlainText() == "Styled Text"
+    assert item.text_item.font().pointSize() == 20
+    if default_text_config_values['font_style'] == "normal":
+        assert not item.text_item.font().bold() and not item.text_item.font().italic()
+    elif default_text_config_values['font_style'] == "bold":
+        assert item.text_item.font().bold()
 
-    assert item2.text_item.defaultTextColor() == QColor('#FF0000')
-    assert item2.text_item.font().pointSize() == 12
-    assert item2.text_item.toPlainText() == 'Styled Text'
+def test_apply_style_emits_properties_changed(item_fixture):
+    item = item_fixture
+    mock_slot = Mock()
+    item.properties_changed.connect(mock_slot)
+    item.apply_style({"font_color": "#222222"})
+    mock_slot.assert_called_once_with(item)
 
-    # 4. Modify the original_style dictionary
-    # This simulates a scenario where a style manager updates the style object
-    # that items are referencing.
-    original_style['font_color'] = '#00FF00'  # Green
-    original_style['font_size'] = '15px'
-    # 'text' remains 'Styled Text'
+# --- Test itemChange for Non-Resizing Moves ---
+def test_item_change_position_not_resizing(item_fixture):
+    item = item_fixture
+    item._is_resizing = False
+    item.setFlag(QGraphicsItem.ItemIsMovable, True)
 
-    # 5. Trigger Refresh
-    # Items need to be told to re-read their style config.
-    # In a real app, this might be part of a style update notification system.
-    item1.update_text_from_config()
-    item2.update_text_from_config()
+    mock_slot = Mock()
+    item.item_moved.connect(mock_slot)
 
-    # 6. Final Assertions
-    # Both items should now reflect the modified style because they hold a reference
-    # to the 'original_style' dictionary via _style_config_ref, and _get_style_value
-    # reads from it.
-    assert item1.text_item.defaultTextColor() == QColor('#00FF00')
-    assert item1.text_item.font().pointSize() == 15
-    assert item1.text_item.toPlainText() == 'Styled Text' # Text content from style is still the same
+    initial_cx = item.config_data['center_x']
+    initial_cy = item.config_data['center_y']
 
-    assert item2.text_item.defaultTextColor() == QColor('#00FF00')
-    assert item2.text_item.font().pointSize() == 15
-    assert item2.text_item.toPlainText() == 'Styled Text'
+    new_pos = QPointF(item.pos().x() + 10, item.pos().y() + 10)
+
+    item.itemChange(QGraphicsItem.ItemPositionHasChanged, new_pos)
+
+    mock_slot.assert_called_once_with(item)
+    expected_cx = new_pos.x() + item._w / 2
+    expected_cy = new_pos.y() + item._h / 2
+    assert item.config_data['center_x'] == expected_cx
+    assert item.config_data['center_y'] == expected_cy
+    assert item.config_data['center_x'] != initial_cx
+    assert item.config_data['center_y'] != initial_cy
