@@ -201,7 +201,8 @@ class InfoCanvasApp(QMainWindow):
         if self.current_mode == "view" and hasattr(self, "web_view"):
             exporter = HtmlExporter(config=self.config, project_path=self.current_project_path)
             html_content = exporter._generate_html_content()
-            self.web_view.setHtml(html_content, QUrl.fromLocalFile(self.current_project_path))
+            base_url = QUrl.fromLocalFile(os.path.join(self.current_project_path, ""))
+            self.web_view.setHtml(html_content, base_url)
             if hasattr(self, "central_layout"):
                 self.central_layout.setCurrentWidget(self.web_view)
             self.view.hide()

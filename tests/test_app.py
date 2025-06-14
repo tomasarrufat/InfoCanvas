@@ -358,7 +358,8 @@ def test_on_mode_changed(base_app_fixture, monkeypatch):
     app.web_view.setHtml.assert_called_once()
     set_html_args = app.web_view.setHtml.call_args[0]
     assert html_content in set_html_args[0]
-    assert set_html_args[1] == QUrl.fromLocalFile(app.current_project_path)
+    expected_base_url = QUrl.fromLocalFile(os.path.join(app.current_project_path, ""))
+    assert set_html_args[1] == expected_base_url
     app.web_view.show.assert_called_once()
     app.view.hide.assert_called_once()
 
