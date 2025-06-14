@@ -1,4 +1,12 @@
-# Interactive Image Tool
+# InfoCanvas
+
+* [Basic Purpose](#basic-purpose)
+* [File Structure](#file-structure)
+* [Installation](#installation)
+* [Usage](#usage)
+* [Project Management](#project-management)
+* [Stopping the Application](#stopping-the-application)
+* [Running Tests](#running-tests)
 
 ## Basic Purpose
 
@@ -10,27 +18,48 @@ The project follows this basic structure:
 
 ```
 /interactive-image-tool/
-|-- app.py                 # Main Python PyQt5 application
+|-- .gitignore             # Specifies intentionally untracked files that Git should ignore
+|-- app.py                 # Main entry point for the PyQt5 application
 |-- requirements.txt       # Python package dependencies
 |-- README.md              # This file
-|-- /static/               # Root directory for project-specific files
+|-- /src/                  # Contains all core Python source code for the application
+|   |-- canvas_manager.py
+|   |-- draggable_image_item.py
+|   |-- exporter.py
+|   |-- info_rectangle_item.py
+|   |-- input_handler.py
+|   |-- item_operations.py
+|   |-- project_io.py
+|   |-- project_manager_dialog.py
+|   |-- text_style_manager.py
+|   |-- ui_builder.py
+|   |-- utils.py
+|-- /static/               # Root directory for project-specific files (created automatically if it doesn't exist)
 |   |-- /<project_name>/   # Folder for a specific project
 |   |   |-- config.json    # Stores background, image, and hotspot data for this project
 |   |   |-- /images/       # Stores images uploaded for this project
 |   |   |   |-- (uploaded images will appear here)
 |-- /doc/                  # Contains documentation like toolRequirements.md
 |   |-- toolRequirements.md
+|-- /tests/                # Contains test scripts for the application
+|   |-- __init__.py
+|   |-- conftest.py
+|   |-- test_app.py
+|   |-- (and other test_*.py files)
 ```
 
--   **`app.py`**: Contains the main PyQt5 application logic, including UI, event handling, and project management.
+-   **`.gitignore`**: Specifies intentionally untracked files that Git should ignore (e.g., `venv/`, `__pycache__/`).
+-   **`app.py`**: Main entry point for the PyQt5 application. It initializes and runs the application defined in the `src/` directory.
 -   **`requirements.txt`**: Lists the Python packages needed to run the application (e.g., PyQt5).
 -   **`README.md`**: This file.
--   **`static/`**: This directory serves as the root for storing all project-specific data.
+-   **`src/`**: This directory contains all the core Python source code for the application, organized into modules (e.g., `canvas_manager.py`, `ui_builder.py`, etc.).
+-   **`static/`**: This directory serves as the root for storing all project-specific data. It and its subdirectories are created automatically by the application if they don't already exist.
     -   **`/<project_name>/`**: Each sub-directory within `static/` represents an individual project.
         -   **`config.json`**: Located within each project's folder, this file stores the specific configuration for that project, including background settings, image details (paths, positions, scales), and info rectangle data.
         -   **`images/`**: Also within each project's folder, this sub-directory holds all images uploaded by the user for that particular project.
 -   **`doc/`**: Contains additional documentation for the project.
     -   **`toolRequirements.md`**: Describes the (original) requirements for the tool.
+-   **`tests/`**: This directory holds all the test scripts for the application, using `pytest`.
 
 ## Installation
 
@@ -97,7 +126,7 @@ The project follows this basic structure:
 
 ## Project Management
 
-This application supports managing multiple distinct interactive image projects. Each project has its own canvas, images, and hotspot configurations.
+This application supports managing multiple distinct InfoCanvas projects. Each project has its own canvas, images, and hotspot configurations.
 
 -   **Project Storage:**
     -   All projects are stored as subdirectories within the `static/` folder in the application's root directory.

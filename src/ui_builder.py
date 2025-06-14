@@ -7,7 +7,7 @@ from PyQt5.QtGui import QColor, QBrush, QPainter
 from PyQt5.QtCore import Qt
 
 class UIBuilder:
-    """Builds the main UI for :class:`InteractiveToolApp`."""
+    """Builds the main UI for :class:`InfoCanvasApp`."""
 
     def __init__(self, app):
         self.app = app

@@ -20,7 +20,7 @@ from src.text_style_manager import TextStyleManager
 from src.exporter import HtmlExporter # <--- NEW IMPORT
 from src.input_handler import InputHandler
 # --- Main Application Window ---
-class InteractiveToolApp(QMainWindow):
+class InfoCanvasApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setGeometry(100, 100, 1200, 700)
@@ -59,9 +59,9 @@ class InteractiveToolApp(QMainWindow):
 
     def _update_window_title(self):
         if self.current_project_name:
-            self.setWindowTitle(f"PyQt5 Interactive Image Tool - {self.current_project_name}")
+            self.setWindowTitle(f"InfoCanvas - {self.current_project_name}")
         else:
-            self.setWindowTitle("PyQt5 Interactive Image Tool - No Project Loaded")
+            self.setWindowTitle("InfoCanvas - No Project Loaded")
 
     def _reset_application_to_no_project_state(self):
         """Resets the UI and internal state when no project is loaded or current is deleted."""
@@ -808,7 +808,7 @@ class InteractiveToolApp(QMainWindow):
 if __name__ == '__main__':
     app = QApplication.instance() or QApplication(sys.argv)
     
-    main_window = InteractiveToolApp()
+    main_window = InfoCanvasApp()
     if main_window.current_project_name: 
         main_window.show()
         sys.exit(app.exec_())

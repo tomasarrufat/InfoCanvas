@@ -12,7 +12,7 @@ class TextStyleManager:
         Initializes the TextStyleManager.
 
         Args:
-            app: The main InteractiveToolApp instance.
+            app: The main InfoCanvasApp instance.
         """
         self.app = app
 
