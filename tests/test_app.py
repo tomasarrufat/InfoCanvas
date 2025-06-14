@@ -618,3 +618,21 @@ def test_ctrl_multi_select_info_rectangles(base_app_fixture, monkeypatch):
 
 
 # --- Tests for Alignment Features --- #
+
+
+def test_undo_history_limit_and_multiple_undo(base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    monkeypatch.setattr(app.project_io, "save_config", MagicMock(return_value=True))
+    app.config_snapshot_stack = [copy.deepcopy(app.config)]
+
+    for i in range(1, 26):
+        app.config["background"]["width"] = 800 + i
+        app.save_config()
+
+    assert len(app.config_snapshot_stack) == app.MAX_UNDO_HISTORY
+    assert app.config["background"]["width"] == 825
+
+    for _ in range(19):
+        app.undo_last_action()
+
+    assert app.config["background"]["width"] == 806
