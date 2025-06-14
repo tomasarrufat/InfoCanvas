@@ -97,9 +97,9 @@ class ItemOperations:
             new_image_config['center_y'] - (original_height * new_image_config['scale']) / 2
         )
 
-        # Connect signals to app's handlers
-        item.item_selected.connect(self.app.on_graphics_item_selected)
-        item.item_moved.connect(self.app.on_graphics_item_moved)
+        # Connect signals to app's CanvasManager handlers
+        item.item_selected.connect(self.app.canvas_manager.on_graphics_item_selected)
+        item.item_moved.connect(self.app.canvas_manager.on_graphics_item_moved)
 
         self.scene.addItem(item) # self.scene is app.scene
         self.item_map[img_id] = item # self.item_map is app.item_map
@@ -218,10 +218,10 @@ class ItemOperations:
 
         item = InfoRectangleItem(new_rect_config) # Z-value set in item's __init__
 
-        # Connect signals to app's handlers
-        item.item_selected.connect(self.app.on_graphics_item_selected)
-        item.item_moved.connect(self.app.on_graphics_item_moved)
-        item.properties_changed.connect(self.app.on_graphics_item_properties_changed)
+        # Connect signals to app's CanvasManager handlers
+        item.item_selected.connect(self.app.canvas_manager.on_graphics_item_selected)
+        item.item_moved.connect(self.app.canvas_manager.on_graphics_item_moved)
+        item.properties_changed.connect(self.app.canvas_manager.on_graphics_item_properties_changed)
 
         self.scene.addItem(item) # self.scene is app.scene
         self.item_map[rect_id] = item # self.item_map is app.item_map
@@ -280,10 +280,10 @@ class ItemOperations:
 
         item = InfoRectangleItem(new_item_config) # Z-value set in item's __init__
 
-        # Connect signals to app's handlers
-        item.item_selected.connect(self.app.on_graphics_item_selected)
-        item.item_moved.connect(self.app.on_graphics_item_moved)
-        item.properties_changed.connect(self.app.on_graphics_item_properties_changed)
+        # Connect signals to app's CanvasManager handlers
+        item.item_selected.connect(self.app.canvas_manager.on_graphics_item_selected)
+        item.item_moved.connect(self.app.canvas_manager.on_graphics_item_moved)
+        item.properties_changed.connect(self.app.canvas_manager.on_graphics_item_properties_changed)
 
         self.scene.addItem(item) # self.scene is app.scene
         self.item_map[new_item_config['id']] = item # self.item_map is app.item_map
