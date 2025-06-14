@@ -54,6 +54,7 @@ class InfoRectangleItem(QGraphicsObject):
         self._resizing_initial_mouse_pos = QPointF()
         self._resizing_initial_rect = QRectF()
         self._is_resizing = False
+        self._has_moved = False
         self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Ensure it's a boolean
         self._applied_style_values = {} # To track values set by the current style
 
@@ -159,6 +160,7 @@ class InfoRectangleItem(QGraphicsObject):
         if event.button() == Qt.LeftButton: # This logic might need review if item_selected should only emit on actual selection change
             self.item_selected.emit(self)
             self.initial_pos = self.pos()
+            self._has_moved = False
 
 
     def mouseMoveEvent(self, event):
@@ -225,6 +227,9 @@ class InfoRectangleItem(QGraphicsObject):
             event.accept()
         else:
             super().mouseReleaseEvent(event)
+            if event.button() == Qt.LeftButton and self._has_moved:
+                self.item_moved.emit(self)
+                self._has_moved = False
 
     def update_geometry_from_config(self):
         self.prepareGeometryChange()
@@ -339,7 +344,7 @@ class InfoRectangleItem(QGraphicsObject):
         if change == QGraphicsItem.ItemPositionHasChanged and self.scene() and not self._is_resizing:
             self.config_data['center_x'] = value.x() + self._w / 2
             self.config_data['center_y'] = value.y() + self._h / 2
-            self.item_moved.emit(self)
+            self._has_moved = True
         return super().itemChange(change, value)
 
     def apply_style(self, style_config_object):

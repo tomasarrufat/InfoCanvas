@@ -493,10 +493,33 @@ def test_item_change_position_not_resizing(item_fixture):
 
     item.itemChange(QGraphicsItem.ItemPositionHasChanged, new_pos)
 
-    mock_slot.assert_called_once_with(item)
+    mock_slot.assert_not_called()
     expected_cx = new_pos.x() + item._w / 2
     expected_cy = new_pos.y() + item._h / 2
     assert item.config_data['center_x'] == expected_cx
     assert item.config_data['center_y'] == expected_cy
     assert item.config_data['center_x'] != initial_cx
     assert item.config_data['center_y'] != initial_cy
+
+
+def test_item_moved_emitted_on_mouse_release(create_item_with_scene):
+    item, _, _ = create_item_with_scene(selectable=True)
+    item._is_resizing = False
+    item.setFlag(QGraphicsItem.ItemIsMovable, True)
+
+    item.itemChange(QGraphicsItem.ItemPositionHasChanged, QPointF(item.pos().x() + 5, item.pos().y() + 5))
+
+    release_event = create_mock_mouse_event(
+        QGraphicsSceneMouseEvent.GraphicsSceneMouseRelease,
+        QPointF(),
+        button=Qt.LeftButton,
+    )
+
+    mock_slot = Mock()
+    item.item_moved.connect(mock_slot)
+
+    with patch.object(QGraphicsItem, "mouseReleaseEvent", Mock()) as mock_super:
+        item.mouseReleaseEvent(release_event)
+        mock_super.assert_called_once()
+
+    mock_slot.assert_called_once_with(item)
