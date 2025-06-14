@@ -56,6 +56,7 @@ class InfoRectangleItem(QGraphicsObject):
         self._resizing_initial_rect = QRectF()
         self._is_resizing = False
         self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Ensure it's a boolean
+        self._applied_style_values = {} # To track values set by the current style
 
         self.update_geometry_from_config()
         self.update_text_from_config()
@@ -245,15 +246,11 @@ class InfoRectangleItem(QGraphicsObject):
 
     def _center_text(self):
         if not self.text_item: return
-        self.text_item.setPos(0,0)
-        font_metrics = QFontMetrics(self.text_item.font())
-        align_flag = Qt.AlignLeft
-        if self.horizontal_alignment == "center":
-            align_flag = Qt.AlignCenter
-        elif self.horizontal_alignment == "right":
-            align_flag = Qt.AlignRight
-        text_bounding_rect = font_metrics.boundingRect(QRect(0, 0, int(self.text_item.textWidth()), 10000), Qt.TextWordWrap | align_flag, self.text_item.toPlainText())
-        text_height = text_bounding_rect.height()
+        self.text_item.setPos(0,0) # Reset position, alignment handles actual placement
+
+        # Use the text item's own bounding rect for height calculation,
+        # as it's more accurate for final positioning than font_metrics alone.
+        text_height = self.text_item.boundingRect().height()
 
         padding_str = self._get_style_value("padding", "5px")
         try:
@@ -375,15 +372,44 @@ class InfoRectangleItem(QGraphicsObject):
         ]
 
         if style_config_object:
+            self._applied_style_values.clear() # Clear previous record
             for key in all_style_keys:
                 if key in style_config_object:
                     self.config_data[key] = style_config_object[key]
+                    # Record that this value in config_data came directly from this style application
+                    if key != 'name': # 'name' is metadata for the style object itself
+                        self._applied_style_values[key] = style_config_object[key]
                 elif key in text_format_defaults:
+                    # If style doesn't have this key, config_data property reverts to global default.
+                    # (This includes 'text' if it's in text_format_defaults and not in style_config_object,
+                    # though 'text' often has special handling or might not be in text_format_defaults.)
                     self.config_data[key] = text_format_defaults[key]
                 elif key == 'text':
+                    # This case ensures that if 'text' is not in style_config_object AND
+                    # not in text_format_defaults (which would be unusual for 'text'),
+                    # then item's current text is preserved.
                     pass
                 else:
+                    # If key from all_style_keys is not in style, not in defaults, and not 'text',
+                    # then remove it from config_data. This is for cleanup of obsolete keys.
                     self.config_data.pop(key, None)
+        else:
+            # style_config_object is None (style is being removed)
+            if self._applied_style_values: # Check if there were values from a previous style
+                for key, style_set_value in self._applied_style_values.items():
+                    # Only revert if current config value is THE SAME as what the style had set
+                    if key in self.config_data and self.config_data[key] == style_set_value:
+                        if key in text_format_defaults: # Revert to default
+                            self.config_data[key] = text_format_defaults[key]
+                        else: # Should not happen if keys are well-defined
+                            # If a key was defined by style but has no default, remove it.
+                            self.config_data.pop(key, None)
+                self._applied_style_values.clear()
+            # If a property was manually changed after style was applied (e.g. font_color in test),
+            # it won't match style_set_value, so it will persist.
+            # If _applied_style_values is empty (e.g. no style was active or style had no relevant keys),
+            # this block effectively does nothing to config_data values.
+
         self.update_text_from_config()
         self.update_appearance(self.isSelected())
         self.properties_changed.emit(self)
