@@ -14,6 +14,9 @@ class InputHandler:
     # -- Keyboard Shortcut Handling -------------------------------------
     def handle_key_press(self, event):
         """Process key press events. Returns True if the event was handled."""
+        if event.isAutoRepeat():
+            event.ignore()
+            return False
         focused_widget = QApplication.focusWidget()
         is_text_input_focused = isinstance(
             focused_widget, (QLineEdit, QTextEdit)

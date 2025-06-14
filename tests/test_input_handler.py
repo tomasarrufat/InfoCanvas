@@ -182,3 +182,20 @@ def test_ctrl_z_ignored_when_input_focused(mock_focus_widget, base_app_fixture, 
     handled = handler.handle_key_press(event_undo)
     app.undo_last_action.assert_not_called()
     assert not event_undo.isAccepted() and handled is False
+
+
+@patch('src.input_handler.QApplication.focusWidget')
+def test_ctrl_z_autorepeat_ignored(mock_focus_widget, base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    handler = app.input_handler
+    mock_focus_widget.return_value = app.view
+    app.current_mode = "edit"
+    monkeypatch.setattr(app, 'undo_last_action', MagicMock())
+
+    event_undo = create_key_event(Qt.Key_Z, modifiers=Qt.ControlModifier)
+    event_undo.isAutoRepeat = MagicMock(return_value=True)
+    handled = handler.handle_key_press(event_undo)
+
+    app.undo_last_action.assert_not_called()
+    assert not event_undo.isAccepted() and handled is False
+

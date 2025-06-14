@@ -649,13 +649,3 @@ def test_save_config_does_not_duplicate_snapshot(base_app_fixture, monkeypatch):
     assert len(app.config_snapshot_stack) == 1
 
 
-def test_undo_shortcut_triggers_undo(base_app_fixture, monkeypatch):
-    app = base_app_fixture
-    monkeypatch.setattr(app, "undo_last_action", MagicMock())
-
-    assert hasattr(app, "undo_shortcut")
-    app.undo_shortcut.activated.disconnect()
-    app.undo_shortcut.activated.connect(app.undo_last_action)
-    app.undo_shortcut.activated.emit()
-
-    app.undo_last_action.assert_called_once()

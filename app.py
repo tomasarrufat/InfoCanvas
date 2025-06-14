@@ -3,11 +3,10 @@ import os
 import copy
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox, QDialog,
-    QShortcut
+    QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox, QDialog
 )
 from PyQt5.QtGui import (
-    QColor, QBrush, QKeySequence
+    QColor, QBrush
 )
 from PyQt5.QtCore import Qt, QTimer, QUrl
 
@@ -46,9 +45,6 @@ class InfoCanvasApp(QMainWindow):
         self.item_map = {}
         self.text_style_manager = TextStyleManager(self) # Moved up
         UIBuilder(self).build()
-        # Ensure Ctrl+Z triggers undo regardless of focus
-        self.undo_shortcut = QShortcut(QKeySequence("Ctrl+Z"), self)
-        self.undo_shortcut.activated.connect(self.undo_last_action)
         self.canvas_manager = CanvasManager(self)
         self.item_operations = ItemOperations(self)
         self.input_handler = InputHandler(self)
