@@ -45,6 +45,11 @@ class ProjectManagerDialog(QDialog):
         self.new_button.clicked.connect(self.create_new_project)
         buttons_layout.addWidget(self.new_button)
 
+        self.save_as_button = QPushButton("Save Current As...")
+        self.save_as_button.setObjectName("save_as_button")
+        self.save_as_button.clicked.connect(self.save_project_as)
+        buttons_layout.addWidget(self.save_as_button)
+
         self.delete_button = QPushButton("Delete Selected Project")
         self.delete_button.setStyleSheet("background-color: #dc3545; color: white;")
         self.delete_button.clicked.connect(self.confirm_delete_project)
@@ -58,6 +63,54 @@ class ProjectManagerDialog(QDialog):
 
 
         self.setLayout(layout)
+
+    def save_project_as(self):
+        if not self.current_project_name_on_open:
+            QMessageBox.warning(self, "No Project Open", "No project is currently open to save from.")
+            return
+
+        new_project_name, ok = QInputDialog.getText(self, "Save Project As", "Enter new project name:")
+
+        if not ok:
+            return # User cancelled
+
+        new_project_name = new_project_name.strip()
+        if not new_project_name:
+            QMessageBox.warning(self, "Invalid Name", "Project name cannot be empty.")
+            return
+
+        # Validate project name (similar to create_new_project)
+        if not all(c.isalnum() or c in (' ', '_', '-') for c in new_project_name):
+            QMessageBox.warning(self, "Invalid Name", "Project name can only contain letters, numbers, spaces, underscores, or hyphens.")
+            return
+
+        new_project_path = os.path.join(utils.PROJECTS_BASE_DIR, new_project_name)
+        if os.path.exists(new_project_path):
+            QMessageBox.warning(self, "Project Exists", f"A project named '{new_project_name}' already exists.")
+            return
+
+        # Assume self.parent_window.project_io exists and has copy_project_data
+        # This part relies on future implementation of ProjectIO class
+        if hasattr(self.parent_window, 'project_io') and \
+           hasattr(self.parent_window.project_io, 'copy_project_data'):
+            try:
+                success = self.parent_window.project_io.copy_project_data(
+                    self.current_project_name_on_open,
+                    new_project_name
+                )
+                if success:
+                    self.populate_project_list()
+                    QMessageBox.information(self, "Project Saved", f"Project saved as '{new_project_name}' successfully.")
+                else:
+                    # Specific error handled by copy_project_data, generic message here
+                    QMessageBox.critical(self, "Save Error", f"Failed to save project as '{new_project_name}'. Check logs for details.")
+            except Exception as e:
+                # Catch any unexpected errors during the copy operation itself
+                QMessageBox.critical(self, "Save Error", f"An unexpected error occurred while saving the project: {e}")
+        else:
+            # This case is for development if project_io or method is not yet available
+            QMessageBox.critical(self, "Error", "ProjectIO not available. Cannot save project.")
+
 
     def populate_project_list(self):
         self.project_list_widget.clear()

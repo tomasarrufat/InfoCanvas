@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+import shutil
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QImageReader
 
@@ -130,4 +131,61 @@ class ProjectIO:
                 self.config = None
                 return False
             self.config = loaded_config
+        return True
+
+    def copy_project_data(self, source_project_name, new_project_name):
+        source_project_path = os.path.join(utils.PROJECTS_BASE_DIR, source_project_name)
+        new_project_path = os.path.join(utils.PROJECTS_BASE_DIR, new_project_name)
+
+        source_images_path = self.get_project_images_folder(source_project_path)
+        new_images_path = self.get_project_images_folder(new_project_path)
+
+        # Copy and modify project configuration file
+        source_config_file = self.get_project_config_path(source_project_path)
+        new_config_file = self.get_project_config_path(new_project_path)
+
+        if not os.path.exists(source_config_file):
+            QMessageBox.critical(None, "Configuration Error", f"Source project configuration file not found: {source_config_file}")
+            return False
+
+        try:
+            with open(source_config_file, 'r') as f:
+                config_data = json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            QMessageBox.critical(None, "Configuration Read Error", f"Error reading source project configuration '{source_config_file}': {e}")
+            return False
+
+        # Now that source config is confirmed and read, create new project directories
+        try:
+            os.makedirs(new_project_path, exist_ok=True)
+            os.makedirs(new_images_path, exist_ok=True)
+        except OSError as e:
+            QMessageBox.critical(None, "Directory Creation Error", f"Could not create directories for '{new_project_name}': {e}")
+            # It's debatable if we should try to remove new_project_path if new_images_path fails.
+            # For now, keep it simple: if either fails, the operation fails.
+            return False
+
+        config_data["project_name"] = new_project_name
+        config_data["last_modified"] = datetime.datetime.utcnow().isoformat() + "Z"
+        # The lists "images" and "scene_items" should be preserved for an exact copy.
+
+        try:
+            with open(new_config_file, 'w') as f:
+                json.dump(config_data, f, indent=2)
+        except (IOError, json.JSONDecodeError) as e: # json.JSONDecodeError is less likely here but good practice
+            QMessageBox.critical(None, "Configuration Write Error", f"Error writing new project configuration '{new_config_file}': {e}")
+            return False
+
+        # Copy images
+        if os.path.exists(source_images_path):
+            try:
+                for filename in os.listdir(source_images_path):
+                    source_file_path = os.path.join(source_images_path, filename)
+                    dest_file_path = os.path.join(new_images_path, filename)
+                    if os.path.isfile(source_file_path): # Ensure it's a file, not a subdirectory
+                        shutil.copy2(source_file_path, dest_file_path)
+            except (IOError, shutil.Error) as e:
+                QMessageBox.critical(None, "Image Copy Error", f"Error copying images to '{new_images_path}': {e}")
+                return False
+
         return True
