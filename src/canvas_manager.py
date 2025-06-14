@@ -1,5 +1,6 @@
 import os
 from PyQt5.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.sip import isdeleted
 from PyQt5.QtGui import QColor, QBrush, QPixmap, QTransform
 from PyQt5.QtWidgets import QGraphicsScene, QMessageBox, QApplication
 
@@ -112,7 +113,7 @@ class CanvasManager(QObject):
     # ---- Selection Handling -------------------------------------------
     def on_scene_selection_changed(self):
         app = self.app
-        if not self.scene:
+        if not self.scene or isdeleted(self.scene):
             app.chronologically_first_selected_item = None
             app.selected_item = None
             app.update_properties_panel()
