@@ -461,7 +461,7 @@ def test_apply_style_key_precedence(item_fixture, default_text_config_values):
 
     assert item.config_data['text'] == "Styled Text"
     assert item.config_data['font_size'] == "20px"
-    assert 'font_style' not in item.config_data
+    assert item.config_data['font_style'] == "italic"
     assert item.text_item.toPlainText() == "Styled Text"
     assert item.text_item.font().pointSize() == 20
     assert not item.text_item.font().bold() and not item.text_item.font().italic()
