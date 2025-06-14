@@ -17,9 +17,19 @@ def qapp():
         app = QApplication(sys.argv)
     yield app
 
-@pytest.fixture
-def qtbot(qapp):
-    return DummyQtBot()
+# The qtbot fixture is automatically provided by pytest-qt if it's installed.
+# Removing the custom one below to ensure the real one is used.
+# @pytest.fixture
+# def qtbot(qapp):
+#     # return DummyQtBot() # Commented out to use the real pytest-qt bot
+#     # If pytest-qt is properly installed, it should provide its own qtbot fixture.
+#     # If a real qtbot is not available and tests fail, pytest-qt might not be installed
+#     # or the test environment isn't set up for it.
+#     # For now, we assume pytest-qt will provide the fixture.
+#     # If specific tests truly need a dummy bot, they might need a custom fixture name
+#     # or conditional logic, but the default 'qtbot' should be the real one.
+#     pass # Let pytest-qt inject its fixture.
+
 class MockProjectManagerDialog:
     def __init__(self, parent=None, current_project_name=None):
         self.parent = parent

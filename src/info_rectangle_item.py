@@ -55,7 +55,7 @@ class InfoRectangleItem(QGraphicsObject):
         self._resizing_initial_mouse_pos = QPointF()
         self._resizing_initial_rect = QRectF()
         self._is_resizing = False
-        self._was_movable = self.flags() & QGraphicsItem.ItemIsMovable
+        self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Ensure it's a boolean
 
         self.update_geometry_from_config()
         self.update_text_from_config()
@@ -138,7 +138,7 @@ class InfoRectangleItem(QGraphicsObject):
                 self._resizing_initial_mouse_pos = event.scenePos()
                 self._resizing_initial_rect = self.sceneBoundingRect()
 
-                self._was_movable = self.flags() & QGraphicsItem.ItemIsMovable
+                self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Store as bool
                 self.setFlag(QGraphicsItem.ItemIsMovable, False)
 
                 cursor_shape = Qt.ArrowCursor
@@ -156,7 +156,7 @@ class InfoRectangleItem(QGraphicsObject):
                 return
 
         super().mousePressEvent(event)
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.LeftButton: # This logic might need review if item_selected should only emit on actual selection change
             self.item_selected.emit(self)
             self.initial_pos = self.pos()
 
@@ -245,26 +245,21 @@ class InfoRectangleItem(QGraphicsObject):
 
     def _center_text(self):
         if not self.text_item: return
-        self.text_item.setPos(0,0) # Ensure text_item origin is top-left of InfoRectangleItem
-        # Use QFontMetrics to calculate the actual height of the text block
+        self.text_item.setPos(0,0)
         font_metrics = QFontMetrics(self.text_item.font())
-        # Need to use a QRect that respects the width of the text item for word wrapping
-        # Use current horizontal alignment for bounding rect calculation
         align_flag = Qt.AlignLeft
         if self.horizontal_alignment == "center":
             align_flag = Qt.AlignCenter
         elif self.horizontal_alignment == "right":
             align_flag = Qt.AlignRight
-        text_bounding_rect = font_metrics.boundingRect(QRect(0, 0, int(self.text_item.textWidth()), 10000), Qt.TextWordWrap | align_flag, self.text_item.toPlainText()) # Large height for calculation
+        text_bounding_rect = font_metrics.boundingRect(QRect(0, 0, int(self.text_item.textWidth()), 10000), Qt.TextWordWrap | align_flag, self.text_item.toPlainText())
         text_height = text_bounding_rect.height()
 
-        # Get padding from config, default to 5 if not found or invalid
-        # Use the actual config_data for padding, not defaults, as it might be styled
         padding_str = self._get_style_value("padding", "5px")
         try:
             padding_val = int(padding_str.lower().replace("px", "")) if "px" in padding_str.lower() else 5
         except ValueError:
-            padding_val = 5 # Default padding if conversion fails
+            padding_val = 5
 
         if self.vertical_alignment == "top":
             text_y_offset = padding_val
@@ -272,31 +267,30 @@ class InfoRectangleItem(QGraphicsObject):
             text_y_offset = self._h - text_height - padding_val
         else: # center (default)
             text_y_offset = (self._h - text_height) / 2
-            # Ensure centered text also respects top padding if content is large
             text_y_offset = max(padding_val, text_y_offset)
-            # And bottom padding
             if text_y_offset + text_height > self._h - padding_val:
                  text_y_offset = self._h - text_height - padding_val
 
-
         self.text_item.setY(text_y_offset)
+
+        # Ensure horizontal alignment is also applied by _center_text
+        current_doc_option = self.text_item.document().defaultTextOption()
+        h_align_map = {"left": Qt.AlignLeft, "center": Qt.AlignCenter, "right": Qt.AlignRight}
+        alignment_flag = h_align_map.get(self.horizontal_alignment, Qt.AlignLeft)
+        current_doc_option.setAlignment(alignment_flag)
+        self.text_item.document().setDefaultTextOption(current_doc_option)
 
 
     def set_display_text(self, text):
-        """Sets the display text and recenters, optimized for live editing from properties panel."""
-        self.config_data['text'] = text # Update config_data as well
+        self.config_data['text'] = text
         self.text_item.setPlainText(text)
-        self._center_text() # Recenter after text change
-        self.update() # Ensure repaint
+        self._center_text()
+        self.update()
 
     def update_text_from_config(self):
-        """Updates the text content and formatting from config_data."""
-        # If a style is applied, 'text' should also come from it if specified.
-        # Fallback to an empty string if not in style or config_data.
-        default_text = self.config_data.get('text', '') # Original text from item's own config as ultimate fallback.
+        default_text = self.config_data.get('text', '')
         self.text_item.setPlainText(self._get_style_value('text', default_text))
 
-        # Update formatting options from config_data, falling back to defaults if necessary
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
         self.vertical_alignment = self._get_style_value('vertical_alignment', text_format_defaults['vertical_alignment'])
@@ -306,15 +300,13 @@ class InfoRectangleItem(QGraphicsObject):
         font_size_str = self._get_style_value('font_size', text_format_defaults['font_size'])
 
         try:
-            # Ensure font_size_str is treated as a string before string methods are called
             font_size = int(str(font_size_str).lower().replace("px", ""))
         except ValueError:
-            # Fallback to parsing the default font_size from text_format_defaults
             try:
                 default_font_size_val = int(str(text_format_defaults['font_size']).lower().replace("px",""))
                 font_size = default_font_size_val
             except ValueError:
-                font_size = 14 # Ultimate fallback default font size if default config is also bad
+                font_size = 14
 
         font = self.text_item.font()
         font.setPointSize(font_size)
@@ -325,6 +317,9 @@ class InfoRectangleItem(QGraphicsObject):
         elif self.font_style == "italic":
             font.setWeight(QFont.Normal)
             font.setItalic(True)
+        elif self.font_style == "bold italic":
+            font.setWeight(QFont.Bold)
+            font.setItalic(True)
         else: # normal
             font.setWeight(QFont.Normal)
             font.setItalic(False)
@@ -332,61 +327,40 @@ class InfoRectangleItem(QGraphicsObject):
         self.text_item.setFont(font)
         self.text_item.setDefaultTextColor(QColor(font_color))
 
-        # Set horizontal alignment for the text item
-        # Get the document's current default text option
         current_doc_option = self.text_item.document().defaultTextOption()
-
-        # Create a mapping for alignment strings to Qt alignment flags
         h_align_map = {
-            "left": Qt.AlignLeft,
-            "center": Qt.AlignCenter, # Use Qt.AlignCenter for QTextOption horizontal centering
-            "right": Qt.AlignRight
+            "left": Qt.AlignLeft, "center": Qt.AlignCenter, "right": Qt.AlignRight
         }
-        # Get the appropriate flag, defaulting to AlignLeft
         alignment_flag = h_align_map.get(self.horizontal_alignment, Qt.AlignLeft)
-
-        # Set its alignment
         current_doc_option.setAlignment(alignment_flag)
-
-        # Apply the modified option back to the document
         self.text_item.document().setDefaultTextOption(current_doc_option)
-
-        # Setting text width is important for alignment to work correctly with wrapped text
         self.text_item.setTextWidth(self._w)
-
-
-        self._center_text() # Recenter/re-align after text and format change
-        self.update() # Ensure repaint
+        self._center_text()
+        self.update()
 
     def update_appearance(self, is_selected=False, is_view_mode=False):
         if is_view_mode:
-            self._pen = QPen(Qt.transparent) # Make border transparent
-            self._brush = QBrush(Qt.transparent) # Make background transparent
-            self.text_item.setVisible(False) # Hide text in view mode
+            self._pen = QPen(Qt.transparent)
+            self._brush = QBrush(Qt.transparent)
+            self.text_item.setVisible(False)
         else:
-            self.text_item.setVisible(True) # Ensure text is visible in edit mode
+            self.text_item.setVisible(True)
             if is_selected:
-                self._pen = QPen(QColor(255, 0, 0, 200), 2, Qt.SolidLine)  # More visible selection: Red, thicker
-                self._brush = QBrush(QColor(255, 0, 0, 30))  # Light red fill for selection
+                self._pen = QPen(QColor(255, 0, 0, 200), 2, Qt.SolidLine)
+                self._brush = QBrush(QColor(255, 0, 0, 30))
             else:
-                # Default appearance (not selected, in edit mode)
-                self._pen = QPen(QColor(0, 123, 255, 180), 2, Qt.DashLine) # Blue dashed line
-                self._brush = QBrush(QColor(0, 123, 255, 25)) # Light blue fill
+                self._pen = QPen(QColor(0, 123, 255, 180), 2, Qt.DashLine)
+                self._brush = QBrush(QColor(0, 123, 255, 25))
         self.update()
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged and self.scene() and not self._is_resizing:
-            # Update config with new center based on top-left position (value) and current dimensions
             self.config_data['center_x'] = value.x() + self._w / 2
             self.config_data['center_y'] = value.y() + self._h / 2
             self.item_moved.emit(self)
         return super().itemChange(change, value)
 
     def apply_style(self, style_config_object):
-        """
-        Applies a style configuration object to the item.
-        The item will hold a reference to this object.
-        """
         self._style_config_ref = style_config_object
 
         if style_config_object and style_config_object.get('name'):
@@ -394,34 +368,22 @@ class InfoRectangleItem(QGraphicsObject):
         else:
             self.config_data.pop('text_style_ref', None)
 
-        # Flatten style properties into self.config_data
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
         all_style_keys = [
             'text', 'font_color', 'font_size', 'font_style',
             'vertical_alignment', 'horizontal_alignment', 'padding'
         ]
 
-        if style_config_object: # A specific style dictionary is provided (e.g. a named style or "Default")
+        if style_config_object:
             for key in all_style_keys:
                 if key in style_config_object:
                     self.config_data[key] = style_config_object[key]
                 elif key in text_format_defaults:
-                    # If the applied style object *omits* a key that has a defined default,
-                    # the item's config_data should adopt that default for that key.
                     self.config_data[key] = text_format_defaults[key]
                 elif key == 'text':
-                    # If 'text' is not in style_config_object, self.config_data['text'] should remain.
-                    # It should not be defaulted to empty or popped here by the style application process
-                    # unless the style itself defines text as empty.
-                    pass # Do nothing to self.config_data['text'] if key 'text' is not in style_config_object
+                    pass
                 else:
-                    # For other formatting keys not in style and not in defaults (unlikely for well-defined defaults)
                     self.config_data.pop(key, None)
-        # If style_config_object is None (meaning detach style, go to fully custom),
-        # then self.config_data already holds the custom values. No flattening needed from a None object.
-        # The _style_config_ref is None, and text_style_ref is popped.
-        # update_text_from_config will then read directly from self.config_data via _get_style_value's fallback.
-
         self.update_text_from_config()
         self.update_appearance(self.isSelected())
         self.properties_changed.emit(self)
