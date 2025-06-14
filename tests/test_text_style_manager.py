@@ -26,8 +26,6 @@ def text_style_manager_fixture(monkeypatch):
     mock_app.rect_h_align_combo = MagicMock(spec=QComboBox)
     mock_app.rect_v_align_combo = MagicMock(spec=QComboBox)
     mock_app.rect_font_size_combo = MagicMock(spec=QComboBox)
-    mock_app.rect_font_bold_button = MagicMock(spec=QPushButton)
-    mock_app.rect_font_italic_button = MagicMock(spec=QPushButton)
 
     # Mock methods expected on the app instance
     mock_app.save_config = MagicMock()
@@ -159,7 +157,7 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
 
     item_style_to_save = {
-        'font_color': '#ABCDEF', 'font_size': '15px', 'font_style': 'bold',
+        'font_color': '#ABCDEF', 'font_size': '15px',
         'horizontal_alignment': 'center', 'vertical_alignment': 'middle', 'padding': '5px'
     }
     mock_app.selected_item.config_data = item_style_to_save.copy()

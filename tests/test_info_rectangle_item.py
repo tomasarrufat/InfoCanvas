@@ -44,7 +44,7 @@ def create_item_with_scene(default_text_config_values, qtbot, mock_parent_window
             'font_color': default_text_config_values['font_color'], 'font_size': default_text_config_values['font_size'],
             'background_color': default_text_config_values['background_color'], 'padding': default_text_config_values['padding'],
             'vertical_alignment': default_text_config_values['vertical_alignment'],
-            'horizontal_alignment': default_text_config_values['horizontal_alignment'], 'font_style': default_text_config_values['font_style'],
+            'horizontal_alignment': default_text_config_values['horizontal_alignment'],
         }
         if custom_config:
             base_config.update(custom_config)
@@ -454,20 +454,21 @@ def test_apply_style_key_precedence(item_fixture, default_text_config_values):
     item = item_fixture
     item.config_data['text'] = "Original Text"
     item.config_data['font_size'] = "10px"
-    item.config_data['font_style'] = "italic"
 
     style = {"font_size": "20px", "text": "Styled Text"}
     item.apply_style(style)
 
     assert item.config_data['text'] == "Styled Text"
     assert item.config_data['font_size'] == "20px"
-    assert item.config_data['font_style'] == default_text_config_values['font_style']
     assert item.text_item.toPlainText() == "Styled Text"
     assert item.text_item.font().pointSize() == 20
-    if default_text_config_values['font_style'] == "normal":
-        assert not item.text_item.font().bold() and not item.text_item.font().italic()
-    elif default_text_config_values['font_style'] == "bold":
-        assert item.text_item.font().bold()
+
+def test_markdown_rendering_in_scene(item_fixture):
+    item = item_fixture
+    item.set_display_text("**Bold** text")
+    html_content = item.text_item.document().toHtml()
+    assert "font-weight" in html_content
+    assert "Bold text" == item.text_item.document().toPlainText()
 
 def test_apply_style_emits_properties_changed(item_fixture):
     item = item_fixture

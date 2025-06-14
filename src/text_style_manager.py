@@ -27,7 +27,7 @@ class TextStyleManager:
 
     def does_item_match_default_style(self, item_config):
         defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"].copy()
-        style_keys = ["font_color", "font_size", "font_style",
+        style_keys = ["font_color", "font_size",
                       "horizontal_alignment", "vertical_alignment", "padding"]
         for key in style_keys:
             if item_config.get(key, defaults.get(key)) != defaults.get(key):
@@ -36,7 +36,7 @@ class TextStyleManager:
 
     def find_matching_style_name(self, item_config):
         styles = self.app.config.get('text_styles', [])
-        style_keys_to_check = ["font_color", "font_size", "font_style",
+        style_keys_to_check = ["font_color", "font_size",
                                "horizontal_alignment", "vertical_alignment", "padding"]
         for style_dict in styles:
             if not isinstance(style_dict, dict): continue
@@ -83,7 +83,6 @@ class TextStyleManager:
             "name": style_name,
             "font_color": item_config.get('font_color', default_display_conf['font_color']),
             "font_size": item_config.get('font_size', default_display_conf['font_size']),
-            "font_style": item_config.get('font_style', default_display_conf['font_style']),
             "horizontal_alignment": item_config.get('horizontal_alignment', default_display_conf['horizontal_alignment']),
             "vertical_alignment": item_config.get('vertical_alignment', default_display_conf['vertical_alignment']),
             "padding": item_config.get('padding', default_display_conf['padding']),
@@ -144,8 +143,6 @@ class TextStyleManager:
         if hasattr(self.app, 'rect_h_align_combo'): controls_to_block.append(self.app.rect_h_align_combo)
         if hasattr(self.app, 'rect_v_align_combo'): controls_to_block.append(self.app.rect_v_align_combo)
         if hasattr(self.app, 'rect_font_size_combo'): controls_to_block.append(self.app.rect_font_size_combo)
-        if hasattr(self.app, 'rect_font_bold_button'): controls_to_block.append(self.app.rect_font_bold_button)
-        if hasattr(self.app, 'rect_font_italic_button'): controls_to_block.append(self.app.rect_font_italic_button)
 
         for control in controls_to_block:
             control.blockSignals(True)
@@ -228,58 +225,6 @@ class TextStyleManager:
                         self.app.rect_style_combo.setCurrentText("Custom")
                 self.app.rect_style_combo.blockSignals(False)
 
-    def handle_font_style_change(self, checked=None, sender_widget=None):
-        if isinstance(self.app.selected_item, InfoRectangleItem):
-            config = self.app.selected_item.config_data
-
-            is_bold = hasattr(self.app, 'rect_font_bold_button') and self.app.rect_font_bold_button.isChecked()
-            is_italic = hasattr(self.app, 'rect_font_italic_button') and self.app.rect_font_italic_button.isChecked()
-
-            # Determine the intended style based on which button triggered the event (if provided)
-            # and the current state of both buttons.
-            if sender_widget is not None:
-                if sender_widget == (self.app.rect_font_bold_button if hasattr(self.app, 'rect_font_bold_button') else None):
-                    if is_bold: # Bold button was checked
-                        config['font_style'] = "bold"
-                        if hasattr(self.app, 'rect_font_italic_button'): # Uncheck italic
-                            self.app.rect_font_italic_button.blockSignals(True)
-                            self.app.rect_font_italic_button.setChecked(False)
-                            self.app.rect_font_italic_button.blockSignals(False)
-                    else: # Bold button was unchecked
-                        config['font_style'] = "italic" if is_italic else "normal"
-                elif sender_widget == (self.app.rect_font_italic_button if hasattr(self.app, 'rect_font_italic_button') else None):
-                    if is_italic: # Italic button was checked
-                        config['font_style'] = "italic"
-                        if hasattr(self.app, 'rect_font_bold_button'): # Uncheck bold
-                            self.app.rect_font_bold_button.blockSignals(True)
-                            self.app.rect_font_bold_button.setChecked(False)
-                            self.app.rect_font_bold_button.blockSignals(False)
-                    else: # Italic button was unchecked
-                        config['font_style'] = "bold" if is_bold else "normal"
-                else: # Sender is unknown, derive from current states
-                    if is_bold: config['font_style'] = "bold"
-                    elif is_italic: config['font_style'] = "italic"
-                    else: config['font_style'] = "normal"
-            else: # No sender info, derive from current states
-                if is_bold: config['font_style'] = "bold" # Prioritize bold if both somehow checked without sender
-                elif is_italic: config['font_style'] = "italic"
-                else: config['font_style'] = "normal"
-
-            config.pop('text_style_ref', None)
-            self.app.selected_item.apply_style(config) # This will trigger properties_changed -> update_properties_panel
-
-            if hasattr(self.app, 'rect_style_combo'):
-                self.app.rect_style_combo.blockSignals(True)
-                if self.does_item_match_default_style(config):
-                    self.app.rect_style_combo.setCurrentText("Default")
-                else:
-                    matched_style_name = self.find_matching_style_name(config)
-                    if matched_style_name:
-                        config['text_style_ref'] = matched_style_name # Restore ref
-                        self.app.rect_style_combo.setCurrentText(matched_style_name)
-                    else:
-                        self.app.rect_style_combo.setCurrentText("Custom")
-                self.app.rect_style_combo.blockSignals(False)
 
     def handle_font_color_change(self):
         if not self.app.selected_item or not isinstance(self.app.selected_item, InfoRectangleItem):

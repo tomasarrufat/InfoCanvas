@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QGraphicsObject, QGraphicsItem, QGraphicsTextItem, QApplication
 from PyQt5.QtCore import Qt, QRectF, QPointF, pyqtSignal, QRect
-from PyQt5.QtGui import QColor, QBrush, QPen, QFontMetrics, QCursor, QTextOption, QFont
+from PyQt5.QtGui import QColor, QBrush, QPen, QCursor, QTextOption
 
 from . import utils
 
@@ -38,7 +38,6 @@ class InfoRectangleItem(QGraphicsObject):
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
         self.vertical_alignment = self.config_data.get('vertical_alignment', text_format_defaults['vertical_alignment'])
         self.horizontal_alignment = self.config_data.get('horizontal_alignment', text_format_defaults['horizontal_alignment'])
-        self.font_style = self.config_data.get('font_style', text_format_defaults['font_style'])
 
         self.setFlags(QGraphicsItem.ItemIsSelectable |
                       QGraphicsItem.ItemIsMovable |
@@ -280,19 +279,18 @@ class InfoRectangleItem(QGraphicsObject):
 
     def set_display_text(self, text):
         self.config_data['text'] = text
-        self.text_item.setPlainText(text)
+        self.text_item.document().setMarkdown(text)
         self._center_text()
         self.update()
 
     def update_text_from_config(self):
         default_text = self.config_data.get('text', '')
-        self.text_item.setPlainText(self._get_style_value('text', default_text))
+        self.text_item.document().setMarkdown(self._get_style_value('text', default_text))
 
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
         self.vertical_alignment = self._get_style_value('vertical_alignment', text_format_defaults['vertical_alignment'])
         self.horizontal_alignment = self._get_style_value('horizontal_alignment', text_format_defaults['horizontal_alignment'])
-        self.font_style = self._get_style_value('font_style', text_format_defaults['font_style'])
         font_color = self._get_style_value('font_color', text_format_defaults['font_color'])
         font_size_str = self._get_style_value('font_size', text_format_defaults['font_size'])
 
@@ -307,19 +305,6 @@ class InfoRectangleItem(QGraphicsObject):
 
         font = self.text_item.font()
         font.setPointSize(font_size)
-
-        if self.font_style == "bold":
-            font.setWeight(QFont.Bold)
-            font.setItalic(False)
-        elif self.font_style == "italic":
-            font.setWeight(QFont.Normal)
-            font.setItalic(True)
-        elif self.font_style == "bold italic":
-            font.setWeight(QFont.Bold)
-            font.setItalic(True)
-        else: # normal
-            font.setWeight(QFont.Normal)
-            font.setItalic(False)
 
         self.text_item.setFont(font)
         self.text_item.setDefaultTextColor(QColor(font_color))
@@ -367,7 +352,7 @@ class InfoRectangleItem(QGraphicsObject):
 
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
         all_style_keys = [
-            'text', 'font_color', 'font_size', 'font_style',
+            'text', 'font_color', 'font_size',
             'vertical_alignment', 'horizontal_alignment', 'padding'
         ]
 

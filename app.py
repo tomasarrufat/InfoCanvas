@@ -284,8 +284,6 @@ class InfoCanvasApp(QMainWindow):
             self.rect_h_align_combo.blockSignals(True)
             self.rect_v_align_combo.blockSignals(True)
             self.rect_font_size_combo.blockSignals(True)
-            self.rect_font_bold_button.blockSignals(True)
-            self.rect_font_italic_button.blockSignals(True)
             self.rect_style_combo.blockSignals(True)
 
             default_text_config = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
@@ -330,7 +328,6 @@ class InfoCanvasApp(QMainWindow):
 
             h_align = rect_conf.get('horizontal_alignment', default_text_config['horizontal_alignment'])
             v_align = rect_conf.get('vertical_alignment', default_text_config['vertical_alignment'])
-            font_style = rect_conf.get('font_style', default_text_config['font_style'])
             font_size = str(rect_conf.get('font_size', default_text_config['font_size'])).replace("px", "")
 
             self.rect_h_align_combo.setCurrentText(h_align.capitalize())
@@ -343,16 +340,9 @@ class InfoCanvasApp(QMainWindow):
             else:
                 self.rect_font_size_combo.setEditText(font_size)
 
-            self.rect_font_bold_button.setChecked(font_style == "bold")
-            # Ensure italic is not checked if bold is true, and vice-versa if that's the desired logic.
-            # Current rect_item logic: font_style can be "bold", "italic", or "normal" (exclusive)
-            self.rect_font_italic_button.setChecked(font_style == "italic")
-
             self.rect_h_align_combo.blockSignals(False)
             self.rect_v_align_combo.blockSignals(False)
             self.rect_font_size_combo.blockSignals(False)
-            self.rect_font_bold_button.blockSignals(False)
-            self.rect_font_italic_button.blockSignals(False)
             self.rect_style_combo.blockSignals(False)
 
             # Update font color button preview

@@ -1,6 +1,7 @@
 import os
 import shutil
 import html
+from PyQt5.QtGui import QTextDocument
 from . import utils # Assuming utils.py is in the same src directory
 
 class HtmlExporter:
@@ -83,7 +84,16 @@ class HtmlExporter:
             rect_height = rect_conf.get('height', 0)
             left = rect_conf.get('center_x', 0) - rect_width / 2
             top = rect_conf.get('center_y', 0) - rect_height / 2
-            text_content = html.escape(rect_conf.get('text', '')).replace('\n', '<br>')
+            doc = QTextDocument()
+            doc.setMarkdown(html.escape(rect_conf.get('text', '')))
+            full_html = doc.toHtml()
+            body_start = full_html.find('<body')
+            if body_start != -1:
+                body_start = full_html.find('>', body_start) + 1
+                body_end = full_html.rfind('</body>')
+                text_content = full_html[body_start:body_end]
+            else:
+                text_content = full_html
             font_color = rect_conf.get('font_color', self.default_text_config['font_color'])
             font_size_str = rect_conf.get('font_size', self.default_text_config['font_size'])
             if isinstance(font_size_str, (int, float)) or str(font_size_str).isdigit(): font_size = f"{font_size_str}px"
@@ -93,7 +103,6 @@ class HtmlExporter:
             else: padding = padding_str
             h_align = rect_conf.get('horizontal_alignment', self.default_text_config['horizontal_alignment'])
             v_align = rect_conf.get('vertical_alignment', self.default_text_config['vertical_alignment'])
-            font_style_prop = rect_conf.get('font_style', self.default_text_config['font_style'])
             outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex; box-sizing: border-box;"
             if v_align == "top": outer_style += "align-items:flex-start;"
             elif v_align == "center" or v_align == "middle": outer_style += "align-items:center;"
@@ -103,8 +112,6 @@ class HtmlExporter:
                 f"color:{font_color};", f"font-size:{font_size};", "background-color:transparent;",
                 f"padding:{padding};", f"text-align:{h_align};"
             ]
-            if font_style_prop == "bold": inner_style_list.append("font-weight:bold;")
-            elif font_style_prop == "italic": inner_style_list.append("font-style:italic;")
             current_inner_style = "".join(inner_style_list)
             text_content_div_style = current_inner_style + " display: none;"
             lines.append(
