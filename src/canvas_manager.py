@@ -1,7 +1,7 @@
 import os
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
 from PyQt5.QtGui import QColor, QBrush, QPixmap, QTransform
-from PyQt5.QtWidgets import QGraphicsScene, QMessageBox
+from PyQt5.QtWidgets import QGraphicsScene, QMessageBox, QApplication
 
 from . import utils
 from .draggable_image_item import DraggableImageItem
