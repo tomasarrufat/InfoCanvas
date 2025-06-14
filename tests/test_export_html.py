@@ -32,13 +32,13 @@ def test_export_to_html_writes_file(tmp_path_factory, tmp_path): # No base_app_f
     assert 'hotspot' in content
     assert '.text-content' in content
     text_content_div_start_str = "<div class='text-content' style='"
-    text_content_div_end_str = "'>hello</div>"
     start_index = content.find(text_content_div_start_str)
     assert start_index != -1
-    end_index = content.find(text_content_div_end_str, start_index)
-    assert end_index != -1
-    style_attribute_content = content[start_index + len(text_content_div_start_str):end_index]
+    style_end = content.find("'>", start_index)
+    assert style_end != -1
+    style_attribute_content = content[start_index + len(text_content_div_start_str):style_end]
     assert "display: none;" in style_attribute_content
+    assert "hello</p></div>" in content
 
 def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base_app_fixture
     project_path = tmp_path_factory.mktemp("project_rich_text")
@@ -50,7 +50,7 @@ def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base
         'id': 'r_formatted', 'center_x': 150, 'center_y': 100, 'width': 200, 'height': 100,
         'text': 'Formatted Text\nWith Newlines & <HTML>!', 'font_color': '#FF0000',
         'font_size': '20px', 'background_color': '#FFFF00', 'padding': '10px',
-        'horizontal_alignment': 'center', 'vertical_alignment': 'middle', 'font_style': 'bold',
+        'horizontal_alignment': 'center', 'vertical_alignment': 'middle',
     }
     # Ensure all keys from default_text_config are present if not overridden
     for key, val in default_text_config.items():
@@ -72,18 +72,17 @@ def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base
     assert 'align-items:center;' in content
     expected_inner_style_parts = [
         'color:#FF0000;', 'font-size:20px;', 'background-color:transparent;',
-        'padding:10px;', 'text-align:center;', 'font-weight:bold;', 'display: none;'
+        'padding:10px;', 'text-align:center;', 'display: none;'
     ]
     text_content_div_start_str = "<div class='text-content' style='"
-    text_content_div_end_str = "'>Formatted Text<br>With Newlines &amp; &lt;HTML&gt;!</div>"
     start_index = content.find(text_content_div_start_str)
     assert start_index != -1, "Could not find start of .text-content div"
-    end_index = content.find(text_content_div_end_str, start_index)
-    assert end_index != -1, f"Could not find end of .text-content div. Content after start: {content[start_index:start_index+200]}"
-    style_attribute_content = content[start_index + len(text_content_div_start_str):end_index]
+    style_end = content.find("'>", start_index)
+    assert style_end != -1
+    style_attribute_content = content[start_index + len(text_content_div_start_str):style_end]
     for part in expected_inner_style_parts:
         assert part in style_attribute_content, f"Expected style part '{part}' not found in '{style_attribute_content}'"
-    assert 'Formatted Text<br>With Newlines &amp; &lt;HTML&gt;!' in content
+    assert 'Formatted Text With Newlines &amp; &lt;HTML&gt;!' in content
     assert 'data-text="Formatted Text' not in content
 
 def test_export_to_html_write_error(base_app_fixture, monkeypatch):

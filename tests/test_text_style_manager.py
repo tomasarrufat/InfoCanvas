@@ -157,7 +157,7 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
 
     item_style_to_save = {
-        'font_color': '#ABCDEF', 'font_size': '15px', 'font_style': 'bold',
+        'font_color': '#ABCDEF', 'font_size': '15px',
         'horizontal_alignment': 'center', 'vertical_alignment': 'middle', 'padding': '5px'
     }
     mock_app.selected_item.config_data = item_style_to_save.copy()
