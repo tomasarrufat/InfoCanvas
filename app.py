@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox, QDialog
 )
 from PyQt5.QtGui import (
-    QPixmap, QColor, QBrush, QTransform
+    QColor, QBrush
 )
 from PyQt5.QtCore import Qt, QTimer
 
@@ -19,6 +19,7 @@ from src.item_operations import ItemOperations
 from src.text_style_manager import TextStyleManager
 from src.exporter import HtmlExporter # <--- NEW IMPORT
 from src.input_handler import InputHandler
+from src.canvas_manager import CanvasManager
 # --- Main Application Window ---
 class InfoCanvasApp(QMainWindow):
     def __init__(self):
@@ -41,6 +42,7 @@ class InfoCanvasApp(QMainWindow):
         self.item_map = {}
         self.text_style_manager = TextStyleManager(self) # Moved up
         UIBuilder(self).build()
+        self.canvas_manager = CanvasManager(self)
         self.item_operations = ItemOperations(self)
         self.input_handler = InputHandler(self)
         self.text_style_manager.load_styles_into_dropdown() # Ensure dropdown is populated early
@@ -252,206 +254,10 @@ class InfoCanvasApp(QMainWindow):
         self.save_config()
 
     def render_canvas_from_config(self):
-        if not self.config or not hasattr(self, 'scene') or not self.scene: return
-        selected_item_id = None
-        if self.selected_item:
-            for item_id, gi in self.item_map.items():
-                if gi == self.selected_item:
-                    selected_item_id = item_id
-                    break
-        self.scene.clear()
-        self.item_map.clear()
-        bg_conf = self.config.get('background', utils.get_default_config()['background'])
-        self.scene.setBackgroundBrush(QBrush(QColor(bg_conf['color'])))
-        self.scene.setSceneRect(0, 0, bg_conf['width'], bg_conf['height'])
-        current_project_images_folder = self._get_project_images_folder(self.current_project_path)
-        if not current_project_images_folder:
-            QMessageBox.critical(self, "Render Error", "Cannot determine images folder for the current project.")
-            return
-        for img_conf in self.config.get('images', []):
-            image_path_in_config = img_conf.get('path', '')
-            if not image_path_in_config:
-                print(f"Warning: Image config missing path: {img_conf.get('id', 'Unknown ID')}")
-                continue
-            image_full_path = os.path.join(current_project_images_folder, image_path_in_config)
-            pixmap = QPixmap(image_full_path)
-            if pixmap.isNull():
-                print(f"Warning: Could not load image '{image_path_in_config}' from '{current_project_images_folder}'. Creating placeholder.")
-                pixmap = QPixmap(100, 100)
-                pixmap.fill(Qt.GlobalColor.lightGray)
-                if not img_conf.get('original_width') or img_conf.get('original_width',0) <=0 : img_conf['original_width'] = 100
-                if not img_conf.get('original_height') or img_conf.get('original_height',0) <=0 : img_conf['original_height'] = 100
-            if not img_conf.get('original_width') or img_conf.get('original_width',0) <=0:
-                img_conf['original_width'] = pixmap.width()
-            if not img_conf.get('original_height') or img_conf.get('original_height',0) <=0:
-                img_conf['original_height'] = pixmap.height()
-            item = DraggableImageItem(pixmap, img_conf) # Z-value set in item's __init__
-            scale = img_conf.get('scale', 1.0)
-            transform = QTransform()
-            transform.scale(scale, scale)
-            item.setTransform(transform)
-            center_x = img_conf.get('center_x', self.scene.width() / 2)
-            center_y = img_conf.get('center_y', self.scene.height() / 2)
-            scaled_width = img_conf['original_width'] * scale
-            scaled_height = img_conf['original_height'] * scale
-            item.setPos(center_x - scaled_width / 2, center_y - scaled_height / 2)
-            item.item_selected.connect(self.on_graphics_item_selected)
-            item.item_moved.connect(self.on_graphics_item_moved)
-            self.scene.addItem(item)
-            self.item_map[img_conf['id']] = item
-        for rect_conf in self.config.get('info_rectangles', []):
-            item = InfoRectangleItem(rect_conf) # Z-value set in item's __init__
-            item.item_selected.connect(self.on_graphics_item_selected)
-            item.item_moved.connect(self.on_graphics_item_moved)
-            item.properties_changed.connect(self.on_graphics_item_properties_changed)
-            self.scene.addItem(item)
-            self.item_map[rect_conf['id']] = item
-
-            # Apply referenced text style if it exists
-            if 'text_style_ref' in rect_conf:
-                style_name_to_apply = rect_conf['text_style_ref']
-                found_style_object = None
-                for style_obj in self.config.get('text_styles', []):
-                    if style_obj.get('name') == style_name_to_apply:
-                        found_style_object = style_obj
-                        break
-
-                if found_style_object:
-                    item.apply_style(found_style_object) # This sets _style_config_ref and updates appearance
-                else:
-                    # Style reference exists but the style itself is not found.
-                    print(f"Warning: InfoRectangle {rect_conf.get('id')} references style '{style_name_to_apply}' which was not found in text_styles.")
-                    # Item will use its own rect_conf properties as fallback.
-                    # InfoRectangleItem.__init__ already called update_text_from_config based on its own config.
-
-        if selected_item_id and selected_item_id in self.item_map:
-            self.selected_item = self.item_map[selected_item_id]
-            if self.selected_item:
-                self.selected_item.setSelected(True)
-        else:
-            self.selected_item = None
-        self.update_mode_ui()
-        self.update_properties_panel()
+        self.canvas_manager.render_canvas_from_config()
 
     def on_scene_selection_changed(self):
-        if not hasattr(self, 'scene') or not self.scene:
-            self.chronologically_first_selected_item = None
-            self.selected_item = None
-            self.update_properties_panel()
-            return
-
-        selected_items_from_scene = self.scene.selectedItems()
-        current_selected_info_rects = [
-            item for item in selected_items_from_scene if isinstance(item, InfoRectangleItem)
-        ]
-        num_selected = len(current_selected_info_rects)
-
-        if num_selected == 0:
-            self.chronologically_first_selected_item = None
-        elif num_selected == 1:
-            self.chronologically_first_selected_item = current_selected_info_rects[0]
-        elif num_selected > 1:
-            # If a chronologically_first_selected_item was already set and is still selected, keep it.
-            # Otherwise, pick a new one based on sorting by ID (oldest).
-            if self.chronologically_first_selected_item is None or \
-               self.chronologically_first_selected_item not in current_selected_info_rects:
-                # Sort by 'id' string. Assuming 'id' format is like 'rect_timestamp'.
-                sorted_rects = sorted(current_selected_info_rects, key=lambda r: r.config_data.get('id', ''))
-                if sorted_rects:
-                    self.chronologically_first_selected_item = sorted_rects[0]
-                else: # Should not happen if num_selected > 1
-                    self.chronologically_first_selected_item = None
-            # Else, if self.chronologically_first_selected_item is still valid and in the selection, do nothing to it.
-
-        # Update appearance for all InfoRectangleItems based on their selection state
-        # This should ideally happen after updating chronologically_first_selected_item and self.selected_item
-        for item_in_scene_list in self.scene.items(): # Iterate over all items in scene to update appearance
-            if isinstance(item_in_scene_list, InfoRectangleItem):
-                item_in_scene_list.update_appearance(item_in_scene_list.isSelected(), self.current_mode == "view")
-
-        # Update self.selected_item (potentially the last item clicked or primary selected item)
-        # This logic might need adjustment based on how primary selection vs. multi-selection is handled.
-        # The original logic was:
-        if self.selected_item not in selected_items_from_scene: # If the old primary selected is no longer selected at all
-            self.selected_item = selected_items_from_scene[-1] if selected_items_from_scene else None
-        # If the old self.selected_item is still in selected_items_from_scene, it remains self.selected_item.
-        # If there are multiple items and the old self.selected_item was deselected,
-        # the last item in the current selection becomes the new self.selected_item.
-        # This part might need to be harmonized with chronologically_first_selected_item if they are intended
-        # to be the same under certain multi-selection scenarios (e.g., if only one item ends up being "active" for properties).
-        # For now, keeping original logic for self.selected_item update mostly intact.
-        # If selected_items_from_scene is not empty, and self.selected_item is not in it, update self.selected_item
-        if selected_items_from_scene and self.selected_item not in selected_items_from_scene:
-             self.selected_item = selected_items_from_scene[-1]
-        elif not selected_items_from_scene: # No items selected
-             self.selected_item = None
-
-
-        self.update_properties_panel()
-
-    def on_graphics_item_selected(self, graphics_item):
-        if self.current_mode == "view":
-            if hasattr(self, 'scene') and self.scene: self.scene.clearSelection()
-            self.selected_item = None
-            self.update_properties_panel()
-            return
-
-        ctrl_pressed = QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier
-
-        if ctrl_pressed and isinstance(graphics_item, InfoRectangleItem):
-            # Let Qt handle the selection toggle. Just update selected_item to
-            # the item under the cursor if it ends up selected, otherwise fall
-            # back to another selected item if any remain.
-            if graphics_item.isSelected():
-                self.selected_item = graphics_item
-            else:
-                remaining = self.scene.selectedItems() if hasattr(self, 'scene') else []
-                self.selected_item = remaining[-1] if remaining else None
-            self.update_properties_panel()
-            return
-        
-        if self.selected_item is graphics_item and isinstance(self.selected_item, InfoRectangleItem):
-            self.selected_item.update_appearance(True, self.current_mode == "view")
-        
-        if self.selected_item is not graphics_item :
-            if self.selected_item and isinstance(self.selected_item, InfoRectangleItem): 
-                self.selected_item.update_appearance(False, self.current_mode == "view")
-            
-            self.selected_item = graphics_item 
-            
-            if self.selected_item: 
-                try:
-                    if hasattr(self, 'scene') and self.scene: self.scene.selectionChanged.disconnect(self.on_scene_selection_changed)
-                except TypeError: 
-                    pass 
-                
-                if hasattr(self, 'scene') and self.scene:
-                    for item_in_scene in self.scene.items():
-                        if item_in_scene is not self.selected_item and item_in_scene.isSelected():
-                            item_in_scene.setSelected(False)
-                            if isinstance(item_in_scene, InfoRectangleItem): 
-                                item_in_scene.update_appearance(False, self.current_mode == "view")
-                
-                self.selected_item.setSelected(True) 
-                if isinstance(self.selected_item, InfoRectangleItem): 
-                    self.selected_item.update_appearance(True, self.current_mode == "view")
-                
-                try:
-                    if hasattr(self, 'scene') and self.scene: self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-                except TypeError: 
-                    pass
-        
-        self.update_properties_panel()
-
-
-    def on_graphics_item_moved(self, graphics_item):
-        self.save_config()
-
-    def on_graphics_item_properties_changed(self, graphics_item):
-        self.save_config()
-        if isinstance(graphics_item, InfoRectangleItem):
-            graphics_item.update_geometry_from_config() 
-            self.update_properties_panel() 
+        self.canvas_manager.on_scene_selection_changed()
 
     def update_properties_panel(self):
         if not hasattr(self, 'image_properties_widget'): return # UI not fully set up
@@ -732,78 +538,10 @@ class InfoCanvasApp(QMainWindow):
 
     # Placeholder methods for alignment
     def align_selected_rects_horizontally(self):
-        if not hasattr(self, 'scene') or not self.scene:
-            return
-
-        selected_graphics_items = self.scene.selectedItems()
-        selected_info_rects = []
-        for item in selected_graphics_items:
-            if isinstance(item, InfoRectangleItem):
-                selected_info_rects.append(item)
-
-        if len(selected_info_rects) < 2:
-            return
-
-        if self.chronologically_first_selected_item is None or \
-           self.chronologically_first_selected_item not in selected_info_rects:
-            status_bar = self.statusBar()
-            if status_bar is not None:
-                status_bar.showMessage("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
-            return
-
-        source_rect = self.chronologically_first_selected_item
-        target_x = source_rect.config_data.get('center_x', 0)
-
-        for rect in selected_info_rects:
-            rect.config_data['center_x'] = target_x
-            # rect.config_data['center_y'] remains unchanged
-            rect.update_geometry_from_config()
-            # Ensure properties_changed is emitted so save_config and UI updates are triggered
-            # if rect has such a signal and it's connected to on_graphics_item_properties_changed
-            if hasattr(rect, 'properties_changed') and hasattr(rect.properties_changed, 'emit'):
-                 rect.properties_changed.emit(rect)
-            # Fallback to directly calling on_graphics_item_properties_changed if signal not present/connected
-            # elif hasattr(self, 'on_graphics_item_properties_changed'):
-            #    self.on_graphics_item_properties_changed(rect)
-
-
-        # self.save_config() # This should be triggered by the properties_changed signal chain
+        self.canvas_manager.align_selected_rects_horizontally()
 
     def align_selected_rects_vertically(self):
-        if not hasattr(self, 'scene') or not self.scene:
-            return
-
-        selected_graphics_items = self.scene.selectedItems()
-        selected_info_rects = []
-        for item in selected_graphics_items:
-            if isinstance(item, InfoRectangleItem):
-                selected_info_rects.append(item)
-
-        if len(selected_info_rects) < 2:
-            return
-
-        if self.chronologically_first_selected_item is None or \
-           self.chronologically_first_selected_item not in selected_info_rects:
-            status_bar = self.statusBar()
-            if status_bar is not None:
-                status_bar.showMessage("Cannot determine the source item for alignment. Please select items one by one if issues persist.", 3000)
-            return
-
-        source_rect = self.chronologically_first_selected_item
-        target_y = source_rect.config_data.get('center_y', 0)
-
-        for rect in selected_info_rects:
-            # rect.config_data['center_x'] remains unchanged
-            rect.config_data['center_y'] = target_y
-            rect.update_geometry_from_config()
-            # Ensure properties_changed is emitted so save_config and UI updates are triggered
-            if hasattr(rect, 'properties_changed') and hasattr(rect.properties_changed, 'emit'):
-                 rect.properties_changed.emit(rect)
-            # Fallback for safety, though direct signal emission is preferred.
-            # elif hasattr(self, 'on_graphics_item_properties_changed'):
-            #    self.on_graphics_item_properties_changed(rect)
-
-        # self.save_config() # This should be triggered by the properties_changed signal chain
+        self.canvas_manager.align_selected_rects_vertically()
 
 if __name__ == '__main__':
     app = QApplication.instance() or QApplication(sys.argv)
