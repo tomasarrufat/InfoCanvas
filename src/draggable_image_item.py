@@ -1,12 +1,12 @@
-from PyQt5.QtWidgets import QGraphicsObject, QGraphicsItem, QApplication
+from PyQt5.QtWidgets import QGraphicsItem, QApplication
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 
 from . import utils
+from .base_draggable_item import BaseDraggableItem
 
 
-class DraggableImageItem(QGraphicsObject):
+class DraggableImageItem(BaseDraggableItem):
     item_selected = pyqtSignal(QGraphicsItem)
-    item_moved = pyqtSignal(QGraphicsItem)
 
     def __init__(self, pixmap, config_data, parent_item=None):
         super().__init__(parent_item)
@@ -48,7 +48,7 @@ class DraggableImageItem(QGraphicsObject):
             new_center_y = value.y() + scaled_height_at_current_scale / 2
             self.config_data['center_x'] = new_center_x
             self.config_data['center_y'] = new_center_y
-            self.item_moved.emit(self)
+            self._has_moved = True
         return super().itemChange(change, value)
 
     def mousePressEvent(self, event):

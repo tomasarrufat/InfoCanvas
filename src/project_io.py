@@ -2,6 +2,7 @@ import os
 import json
 import datetime
 import shutil
+import copy
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QImageReader
 
@@ -96,11 +97,7 @@ class ProjectIO:
             current_config.pop("last_modified", None)
             
             if last_config == current_config:
-                # No changes to save
-                if status_bar is not None:
-                    status_name = current_project_name or config_to_save.get("project_name", "Unknown Project")
-                    status_bar.showMessage(f"No changes to save for '{status_name}'.", 2000)
-                return True
+                return False
 
         # Update dimensions for images if needed
         images_folder = self.get_project_images_folder(project_path or config_to_save.get("project_name"))
@@ -124,7 +121,7 @@ class ProjectIO:
                 json.dump(config_to_save, f, indent=2)
             
             # Store the saved config
-            self.last_saved_config = config_to_save.copy()
+            self.last_saved_config = copy.deepcopy(config_to_save)
             
             if status_bar is not None:
                 status_name = current_project_name or config_to_save.get("project_name", "Unknown Project")
