@@ -14,9 +14,15 @@ class InputHandler:
     # -- Keyboard Shortcut Handling -------------------------------------
     def handle_key_press(self, event):
         """Process key press events. Returns True if the event was handled."""
+        if event.isAutoRepeat():
+            event.ignore()
+            return False
         focused_widget = QApplication.focusWidget()
-        is_input_focused = isinstance(
-            focused_widget, (QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox)
+        is_text_input_focused = isinstance(
+            focused_widget, (QLineEdit, QTextEdit)
+        )
+        is_input_focused = is_text_input_focused or isinstance(
+            focused_widget, (QSpinBox, QDoubleSpinBox)
         )
 
         if event.modifiers() == Qt.ControlModifier:
@@ -33,6 +39,13 @@ class InputHandler:
                     if self.app.item_operations.paste_item_from_clipboard():
                         event.accept()
                         return True
+            elif event.key() == Qt.Key_Z:
+                # Allow undo even if a spin box is focused but avoid interfering
+                # with text editing widgets that use Ctrl+Z for their own undo
+                if not is_text_input_focused:
+                    self.app.undo_last_action()
+                    event.accept()
+                    return True
         elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             if (
                 self.app.current_mode == "edit"

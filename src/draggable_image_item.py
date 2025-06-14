@@ -1,6 +1,5 @@
 from PyQt5.QtWidgets import QGraphicsObject, QGraphicsItem, QApplication
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
-from PyQt5.QtGui import QPixmap # Added QPixmap as it's likely used
 
 from . import utils
 

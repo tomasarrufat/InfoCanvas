@@ -14,6 +14,7 @@ class ProjectIO:
         self.current_project_name = None
         self.current_project_path = None
         self.config = {}
+        self.last_saved_config = None  # Initialize last saved config
 
     def get_project_config_path(self, project_name_or_path):
         if os.path.isabs(project_name_or_path) and os.path.isdir(project_name_or_path):
@@ -60,6 +61,7 @@ class ProjectIO:
             return None
 
     def save_config(self, project_path, config_data, item_map=None, status_bar=None, current_project_name=None):
+        """Save configuration to file, but only if it's different from the last saved config."""
         if not project_path:
             if config_data and "project_name" in config_data:
                 temp_project_path = os.path.join(utils.PROJECTS_BASE_DIR, config_data["project_name"])
@@ -78,12 +80,31 @@ class ProjectIO:
             print("Warning: Attempted to save empty or uninitialized configuration. Aborting save.")
             return False
 
-        config_data["last_modified"] = datetime.datetime.utcnow().isoformat() + "Z"
-        if "project_name" not in config_data and current_project_name:
-            config_data["project_name"] = current_project_name
+        # Create a copy of config_data to avoid modifying the original
+        config_to_save = config_data.copy()
+        config_to_save["last_modified"] = datetime.datetime.utcnow().isoformat() + "Z"
+        if "project_name" not in config_to_save and current_project_name:
+            config_to_save["project_name"] = current_project_name
 
-        images_folder = self.get_project_images_folder(project_path or config_data.get("project_name"))
-        for img_conf in config_data.get("images", []):
+        # Compare with last saved config (excluding last_modified timestamp)
+        if self.last_saved_config is not None:
+            last_config = self.last_saved_config.copy()
+            current_config = config_to_save.copy()
+            
+            # Remove timestamps before comparison
+            last_config.pop("last_modified", None)
+            current_config.pop("last_modified", None)
+            
+            if last_config == current_config:
+                # No changes to save
+                if status_bar is not None:
+                    status_name = current_project_name or config_to_save.get("project_name", "Unknown Project")
+                    status_bar.showMessage(f"No changes to save for '{status_name}'.", 2000)
+                return True
+
+        # Update dimensions for images if needed
+        images_folder = self.get_project_images_folder(project_path or config_to_save.get("project_name"))
+        for img_conf in config_to_save.get("images", []):
             if not img_conf.get('original_width') or not img_conf.get('original_height'):
                 item = item_map.get(img_conf.get('id')) if item_map else None
                 if item and isinstance(item, DraggableImageItem) and not item.pixmap().isNull():
@@ -97,17 +118,22 @@ class ProjectIO:
                             size = reader.size()
                             img_conf['original_width'] = size.width()
                             img_conf['original_height'] = size.height()
+
         try:
             with open(config_file_path, 'w') as f:
-                json.dump(config_data, f, indent=2)
+                json.dump(config_to_save, f, indent=2)
+            
+            # Store the saved config
+            self.last_saved_config = config_to_save.copy()
+            
             if status_bar is not None:
-                status_name = current_project_name or config_data.get("project_name", "Unknown Project")
+                status_name = current_project_name or config_to_save.get("project_name", "Unknown Project")
                 status_bar.showMessage(f"Configuration for '{status_name}' saved.", 2000)
             else:
-                print(f"Configuration for '{config_data.get('project_name', 'Unknown Project')}' saved.")
+                print(f"Configuration for '{config_to_save.get('project_name', 'Unknown Project')}' saved.")
             return True
         except IOError as e:
-            QMessageBox.critical(None, "Save Error", f"Error saving config file{config_file_path}: {e}.")
+            QMessageBox.critical(None, "Save Error", f"Error saving config file {config_file_path}: {e}.")
             return False
         except Exception as e:
             QMessageBox.critical(None, "Save Error", f"An unexpected error occurred while saving: {e}.")
