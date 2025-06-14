@@ -62,9 +62,11 @@ def mock_app_instance(monkeypatch, tmp_path_factory):
     app.statusBar().showMessage = MagicMock()
     app.update_properties_panel = MagicMock()
 
-    app.on_graphics_item_selected = MagicMock()
-    app.on_graphics_item_moved = MagicMock()
-    app.on_graphics_item_properties_changed = MagicMock()
+    # Mock canvas_manager handlers used by ItemOperations
+    app.canvas_manager = MagicMock()
+    app.canvas_manager.on_graphics_item_selected = MagicMock()
+    app.canvas_manager.on_graphics_item_moved = MagicMock()
+    app.canvas_manager.on_graphics_item_properties_changed = MagicMock()
 
     app.current_mode = "edit"
 
