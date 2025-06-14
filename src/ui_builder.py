@@ -192,27 +192,6 @@ class UIBuilder:
         font_size_layout.addWidget(app.rect_font_size_combo)
         text_format_layout.addLayout(font_size_layout)
 
-        font_style_layout = QHBoxLayout()
-        app.rect_font_bold_button = QPushButton("Bold")
-        app.rect_font_bold_button.setCheckable(True)
-        # Changed: Connect to text_style_manager.handle_font_style_change, passing sender
-        app.rect_font_bold_button.clicked.connect(
-            lambda checked: app.text_style_manager.handle_font_style_change(
-                checked=checked, sender_widget=app.rect_font_bold_button
-            )
-        )
-        font_style_layout.addWidget(app.rect_font_bold_button)
-
-        app.rect_font_italic_button = QPushButton("Italic")
-        app.rect_font_italic_button.setCheckable(True)
-        # Changed: Connect to text_style_manager.handle_font_style_change, passing sender
-        app.rect_font_italic_button.clicked.connect(
-            lambda checked: app.text_style_manager.handle_font_style_change(
-                checked=checked, sender_widget=app.rect_font_italic_button
-            )
-        )
-        font_style_layout.addWidget(app.rect_font_italic_button)
-        text_format_layout.addLayout(font_style_layout)
 
         font_color_layout = QHBoxLayout()
         font_color_layout.addWidget(QLabel("Font Color:"))

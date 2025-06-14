@@ -26,8 +26,6 @@ def text_style_manager_fixture(monkeypatch):
     mock_app.rect_h_align_combo = MagicMock(spec=QComboBox)
     mock_app.rect_v_align_combo = MagicMock(spec=QComboBox)
     mock_app.rect_font_size_combo = MagicMock(spec=QComboBox)
-    mock_app.rect_font_bold_button = MagicMock(spec=QPushButton)
-    mock_app.rect_font_italic_button = MagicMock(spec=QPushButton)
 
     # Mock methods expected on the app instance
     mock_app.save_config = MagicMock()
