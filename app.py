@@ -1,5 +1,6 @@
 import sys
 import os
+import copy
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox, QDialog
@@ -30,6 +31,7 @@ class InfoCanvasApp(QMainWindow):
         self.current_project_name = None
         self.current_project_path = None
         self.config = {}
+        self.config_snapshot_stack = []
         self.clipboard_data = None
         self.chronologically_first_selected_item = None
 
@@ -70,6 +72,7 @@ class InfoCanvasApp(QMainWindow):
         self.current_project_name = None
         self.current_project_path = None
         self.config = {}
+        self.config_snapshot_stack.clear()
         self.selected_item = None
         self.item_map.clear()
         if hasattr(self, 'scene') and self.scene:
@@ -162,6 +165,8 @@ class InfoCanvasApp(QMainWindow):
                 self.edit_mode_controls_widget.setEnabled(True)
             if hasattr(self, 'text_style_manager') and self.text_style_manager: # Defensive check
                 self.text_style_manager.load_styles_into_dropdown()
+            # Reset snapshot history to the loaded project's state
+            self.config_snapshot_stack = [copy.deepcopy(self.config)]
         return success
 
     def _load_config_for_current_project(self):
@@ -169,6 +174,8 @@ class InfoCanvasApp(QMainWindow):
 
     def save_config(self, config_data_to_save=None):
         config_to_save = config_data_to_save if config_data_to_save is not None else self.config
+        # Keep a history of configuration states for undo functionality
+        self.config_snapshot_stack.append(copy.deepcopy(config_to_save))
         return self.project_io.save_config(
             self.current_project_path,
             config_to_save,
@@ -176,6 +183,16 @@ class InfoCanvasApp(QMainWindow):
             status_bar=self.statusBar() if hasattr(self, "statusBar") else None,
             current_project_name=self.current_project_name,
         )
+
+    def undo_last_action(self):
+        """Revert to the previous configuration state if available."""
+        if len(self.config_snapshot_stack) <= 1:
+            return
+        # Remove the most recent state and restore the previous one
+        self.config_snapshot_stack.pop()
+        self.config = copy.deepcopy(self.config_snapshot_stack[-1])
+        self.populate_controls_from_config()
+        self.render_canvas_from_config()
 
     def setup_ui(self):
         UIBuilder(self).build()
