@@ -544,3 +544,54 @@ def test_paint_ellipse_calls_correct_method(create_item_with_scene):
     item.paint(painter, None)
     painter.drawEllipse.assert_called_once()
     painter.drawRect.assert_not_called()
+
+
+# --- Tests for Angle Functionality ---
+
+def test_info_area_item_initialization_with_angle(create_item_with_scene):
+    """Test item initializes with a specific angle from config."""
+    item, _, _ = create_item_with_scene(custom_config={'angle': 45.0})
+    assert item.angle == pytest.approx(45.0)
+    assert item.rotation() == pytest.approx(45.0)
+    assert item.config_data['angle'] == pytest.approx(45.0)
+
+def test_info_area_item_initialization_default_angle(create_item_with_scene):
+    """Test item initializes with a default angle (0.0) if not in config."""
+    item, _, _ = create_item_with_scene(custom_config={}) # No angle specified
+    assert item.angle == pytest.approx(0.0)
+    assert item.rotation() == pytest.approx(0.0)
+    assert item.config_data.get('angle', 0.0) == pytest.approx(0.0)
+
+def test_info_area_item_set_angle_updates_rotation(create_item_with_scene):
+    """Test setting angle in config_data and calling update_geometry_from_config applies rotation."""
+    item, _, _ = create_item_with_scene()
+
+    # Initial state (default angle)
+    assert item.angle == pytest.approx(0.0)
+    assert item.rotation() == pytest.approx(0.0)
+
+    item.config_data['angle'] = 30.0
+    item.update_geometry_from_config()
+
+    assert item.angle == pytest.approx(30.0)
+    assert item.rotation() == pytest.approx(30.0)
+    assert item.config_data['angle'] == pytest.approx(30.0)
+
+def test_info_area_item_transform_origin_is_center(create_item_with_scene):
+    """Test transformOriginPoint is at the center of the item and updates with size."""
+    initial_width = 100
+    initial_height = 50
+    item, _, _ = create_item_with_scene(custom_config={'width': initial_width, 'height': initial_height})
+
+    assert item.transformOriginPoint().x() == pytest.approx(initial_width / 2)
+    assert item.transformOriginPoint().y() == pytest.approx(initial_height / 2)
+
+    # Change width and height and update
+    new_width = 120
+    new_height = 60
+    item.config_data['width'] = new_width
+    item.config_data['height'] = new_height
+    item.update_geometry_from_config()
+
+    assert item.transformOriginPoint().x() == pytest.approx(new_width / 2)
+    assert item.transformOriginPoint().y() == pytest.approx(new_height / 2)
