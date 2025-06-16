@@ -87,7 +87,10 @@ class InfoCanvasApp(QMainWindow):
         status_bar = self.statusBar()
         if status_bar is not None:
             status_bar.showMessage("No project loaded. Please create or load a project from the File menu.")
-        
+
+        if hasattr(self, 'item_operations'):
+            self.item_operations.config = self.config
+
         # Force user to select a project again
         QTimer.singleShot(100, self._show_project_manager_dialog_and_handle_outcome)
 
@@ -168,6 +171,8 @@ class InfoCanvasApp(QMainWindow):
                 self.text_style_manager.load_styles_into_dropdown()
             # Reset snapshot history to the loaded project's state
             self.config_snapshot_stack = [copy.deepcopy(self.config)]
+            if hasattr(self, 'item_operations'):
+                self.item_operations.config = self.config
         return success
 
     def _load_config_for_current_project(self):

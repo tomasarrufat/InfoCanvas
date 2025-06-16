@@ -678,3 +678,24 @@ def test_save_config_does_not_duplicate_snapshot(base_app_fixture, monkeypatch):
     assert len(app.config_snapshot_stack) == 1
 
 
+def test_switch_to_project_updates_item_operations_config(base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    old_config = app.config
+    assert app.item_operations.config is old_config
+
+    new_config = {"project_name": "new_proj"}
+
+    def mock_switch(project_name, is_new_project=False):
+        app.project_io.current_project_name = project_name
+        app.project_io.current_project_path = os.path.join(utils.PROJECTS_BASE_DIR, project_name)
+        app.project_io.config = new_config
+        return True
+
+    monkeypatch.setattr(app.project_io, "switch_to_project", mock_switch)
+
+    app._switch_to_project("new_proj")
+
+    assert app.config is new_config
+    assert app.item_operations.config is new_config
+
+
