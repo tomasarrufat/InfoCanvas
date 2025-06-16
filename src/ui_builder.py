@@ -146,8 +146,8 @@ class UIBuilder:
 
         rect_group = QWidget()
         rect_layout = QVBoxLayout(rect_group)
-        rect_layout.addWidget(QLabel("<b>Info Rectangles:</b>"))
-        app.add_info_rect_button = QPushButton("Add Info Rectangle")
+        rect_layout.addWidget(QLabel("<b>Info Areas:</b>"))
+        app.add_info_rect_button = QPushButton("Add Info Area")
         app.add_info_rect_button.clicked.connect(app.add_info_rectangle)
         rect_layout.addWidget(app.add_info_rect_button)
 
@@ -256,7 +256,7 @@ class UIBuilder:
         app.rect_show_on_hover_checkbox.stateChanged.connect(app.update_selected_rect_show_on_hover)
         rect_props_layout.addWidget(app.rect_show_on_hover_checkbox)
 
-        app.delete_info_rect_button = QPushButton("Delete Selected Info Rect")
+        app.delete_info_rect_button = QPushButton("Delete Selected Info Area")
         app.delete_info_rect_button.setStyleSheet("background-color: #dc3545; color: white;")
         app.delete_info_rect_button.clicked.connect(app.delete_selected_info_rect)
         rect_props_layout.addWidget(app.delete_info_rect_button)

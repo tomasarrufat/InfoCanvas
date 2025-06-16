@@ -234,12 +234,12 @@ class ItemOperations:
 
     def delete_selected_info_rect(self):
         if not isinstance(self.app.selected_item, InfoRectangleItem): # Access app's selected_item
-            QMessageBox.information(self.app, "Delete Info Rectangle", "No info rectangle selected.") # parent is self.app
+            QMessageBox.information(self.app, "Delete Info Area", "No info area selected.") # parent is self.app
             return
 
         rect_conf = self.app.selected_item.config_data
         reply = QMessageBox.question(self.app, "Confirm Delete", # parent is self.app
-                                     "Are you sure you want to delete this info rectangle?",
+                                     "Are you sure you want to delete this info area?",
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
         if reply == QMessageBox.Yes:
@@ -263,7 +263,7 @@ class ItemOperations:
 
         # Currently, only InfoRectangleItem paste is supported from original logic
         if not isinstance(self.app.clipboard_data, dict) or 'text' not in self.app.clipboard_data:
-            self.app.statusBar().showMessage("Clipboard data is not for an info rectangle.", 2000)
+            self.app.statusBar().showMessage("Clipboard data is not for an info area.", 2000)
             return False # Indicate failure
 
         new_item_config = copy.deepcopy(self.app.clipboard_data) # Use app's clipboard_data

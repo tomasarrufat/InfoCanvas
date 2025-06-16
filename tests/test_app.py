@@ -452,7 +452,7 @@ def test_update_bg_dimensions(base_app_fixture, monkeypatch):
     app.save_config.assert_called_once()
 
 
-# --- Tests for Info Rectangle Management (methods remaining in app.py) --- #
+# --- Tests for Info Area Management (methods remaining in app.py) --- #
 
 def test_update_selected_rect_text(base_app_fixture, monkeypatch):
     app = base_app_fixture

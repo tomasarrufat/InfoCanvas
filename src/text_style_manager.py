@@ -67,7 +67,7 @@ class TextStyleManager:
 
     def save_current_item_style(self):
         if not isinstance(self.app.selected_item, InfoRectangleItem):
-            QMessageBox.warning(self.app.main_window if hasattr(self.app, 'main_window') else None, "Save Style", "Please select an Info Rectangle to save its style.")
+            QMessageBox.warning(self.app.main_window if hasattr(self.app, 'main_window') else None, "Save Style", "Please select an Info Area to save its style.")
             return
 
         item_config = self.app.selected_item.config_data

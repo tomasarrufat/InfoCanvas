@@ -55,7 +55,7 @@ The project follows this basic structure:
 -   **`src/`**: This directory contains all the core Python source code for the application, organized into modules (e.g., `canvas_manager.py`, `ui_builder.py`, etc.).
 -   **`static/`**: This directory serves as the root for storing all project-specific data. It and its subdirectories are created automatically by the application if they don't already exist.
     -   **`/<project_name>/`**: Each sub-directory within `static/` represents an individual project.
-        -   **`config.json`**: Located within each project's folder, this file stores the specific configuration for that project, including background settings, image details (paths, positions, scales), and info rectangle data.
+        -   **`config.json`**: Located within each project's folder, this file stores the specific configuration for that project, including background settings, image details (paths, positions, scales), and info area data.
         -   **`images/`**: Also within each project's folder, this sub-directory holds all images uploaded by the user for that particular project.
 -   **`doc/`**: Contains additional documentation for the project.
     -   **`toolRequirements.md`**: Describes the (original) requirements for the tool.
@@ -110,8 +110,8 @@ The project follows this basic structure:
             -   Select an image on the canvas to enable its properties in the control panel (scale, delete).
             -   Drag selected images to reposition them.
             -   Use the layering buttons to adjust their stacking order (Bring to Front/Back or step forward/backward).
-        -   **Info Rectangles (Hotspots):**
-            -   Click "Add Info Rectangle" to create a new hotspot on the canvas.
+        -   **Info Areas (Hotspots):**
+            -   Click "Add Info Area" to create a new hotspot on the canvas.
             -   Select a hotspot to edit its properties (text content, width, height) in the control panel.
             -   Drag selected hotspots to reposition them.
             -   Adjust layering using the same buttons available for images.

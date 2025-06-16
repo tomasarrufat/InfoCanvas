@@ -240,7 +240,7 @@ def test_delete_selected_image_user_cancel(mock_qmessagebox_question, item_ops, 
     with patch('src.item_operations.os.remove') as mock_os_remove_cancel:
         mock_os_remove_cancel.assert_not_called()
 
-# --- Tests for Info Rectangle Operations ---
+# --- Tests for Info Area Operations ---
 
 def test_add_info_rectangle(item_ops, mock_app_instance, monkeypatch):
     # Mock _get_next_z_index for predictable z_index
@@ -390,7 +390,7 @@ def test_paste_item_from_clipboard_failure_cases(item_ops, mock_app_instance):
     mock_app_instance.statusBar().showMessage.reset_mock() # Reset from previous call
     assert item_ops.paste_item_from_clipboard() is False
     assert len(mock_app_instance.config.get('info_rectangles', [])) == initial_rect_count
-    mock_app_instance.statusBar().showMessage.assert_called_with("Clipboard data is not for an info rectangle.", 2000)
+    mock_app_instance.statusBar().showMessage.assert_called_with("Clipboard data is not for an info area.", 2000)
     mock_app_instance.save_config.assert_not_called()
 
 # --- Test for unified delete operation ---
