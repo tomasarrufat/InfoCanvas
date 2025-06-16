@@ -332,6 +332,11 @@ class UIBuilder:
         export_action = QAction('&Export to HTML', app)
         export_action.triggered.connect(lambda checked=False: app.export_to_html())
         file_menu.addAction(export_action)
+        dark_mode_action = QAction('Dark Mode', app)
+        dark_mode_action.setCheckable(True)
+        dark_mode_action.triggered.connect(app.toggle_dark_mode)
+        file_menu.addAction(dark_mode_action)
+        app.dark_mode_action = dark_mode_action
         exit_action = QAction('&Exit', app)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.triggered.connect(app.close)

@@ -3,10 +3,11 @@ import os
 import copy
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox, QDialog
+    QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox,
+    QDialog, QStyleFactory
 )
 from PyQt5.QtGui import (
-    QColor, QBrush
+    QColor, QBrush, QPalette
 )
 from PyQt5.QtCore import Qt, QTimer, QUrl
 
@@ -35,6 +36,8 @@ class InfoCanvasApp(QMainWindow):
         self.config_snapshot_stack = []
         self.clipboard_data = None
         self.chronologically_first_selected_item = None
+        self.dark_mode_enabled = False
+        self.default_palette = QApplication.palette()
 
         if not self._initial_project_setup():
             QTimer.singleShot(0, self.close)
@@ -632,6 +635,34 @@ class InfoCanvasApp(QMainWindow):
 
     def align_selected_rects_vertically(self):
         self.canvas_manager.align_selected_rects_vertically()
+
+    def apply_dark_palette(self):
+        QApplication.setStyle(QStyleFactory.create("Fusion"))
+        dark_palette = QPalette()
+        dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.WindowText, Qt.white)
+        dark_palette.setColor(QPalette.Base, QColor(35, 35, 35))
+        dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
+        dark_palette.setColor(QPalette.ToolTipText, Qt.white)
+        dark_palette.setColor(QPalette.Text, Qt.white)
+        dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ButtonText, Qt.white)
+        dark_palette.setColor(QPalette.BrightText, Qt.red)
+        dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
+        dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+        dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+        QApplication.setPalette(dark_palette)
+
+    def apply_light_palette(self):
+        QApplication.setPalette(self.default_palette)
+
+    def toggle_dark_mode(self, checked=False):
+        self.dark_mode_enabled = bool(checked)
+        if self.dark_mode_enabled:
+            self.apply_dark_palette()
+        else:
+            self.apply_light_palette()
 
 if __name__ == '__main__':
     app = QApplication.instance() or QApplication(sys.argv)

@@ -119,6 +119,7 @@ The project follows this basic structure:
             -   Copy (Ctrl+C) and Paste (Ctrl+V) selected hotspots (when an input field is not focused).
             -   Delete selected hotspots or images using the 'Delete' key (when an input field is not focused) or the respective delete buttons in the control panel (confirmation may be required).
         -   **Saving:** All changes to a project (background, images, hotspots) are automatically saved to its `config.json` file. You can also manually save using "File > Save Configuration" (Ctrl+S).
+        -   **Dark Mode:** Use "File > Dark Mode" to toggle a darker color scheme for the entire interface.
     -   **View Mode:**
         -   In this mode, the canvas is not editable.
         -   Hover your mouse cursor over the areas where you defined info rectangles (hotspots) to see their associated text appear in a pop-up.
