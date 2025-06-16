@@ -95,7 +95,7 @@ class HtmlExporter:
             lines.append(
                 f"<img src='{html.escape(src)}' style='position:absolute;left:{left}px;top:{top}px;width:{width}px;height:{height}px;'>"
             )
-        for rect_conf in self.config.get('info_rectangles', []):
+        for rect_conf in self.config.get('info_areas', []):
             rect_width = rect_conf.get('width', 0)
             rect_height = rect_conf.get('height', 0)
             left = rect_conf.get('center_x', 0) - rect_width / 2
@@ -128,6 +128,8 @@ class HtmlExporter:
             h_align = rect_conf.get('horizontal_alignment', self.default_text_config['horizontal_alignment'])
             v_align = rect_conf.get('vertical_alignment', self.default_text_config['vertical_alignment'])
             outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex; box-sizing: border-box;"
+            if rect_conf.get('shape', 'rectangle') == 'ellipse':
+                outer_style += "border-radius:50%;"
             if v_align == "top": outer_style += "align-items:flex-start;"
             elif v_align == "center" or v_align == "middle": outer_style += "align-items:center;"
             elif v_align == "bottom": outer_style += "align-items:flex-end;"

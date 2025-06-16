@@ -80,7 +80,7 @@ class CanvasManager(QObject):
             self.scene.addItem(item)
             app.item_map[img_conf['id']] = item
 
-        for rect_conf in config.get('info_rectangles', []):
+        for rect_conf in config.get('info_areas', []):
             item = InfoAreaItem(rect_conf)
             item.item_selected.connect(self.on_graphics_item_selected)
             item.item_moved.connect(self.on_graphics_item_moved)

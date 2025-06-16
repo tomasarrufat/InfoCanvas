@@ -15,7 +15,7 @@ def test_export_to_html_writes_file(tmp_path_factory, tmp_path): # No base_app_f
 
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "Test Project HTML"
-    sample_config.setdefault('info_rectangles', []).append({
+    sample_config.setdefault('info_areas', []).append({
         'id': 'r1', 'center_x': 50, 'center_y': 50, 'width': 20, 'height': 20, 'text': 'hello'
     })
 
@@ -59,7 +59,7 @@ def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base
 
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "Rich Text Test"
-    sample_config.setdefault('info_rectangles', []).append(rect_config_formatted)
+    sample_config.setdefault('info_areas', []).append(rect_config_formatted)
 
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
     out_file = tmp_path / "export_formatted.html"
@@ -94,7 +94,7 @@ def test_export_html_markdown(tmp_path_factory, tmp_path):
 
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "MD Test"
-    sample_config.setdefault('info_rectangles', []).append({
+    sample_config.setdefault('info_areas', []).append({
         'id': 'md1', 'center_x': 10, 'center_y': 10, 'width': 50, 'height': 20,
         'text': 'This is **bold**', 'font_color': '#000000'
     })
@@ -115,7 +115,7 @@ def test_export_html_heading_font_sizes(tmp_path_factory, tmp_path):
 
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "Heading Test"
-    sample_config.setdefault('info_rectangles', []).append({
+    sample_config.setdefault('info_areas', []).append({
         'id': 'h1',
         'center_x': 5,
         'center_y': 5,
@@ -138,7 +138,7 @@ def test_export_html_always_visible(tmp_path_factory, tmp_path):
     os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "Always"
-    sample_config.setdefault('info_rectangles', []).append({
+    sample_config.setdefault('info_areas', []).append({
         'id': 'r1', 'center_x': 10, 'center_y': 10, 'width': 30, 'height': 20,
         'text': 'show', 'show_on_hover': False
     })
@@ -238,7 +238,7 @@ def test_export_html_contains_drag_script(tmp_path_factory, tmp_path):
     os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
 
     sample_config = utils.get_default_config()
-    sample_config.setdefault('info_rectangles', []).append({
+    sample_config.setdefault('info_areas', []).append({
         'id': 'drag1', 'center_x': 15, 'center_y': 15, 'width': 30, 'height': 20, 'text': 'd'
     })
 

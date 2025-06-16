@@ -468,7 +468,7 @@ class InfoCanvasApp(QMainWindow):
         self.item_operations.delete_selected_image()
 
     def add_info_rectangle(self):
-        self.item_operations.add_info_rectangle()
+        self.item_operations.add_info_area()
 
     def update_selected_rect_text(self):
         """Called when the text in the info_rect_text_input (QTextEdit) changes."""

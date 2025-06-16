@@ -47,7 +47,7 @@ def mock_app_instance(monkeypatch, tmp_path_factory):
     app.config.setdefault('background', {}).update({'width': 800, 'height': 600, 'color': '#DDDDDD'})
     app.config.setdefault('defaults', {}).setdefault('info_rectangle_text_display', utils.get_default_config()['defaults']['info_rectangle_text_display'])
     app.config.setdefault('images', [])
-    app.config.setdefault('info_rectangles', [])
+    app.config.setdefault('info_areas', [])
 
 
     app.item_map = {}
@@ -242,19 +242,20 @@ def test_delete_selected_image_user_cancel(mock_qmessagebox_question, item_ops, 
 
 # --- Tests for Info Area Operations ---
 
-def test_add_info_rectangle(item_ops, mock_app_instance, monkeypatch):
+def test_add_info_area(item_ops, mock_app_instance, monkeypatch):
     # Mock _get_next_z_index for predictable z_index
     monkeypatch.setattr(item_ops, '_get_next_z_index', lambda: 5)
-    initial_rect_count = len(mock_app_instance.config.get('info_rectangles', []))
-    item_ops.add_info_rectangle()
-    assert len(mock_app_instance.config.get('info_rectangles', [])) == initial_rect_count + 1
-    new_rect_config = mock_app_instance.config['info_rectangles'][-1]
+    initial_rect_count = len(mock_app_instance.config.get('info_areas', []))
+    item_ops.add_info_area()
+    assert len(mock_app_instance.config.get('info_areas', [])) == initial_rect_count + 1
+    new_rect_config = mock_app_instance.config['info_areas'][-1]
     assert new_rect_config['text'] == "New Information"
     # Access default width from where it's defined (utils or app.config['defaults'])
     expected_width = mock_app_instance.config.get("defaults", {}).get("info_rectangle_text_display", {}).get("box_width", 150)
     assert new_rect_config['width'] == expected_width
     assert new_rect_config['height'] == 50
     assert new_rect_config['show_on_hover'] is True
+    assert new_rect_config['shape'] == 'rectangle'
     assert new_rect_config['z_index'] == 5
     assert new_rect_config['id'] in mock_app_instance.item_map
     new_item = mock_app_instance.item_map[new_rect_config['id']]
@@ -271,17 +272,17 @@ def test_delete_selected_info_rect_success(mock_qmessagebox, item_ops, mock_app_
         "id": rect_id_to_delete, "text": "Delete Me", "center_x": 30, "center_y": 30,
         "width": 100, "height": 50, "z_index": 0
     }
-    mock_app_instance.config['info_rectangles'] = [rect_config]
+    mock_app_instance.config['info_areas'] = [rect_config]
     mock_selected_item = MagicMock(spec=InfoAreaItem)
     mock_selected_item.config_data = rect_config
     mock_app_instance.selected_item = mock_selected_item
     mock_app_instance.item_map.clear()
     mock_app_instance.item_map[rect_id_to_delete] = mock_selected_item
     original_selected_item_ref = mock_app_instance.selected_item
-    initial_rect_count = len(mock_app_instance.config['info_rectangles'])
+    initial_rect_count = len(mock_app_instance.config['info_areas'])
     item_ops.delete_selected_info_rect()
     mock_qmessagebox.assert_called_once()
-    assert len(mock_app_instance.config.get('info_rectangles', [])) == initial_rect_count - 1
+    assert len(mock_app_instance.config.get('info_areas', [])) == initial_rect_count - 1
     assert rect_id_to_delete not in mock_app_instance.item_map
     assert mock_app_instance.selected_item is None
     mock_app_instance.scene.removeItem.assert_called_once_with(original_selected_item_ref)
@@ -293,14 +294,14 @@ def test_delete_selected_info_rect_success(mock_qmessagebox, item_ops, mock_app_
 def test_delete_selected_info_rect_user_cancel(mock_qmessagebox, item_ops, mock_app_instance):
     rect_id_stay = "rect_stay_1"
     rect_config = { "id": rect_id_stay, "text": "Don't Delete" }
-    mock_app_instance.config['info_rectangles'] = [rect_config]
+    mock_app_instance.config['info_areas'] = [rect_config]
     mock_selected_item = MagicMock(spec=InfoAreaItem)
     mock_selected_item.config_data = rect_config
     mock_app_instance.selected_item = mock_selected_item
     mock_app_instance.item_map = {rect_id_stay: mock_selected_item}
-    initial_rect_count = len(mock_app_instance.config['info_rectangles'])
+    initial_rect_count = len(mock_app_instance.config['info_areas'])
     item_ops.delete_selected_info_rect()
-    assert len(mock_app_instance.config.get('info_rectangles', [])) == initial_rect_count
+    assert len(mock_app_instance.config.get('info_areas', [])) == initial_rect_count
     mock_app_instance.save_config.assert_not_called()
 
 # --- Tests for Clipboard Operations ---
@@ -354,13 +355,13 @@ def test_paste_item_from_clipboard_info_rect_success(item_ops, mock_app_instance
     mock_app_instance.current_mode = "edit"
     original_rect_data = {"id": "orig_rect", "text": "Pasted Text", "width": 150, "height": 70, "center_x":50, "center_y":50, "z_index":2}
     mock_app_instance.clipboard_data = copy.deepcopy(original_rect_data)
-    initial_rect_count = len(mock_app_instance.config.get('info_rectangles', []))
+    initial_rect_count = len(mock_app_instance.config.get('info_areas', []))
 
     result = item_ops.paste_item_from_clipboard()
 
     assert result is True
-    assert len(mock_app_instance.config.get('info_rectangles', [])) == initial_rect_count + 1
-    new_rect_config = mock_app_instance.config['info_rectangles'][-1]
+    assert len(mock_app_instance.config.get('info_areas', [])) == initial_rect_count + 1
+    new_rect_config = mock_app_instance.config['info_areas'][-1]
     assert new_rect_config['text'] == "Pasted Text"
     assert new_rect_config['id'] != "orig_rect"
     assert new_rect_config['center_x'] == original_rect_data['center_x'] + 20
@@ -376,12 +377,12 @@ def test_paste_item_from_clipboard_info_rect_success(item_ops, mock_app_instance
 
 def test_paste_item_from_clipboard_failure_cases(item_ops, mock_app_instance):
     mock_app_instance.current_mode = "edit"
-    initial_rect_count = len(mock_app_instance.config.get('info_rectangles', []))
+    initial_rect_count = len(mock_app_instance.config.get('info_areas', []))
 
     # Case 1: Clipboard is empty
     mock_app_instance.clipboard_data = None
     assert item_ops.paste_item_from_clipboard() is False
-    assert len(mock_app_instance.config.get('info_rectangles', [])) == initial_rect_count
+    assert len(mock_app_instance.config.get('info_areas', [])) == initial_rect_count
     mock_app_instance.statusBar().showMessage.assert_called_with("Clipboard is empty.", 2000)
     mock_app_instance.save_config.assert_not_called()
 
@@ -389,7 +390,7 @@ def test_paste_item_from_clipboard_failure_cases(item_ops, mock_app_instance):
     mock_app_instance.clipboard_data = {"id": "not_a_rect", "some_other_data": "value"}
     mock_app_instance.statusBar().showMessage.reset_mock() # Reset from previous call
     assert item_ops.paste_item_from_clipboard() is False
-    assert len(mock_app_instance.config.get('info_rectangles', [])) == initial_rect_count
+    assert len(mock_app_instance.config.get('info_areas', [])) == initial_rect_count
     mock_app_instance.statusBar().showMessage.assert_called_with("Clipboard data is not for an info area.", 2000)
     mock_app_instance.save_config.assert_not_called()
 
@@ -436,7 +437,7 @@ def test_delete_selected_item_on_canvas_info_rect(mock_qmessagebox, item_ops, mo
     rect_config = {"id": rect_id_to_delete, "text": "Test"}
     mock_rect_item.config_data = rect_config
     mock_app_instance.selected_item = mock_rect_item
-    mock_app_instance.config['info_rectangles'] = [rect_config]
+    mock_app_instance.config['info_areas'] = [rect_config]
     mock_app_instance.item_map.clear()
     mock_app_instance.item_map[rect_id_to_delete] = mock_rect_item
     mock_app_instance.current_mode = "edit"

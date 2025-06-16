@@ -197,7 +197,7 @@ class ItemOperations:
             self.app.update_properties_panel() # Call app's method
             self.app.statusBar().showMessage(f"Image '{img_conf['path']}' deleted.", 3000) # app's statusBar
 
-    def add_info_rectangle(self):
+    def add_info_area(self):
         rect_id = f"rect_{datetime.datetime.now().timestamp()}"
         # Access app's config for defaults, then utils if not found
         default_display_conf = self.config.get("defaults", {}).get("info_rectangle_text_display", utils.get_default_config()["defaults"]["info_rectangle_text_display"])
@@ -210,11 +210,12 @@ class ItemOperations:
             "height": 50, # Default height
             "text": "New Information",
             "show_on_hover": True,
+            "shape": "rectangle",
             "z_index": self._get_next_z_index(), # Local method
         }
 
-        if 'info_rectangles' not in self.config: self.config['info_rectangles'] = [] # self.config is app.config
-        self.config['info_rectangles'].append(new_rect_config)
+        if 'info_areas' not in self.config: self.config['info_areas'] = [] # self.config is app.config
+        self.config['info_areas'].append(new_rect_config)
 
         item = InfoAreaItem(new_rect_config) # Z-value set in item's __init__
 
@@ -243,8 +244,8 @@ class ItemOperations:
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
         if reply == QMessageBox.Yes:
-            if rect_conf in self.config.get('info_rectangles', []): # self.config is app.config
-                self.config['info_rectangles'].remove(rect_conf)
+            if rect_conf in self.config.get('info_areas', []): # self.config is app.config
+                self.config['info_areas'].remove(rect_conf)
 
             self.scene.removeItem(self.app.selected_item) # self.scene is app.scene
             if rect_conf.get('id') in self.item_map: del self.item_map[rect_conf['id']] # self.item_map is app.item_map
@@ -274,9 +275,9 @@ class ItemOperations:
         new_item_config['center_y'] = new_item_config.get('center_y', self.scene.height() / 2) + 20 # self.scene is app.scene
         new_item_config['z_index'] = self._get_next_z_index() # Local method
 
-        if 'info_rectangles' not in self.config: # self.config is app.config
-            self.config['info_rectangles'] = []
-        self.config['info_rectangles'].append(new_item_config)
+        if 'info_areas' not in self.config: # self.config is app.config
+            self.config['info_areas'] = []
+        self.config['info_areas'].append(new_item_config)
 
         item = InfoAreaItem(new_item_config) # Z-value set in item's __init__
 

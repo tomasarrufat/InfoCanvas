@@ -458,7 +458,7 @@ def test_update_selected_rect_text(base_app_fixture, monkeypatch):
     app = base_app_fixture
     rect_id = "rect_to_edit_text"
     initial_text = "Old Text"
-    app.config['info_rectangles'] = [{
+    app.config['info_areas'] = [{
         "id": rect_id, "text": initial_text, "center_x": 10, "center_y": 10,
         "width": 100, "height": 50, "z_index": 1
     }]
@@ -474,7 +474,7 @@ def test_update_selected_rect_text(base_app_fixture, monkeypatch):
     new_text = "This is the new text for the rectangle."
     app.info_rect_text_input.setPlainText(new_text)
     app.update_selected_rect_text()
-    assert app.config['info_rectangles'][0]['text'] == new_text
+    assert app.config['info_areas'][0]['text'] == new_text
     selected_rect_item.set_display_text.assert_called_once_with(new_text)
     app.save_config.assert_called_once()
 
@@ -482,7 +482,7 @@ def test_update_selected_rect_text(base_app_fixture, monkeypatch):
 def test_update_selected_rect_dimensions(base_app_fixture, monkeypatch):
     app = base_app_fixture
     rect_id = "rect_to_resize"
-    app.config['info_rectangles'] = [{
+    app.config['info_areas'] = [{
         "id": rect_id, "text": "Resize me", "center_x": 20, "center_y": 20,
         "width": 100, "height": 50, "z_index": 1
     }]
@@ -506,8 +506,8 @@ def test_update_selected_rect_dimensions(base_app_fixture, monkeypatch):
     app.info_rect_width_input.blockSignals(False)
     app.info_rect_height_input.blockSignals(False)
     app.update_selected_rect_dimensions()
-    assert app.config['info_rectangles'][0]['width'] == new_width
-    assert app.config['info_rectangles'][0]['height'] == new_height
+    assert app.config['info_areas'][0]['width'] == new_width
+    assert app.config['info_areas'][0]['height'] == new_height
     mock_slot_for_properties_changed.assert_called_once_with(selected_rect_item)
     app.save_config.assert_called_once()
     selected_rect_item.update_geometry_from_config.assert_called_once()
@@ -585,7 +585,7 @@ def test_handle_deleted_other_project(base_app_fixture, monkeypatch):
 # Test 'test_font_color_change_updates_item_and_ui' was REMOVED as it's now in test_text_style_manager.py
 # Test 'test_project_load_style_application_and_update' was REMOVED as it's now in test_text_style_manager.py
 
-def test_ctrl_multi_select_info_rectangles(base_app_fixture, monkeypatch):
+def test_ctrl_multi_select_info_areas(base_app_fixture, monkeypatch):
     app = base_app_fixture
     rect1 = {
         'id': 'rect1', 'width': 50, 'height': 40,
@@ -595,7 +595,7 @@ def test_ctrl_multi_select_info_rectangles(base_app_fixture, monkeypatch):
         'id': 'rect2', 'width': 50, 'height': 40,
         'center_x': 150, 'center_y': 50, 'text': 'B'
     }
-    app.config['info_rectangles'] = [rect1, rect2]
+    app.config['info_areas'] = [rect1, rect2]
     app.render_canvas_from_config()
     item1 = app.item_map['rect1']
     item2 = app.item_map['rect2']
