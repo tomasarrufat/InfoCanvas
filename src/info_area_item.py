@@ -57,6 +57,8 @@ class InfoAreaItem(BaseDraggableItem):
         self._current_resize_handle = self.ResizeHandle.NONE
         self._resizing_initial_mouse_pos = QPointF()
         self._resizing_initial_rect = QRectF()
+        self._resizing_initial_center = QPointF()
+        self._resizing_initial_angle = 0.0
         self._is_resizing = False
         self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Ensure it's a boolean
         self._applied_style_values = {} # To track values set by the current style
@@ -144,6 +146,13 @@ class InfoAreaItem(BaseDraggableItem):
                 self._is_resizing = True
                 self._resizing_initial_mouse_pos = event.scenePos()
                 self._resizing_initial_rect = self.sceneBoundingRect()
+                self._resizing_initial_angle = self.rotation()
+                self._resizing_initial_center = QPointF(
+                    self.config_data.get('center_x', self.scenePos().x() + self._w / 2),
+                    self.config_data.get('center_y', self.scenePos().y() + self._h / 2)
+                )
+                self.setRotation(0)
+                self.setPos(self._resizing_initial_center.x() - self._w / 2, self._resizing_initial_center.y() - self._h / 2)
 
                 self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Store as bool
                 self.setFlag(QGraphicsItem.ItemIsMovable, False)
@@ -215,12 +224,17 @@ class InfoAreaItem(BaseDraggableItem):
             self._is_resizing = False
 
             self.setFlag(QGraphicsItem.ItemIsMovable, self._was_movable)
+            center_x = self.scenePos().x() + self._w / 2
+            center_y = self.scenePos().y() + self._h / 2
 
-            current_top_left_scene = self.scenePos()
+            self.setRotation(self._resizing_initial_angle)
+            self.setPos(center_x - self._w / 2, center_y - self._h / 2)
+
             self.config_data['width'] = self._w
             self.config_data['height'] = self._h
-            self.config_data['center_x'] = current_top_left_scene.x() + self._w / 2
-            self.config_data['center_y'] = current_top_left_scene.y() + self._h / 2
+            self.config_data['center_x'] = center_x
+            self.config_data['center_y'] = center_y
+            self.config_data['angle'] = self._resizing_initial_angle
 
             self.properties_changed.emit(self)
 

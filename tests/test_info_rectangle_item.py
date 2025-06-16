@@ -544,3 +544,40 @@ def test_paint_ellipse_calls_correct_method(create_item_with_scene):
     item.paint(painter, None)
     painter.drawEllipse.assert_called_once()
     painter.drawRect.assert_not_called()
+
+
+def test_resizing_rotated_item_restores_angle(create_item_with_scene):
+    angle = -30.0
+    item, _, mock_parent_window = create_item_with_scene(
+        custom_config={'angle': angle, 'width': 100, 'height': 50, 'center_x': 100, 'center_y': 100}
+    )
+    mock_parent_window.current_mode = "edit"
+    item.setSelected(True)
+
+    press_pos = QPointF(item._w, item._h / 2)
+    press_event = create_mock_mouse_event(
+        QGraphicsSceneMouseEvent.GraphicsSceneMousePress,
+        press_pos,
+        scene_pos=item.mapToScene(press_pos)
+    )
+    item.mousePressEvent(press_event)
+    assert item.rotation() == 0
+
+    move_event = create_mock_mouse_event(
+        QGraphicsSceneMouseEvent.GraphicsSceneMouseMove,
+        QPointF(),
+        scene_pos=item.mapToScene(press_pos) + QPointF(10, 0),
+        button=Qt.LeftButton
+    )
+    item.mouseMoveEvent(move_event)
+
+    release_event = create_mock_mouse_event(
+        QGraphicsSceneMouseEvent.GraphicsSceneMouseRelease,
+        QPointF(),
+        button=Qt.LeftButton
+    )
+    item.mouseReleaseEvent(release_event)
+
+    assert item.rotation() == angle
+    assert item.config_data['angle'] == angle
+    assert item.config_data['width'] > 100
