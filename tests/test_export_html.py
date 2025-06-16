@@ -248,7 +248,8 @@ def test_export_html_contains_drag_script(tmp_path_factory, tmp_path):
     assert exporter.export(str(out_file)) is True
     content = out_file.read_text()
     assert "addEventListener('mousedown'" in content
-    assert 'requestAnimationFrame(anim);' in content
+    assert "requestAnimationFrame(anim);" in content
+    assert "animating = true" in content
 
 # Keep other tests like test_export_to_html_write_error,
 # test_export_to_html_uses_dialog, etc., as they are, because they test
