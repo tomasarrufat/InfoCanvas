@@ -15,6 +15,8 @@ class InfoAreaItem(BaseDraggableItem):
     RESIZE_MARGIN = 8
     MIN_WIDTH = 20
     MIN_HEIGHT = 20
+    ROTATE_HANDLE_OFFSET = 15
+    ROTATE_HANDLE_RADIUS = 4
 
     class ResizeHandle:
         NONE = 0
@@ -64,6 +66,10 @@ class InfoAreaItem(BaseDraggableItem):
         self._resizing_initial_width = self._w
         self._resizing_initial_height = self._h
         self._is_resizing = False
+        self._is_rotating = False
+        self._rotation_start_scene_pos = QPointF()
+        self._rotation_start_angle = 0.0
+        self._rotation_center_scene = QPointF()
         self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Ensure it's a boolean
         self._applied_style_values = {} # To track values set by the current style
 
@@ -86,6 +92,12 @@ class InfoAreaItem(BaseDraggableItem):
         else:
             painter.drawRect(self.boundingRect())
 
+        if self.isSelected():
+            handle_rect = self._get_rotation_handle_rect()
+            painter.setPen(QPen(Qt.yellow))
+            painter.setBrush(QBrush(Qt.yellow))
+            painter.drawEllipse(handle_rect)
+
     def _get_resize_handle_at(self, pos):
         r = self.boundingRect()
         m = self.RESIZE_MARGIN
@@ -104,29 +116,38 @@ class InfoAreaItem(BaseDraggableItem):
         if on_right: return self.ResizeHandle.RIGHT
         return self.ResizeHandle.NONE
 
+    def _get_rotation_handle_rect(self):
+        center = QPointF(self._w + self.ROTATE_HANDLE_OFFSET,
+                          -self.ROTATE_HANDLE_OFFSET)
+        r = self.ROTATE_HANDLE_RADIUS
+        return QRectF(center.x() - r, center.y() - r, 2 * r, 2 * r)
+
     def hoverMoveEvent(self, event):
         parent_win = None
         if self.scene() and hasattr(self.scene(), 'parent_window'):
             parent_win = self.scene().parent_window
 
-        if self.isSelected() and parent_win and parent_win.current_mode == "edit" and not self._is_resizing :
-            handle = self._get_resize_handle_at(event.pos())
-            cursor_shape = Qt.ArrowCursor
-            if handle != self.ResizeHandle.NONE:
-                if handle == self.ResizeHandle.TOP_LEFT or handle == self.ResizeHandle.BOTTOM_RIGHT:
-                    cursor_shape = Qt.SizeFDiagCursor
-                elif handle == self.ResizeHandle.TOP_RIGHT or handle == self.ResizeHandle.BOTTOM_LEFT:
-                    cursor_shape = Qt.SizeBDiagCursor
-                elif handle == self.ResizeHandle.TOP or handle == self.ResizeHandle.BOTTOM:
-                    cursor_shape = Qt.SizeVerCursor
-                elif handle == self.ResizeHandle.LEFT or handle == self.ResizeHandle.RIGHT:
-                    cursor_shape = Qt.SizeHorCursor
-            elif self.flags() & QGraphicsItem.ItemIsMovable:
-                 cursor_shape = Qt.PointingHandCursor
+        if self.isSelected() and parent_win and parent_win.current_mode == "edit" and not self._is_resizing and not self._is_rotating:
+            if self._get_rotation_handle_rect().contains(event.pos()):
+                cursor_shape = Qt.OpenHandCursor
+            else:
+                handle = self._get_resize_handle_at(event.pos())
+                cursor_shape = Qt.ArrowCursor
+                if handle != self.ResizeHandle.NONE:
+                    if handle == self.ResizeHandle.TOP_LEFT or handle == self.ResizeHandle.BOTTOM_RIGHT:
+                        cursor_shape = Qt.SizeFDiagCursor
+                    elif handle == self.ResizeHandle.TOP_RIGHT or handle == self.ResizeHandle.BOTTOM_LEFT:
+                        cursor_shape = Qt.SizeBDiagCursor
+                    elif handle == self.ResizeHandle.TOP or handle == self.ResizeHandle.BOTTOM:
+                        cursor_shape = Qt.SizeVerCursor
+                    elif handle == self.ResizeHandle.LEFT or handle == self.ResizeHandle.RIGHT:
+                        cursor_shape = Qt.SizeHorCursor
+                elif self.flags() & QGraphicsItem.ItemIsMovable:
+                    cursor_shape = Qt.PointingHandCursor
 
             if self.cursor().shape() != cursor_shape:
                 self.setCursor(QCursor(cursor_shape))
-        elif not self._is_resizing:
+        elif not self._is_resizing and not self._is_rotating:
             default_cursor_shape = Qt.ArrowCursor
             if parent_win and parent_win.current_mode == "edit" and (self.flags() & QGraphicsItem.ItemIsMovable):
                  default_cursor_shape = Qt.PointingHandCursor
@@ -135,7 +156,7 @@ class InfoAreaItem(BaseDraggableItem):
         super().hoverMoveEvent(event)
 
     def hoverLeaveEvent(self, event):
-        if not self._is_resizing:
+        if not self._is_resizing and not self._is_rotating:
             default_cursor_shape = Qt.ArrowCursor
             if self.scene() and hasattr(self.scene(), 'parent_window') and self.scene().parent_window.current_mode == "edit" and (self.flags() & QGraphicsItem.ItemIsMovable):
                 default_cursor_shape = Qt.PointingHandCursor
@@ -148,6 +169,17 @@ class InfoAreaItem(BaseDraggableItem):
             parent_win = self.scene().parent_window
 
         if event.button() == Qt.LeftButton and self.isSelected() and parent_win and parent_win.current_mode == "edit":
+            if self._get_rotation_handle_rect().contains(event.pos()):
+                self._is_rotating = True
+                self._rotation_start_scene_pos = event.scenePos()
+                self._rotation_start_angle = self.angle
+                self._rotation_center_scene = self.mapToScene(self.transformOriginPoint())
+                self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable)
+                self.setFlag(QGraphicsItem.ItemIsMovable, False)
+                self.setCursor(QCursor(Qt.ClosedHandCursor))
+                event.accept()
+                return
+
             self._current_resize_handle = self._get_resize_handle_at(event.pos())
             if self._current_resize_handle != self.ResizeHandle.NONE:
                 self._is_resizing = True
@@ -183,7 +215,20 @@ class InfoAreaItem(BaseDraggableItem):
 
 
     def mouseMoveEvent(self, event):
-        if self._is_resizing and self._current_resize_handle != self.ResizeHandle.NONE:
+        if self._is_rotating:
+            center = self._rotation_center_scene
+            start_vec = self._rotation_start_scene_pos - center
+            current_vec = event.scenePos() - center
+            start_angle = math.degrees(math.atan2(start_vec.y(), start_vec.x()))
+            current_angle = math.degrees(math.atan2(current_vec.y(), current_vec.x()))
+            delta = current_angle - start_angle
+            new_angle = self._rotation_start_angle + delta
+            self.angle = new_angle
+            self.config_data['angle'] = new_angle
+            self.setRotation(new_angle)
+            self.update()
+            event.accept()
+        elif self._is_resizing and self._current_resize_handle != self.ResizeHandle.NONE:
             current_mouse_scene_pos = event.scenePos()
             original_mouse_scene_pos = self._resizing_initial_mouse_pos
 
@@ -260,7 +305,17 @@ class InfoAreaItem(BaseDraggableItem):
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        if self._is_resizing and event.button() == Qt.LeftButton:
+        if self._is_rotating and event.button() == Qt.LeftButton:
+            self._is_rotating = False
+            self.setFlag(QGraphicsItem.ItemIsMovable, self._was_movable)
+            self.properties_changed.emit(self)
+            default_cursor_shape = Qt.ArrowCursor
+            if self.scene() and hasattr(self.scene(), 'parent_window') and self.scene().parent_window.current_mode == "edit":
+                if self.flags() & QGraphicsItem.ItemIsMovable:
+                    default_cursor_shape = Qt.PointingHandCursor
+            self.setCursor(QCursor(default_cursor_shape))
+            event.accept()
+        elif self._is_resizing and event.button() == Qt.LeftButton:
             self._is_resizing = False
             self.setFlag(QGraphicsItem.ItemIsMovable, self._was_movable)
 
@@ -403,7 +458,7 @@ class InfoAreaItem(BaseDraggableItem):
         self.update()
 
     def itemChange(self, change, value):
-        if change == QGraphicsItem.ItemPositionHasChanged and self.scene() and not self._is_resizing:
+        if change == QGraphicsItem.ItemPositionHasChanged and self.scene() and not self._is_resizing and not self._is_rotating:
             self.config_data['center_x'] = value.x() + self._w / 2
             self.config_data['center_y'] = value.y() + self._h / 2
             self._has_moved = True

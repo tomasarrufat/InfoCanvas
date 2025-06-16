@@ -991,3 +991,51 @@ def test_resize_rotated_with_min_width_constraint(create_item_with_scene, qtbot)
     assert item.pos().x() == pytest.approx(expected_final_pos_x)
     assert item.pos().y() == pytest.approx(expected_final_pos_y)
     assert item.rotation() == pytest.approx(angle_deg)
+
+
+def test_rotation_handle_position(create_item_with_scene):
+    item, _, _ = create_item_with_scene()
+    rect = item._get_rotation_handle_rect()
+    assert rect.center().x() == pytest.approx(item._w + InfoAreaItem.ROTATE_HANDLE_OFFSET)
+    assert rect.center().y() == pytest.approx(-InfoAreaItem.ROTATE_HANDLE_OFFSET)
+
+
+def test_rotate_via_handle_updates_angle(create_item_with_scene, qtbot):
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'center_x': 100, 'center_y': 100}, add_to_scene=True
+    )
+    item.setSelected(True)
+    mock_parent_window.current_mode = "edit"
+    handle_center_local = item._get_rotation_handle_rect().center()
+    press_event = create_mock_mouse_event(
+        QGraphicsSceneMouseEvent.GraphicsSceneMousePress,
+        handle_center_local,
+        scene_pos=item.mapToScene(handle_center_local)
+    )
+    item.mousePressEvent(press_event)
+
+    center_local = QPointF(item._w / 2, item._h / 2)
+    vec = handle_center_local - center_local
+    radius = math.hypot(vec.x(), vec.y())
+    start_ang = math.atan2(vec.y(), vec.x())
+    target_ang = start_ang + math.radians(90)
+    target_local = QPointF(center_local.x() + radius * math.cos(target_ang),
+                           center_local.y() + radius * math.sin(target_ang))
+    move_event = create_mock_mouse_event(
+        QGraphicsSceneMouseEvent.GraphicsSceneMouseMove,
+        QPointF(0, 0),
+        scene_pos=item.mapToScene(target_local),
+        button=Qt.LeftButton
+    )
+    item.mouseMoveEvent(move_event)
+
+    release_event = create_mock_mouse_event(
+        QGraphicsSceneMouseEvent.GraphicsSceneMouseRelease,
+        target_local,
+        scene_pos=item.mapToScene(target_local),
+        button=Qt.LeftButton
+    )
+    item.mouseReleaseEvent(release_event)
+
+    assert item.rotation() == pytest.approx(90.0)
+    assert item.config_data['angle'] == pytest.approx(90.0)
