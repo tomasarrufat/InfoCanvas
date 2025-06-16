@@ -101,6 +101,8 @@ The project follows this basic structure:
     -   Refer to the "Project Management" section below for more details on creating and managing projects.
 3.  **Using the Tool:**
     -   The application window will open, displaying the main interface.
+    -   The window uses a custom frameless style with built-in close,
+        maximize and minimize buttons at the top.
     -   **Mode Selection:**
         -   Use the "Mode" dropdown in the "Controls" panel (usually docked on the left) to switch between "Edit Mode" and "View Mode".
     -   **Edit Mode:**

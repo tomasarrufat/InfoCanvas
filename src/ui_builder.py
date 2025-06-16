@@ -46,7 +46,6 @@ class UIBuilder:
         app.web_view = QWebEngineView()
         app.central_layout.addWidget(app.web_view)
         app.central_layout.setCurrentWidget(app.view)
-        app.setCentralWidget(central_widget)
 
         app.controls_dock = QDockWidget("Controls", app)
         app.controls_dock.setFixedWidth(350)
@@ -345,3 +344,5 @@ class UIBuilder:
 
         app.statusBar().showMessage(
             f"Project '{app.current_project_name}' loaded. Ready.")
+
+        return central_widget
