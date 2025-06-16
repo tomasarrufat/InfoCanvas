@@ -59,6 +59,10 @@ class InfoAreaItem(BaseDraggableItem):
         self._current_resize_handle = self.ResizeHandle.NONE
         self._resizing_initial_mouse_pos = QPointF()
         self._resizing_initial_rect = QRectF()
+        self._resize_start_mouse_scene_pos = QPointF()
+        self._resizing_initial_item_pos = QPointF()
+        self._resizing_initial_width = self._w
+        self._resizing_initial_height = self._h
         self._is_resizing = False
         self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Ensure it's a boolean
         self._applied_style_values = {} # To track values set by the current style
@@ -67,6 +71,9 @@ class InfoAreaItem(BaseDraggableItem):
         self.update_text_from_config()
         self.update_appearance()
         self.initial_pos = self.pos()
+        self._resizing_initial_item_pos = self.pos()
+        self._resizing_initial_width = self._w
+        self._resizing_initial_height = self._h
 
     def boundingRect(self):
         return QRectF(0, 0, self._w, self._h)
@@ -145,11 +152,12 @@ class InfoAreaItem(BaseDraggableItem):
             if self._current_resize_handle != self.ResizeHandle.NONE:
                 self._is_resizing = True
                 # Store initial state for resizing
-                self._resize_start_item_pos = self.pos()
-                self._resize_start_item_width = self._w
-                self._resize_start_item_height = self._h
-                self._resize_start_mouse_scene_pos = event.scenePos()
-                # self._resizing_initial_rect = self.sceneBoundingRect() # Keep for now, might be useful for debugging or alternative logic
+                self._resizing_initial_item_pos = self.pos()
+                self._resizing_initial_width = self._w
+                self._resizing_initial_height = self._h
+                self._resizing_initial_mouse_pos = event.scenePos()
+                self._resize_start_mouse_scene_pos = self._resizing_initial_mouse_pos
+                self._resizing_initial_rect = self.sceneBoundingRect()
 
                 self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Store as bool
                 self.setFlag(QGraphicsItem.ItemIsMovable, False)
@@ -177,7 +185,7 @@ class InfoAreaItem(BaseDraggableItem):
     def mouseMoveEvent(self, event):
         if self._is_resizing and self._current_resize_handle != self.ResizeHandle.NONE:
             current_mouse_scene_pos = event.scenePos()
-            original_mouse_scene_pos = self._resize_start_mouse_scene_pos
+            original_mouse_scene_pos = self._resizing_initial_mouse_pos
 
             angle_rad = math.radians(self.config_data.get('angle', 0.0))
             cos_a = math.cos(angle_rad)
@@ -189,8 +197,8 @@ class InfoAreaItem(BaseDraggableItem):
             delta_local_x = QPointF.dotProduct(mouse_delta_scene, item_x_axis_scene)
             delta_local_y = QPointF.dotProduct(mouse_delta_scene, item_y_axis_scene)
 
-            new_w = self._resize_start_item_width
-            new_h = self._resize_start_item_height
+            new_w = self._resizing_initial_width
+            new_h = self._resizing_initial_height
             pos_change_x_local = 0.0
             pos_change_y_local = 0.0
 
@@ -198,50 +206,46 @@ class InfoAreaItem(BaseDraggableItem):
                 new_w += delta_local_x
             elif self._current_resize_handle == self.ResizeHandle.LEFT:
                 new_w -= delta_local_x
-                pos_change_x_local += delta_local_x
             elif self._current_resize_handle == self.ResizeHandle.BOTTOM:
                 new_h += delta_local_y
             elif self._current_resize_handle == self.ResizeHandle.TOP:
                 new_h -= delta_local_y
-                pos_change_y_local += delta_local_y
             elif self._current_resize_handle == self.ResizeHandle.TOP_LEFT:
                 new_w -= delta_local_x
-                pos_change_x_local += delta_local_x
                 new_h -= delta_local_y
-                pos_change_y_local += delta_local_y
             elif self._current_resize_handle == self.ResizeHandle.TOP_RIGHT:
                 new_w += delta_local_x
                 new_h -= delta_local_y
-                pos_change_y_local += delta_local_y
             elif self._current_resize_handle == self.ResizeHandle.BOTTOM_LEFT:
                 new_w -= delta_local_x
-                pos_change_x_local += delta_local_x
                 new_h += delta_local_y
             elif self._current_resize_handle == self.ResizeHandle.BOTTOM_RIGHT:
                 new_w += delta_local_x
                 new_h += delta_local_y
 
             # Apply Minimum Size Constraints
-            actual_dw = new_w - self._resize_start_item_width
             if new_w < self.MIN_WIDTH:
-                constrained_dw = self.MIN_WIDTH - self._resize_start_item_width
-                dw_diff = constrained_dw - actual_dw
-                if self._current_resize_handle in [self.ResizeHandle.LEFT, self.ResizeHandle.TOP_LEFT, self.ResizeHandle.BOTTOM_LEFT]:
-                    pos_change_x_local += dw_diff
                 new_w = self.MIN_WIDTH
 
-            actual_dh = new_h - self._resize_start_item_height
             if new_h < self.MIN_HEIGHT:
-                constrained_dh = self.MIN_HEIGHT - self._resize_start_item_height
-                dh_diff = constrained_dh - actual_dh
-                if self._current_resize_handle in [self.ResizeHandle.TOP, self.ResizeHandle.TOP_LEFT, self.ResizeHandle.TOP_RIGHT]:
-                    pos_change_y_local += dh_diff
                 new_h = self.MIN_HEIGHT
+
+            # Recalculate position shifts based on final dimensions
+            if self._current_resize_handle in [self.ResizeHandle.LEFT, self.ResizeHandle.TOP_LEFT, self.ResizeHandle.BOTTOM_LEFT]:
+                if self.angle:
+                    pos_change_x_local = abs(new_w - self._resizing_initial_width)
+                else:
+                    pos_change_x_local = self._resizing_initial_width - new_w
+            if self._current_resize_handle in [self.ResizeHandle.TOP, self.ResizeHandle.TOP_LEFT, self.ResizeHandle.TOP_RIGHT]:
+                if self.angle:
+                    pos_change_y_local = abs(new_h - self._resizing_initial_height)
+                else:
+                    pos_change_y_local = self._resizing_initial_height - new_h
 
             scene_shift_for_pos_x_component = item_x_axis_scene * pos_change_x_local
             scene_shift_for_pos_y_component = item_y_axis_scene * pos_change_y_local
             total_scene_shift = scene_shift_for_pos_x_component + scene_shift_for_pos_y_component
-            new_pos_scene = self._resize_start_item_pos + total_scene_shift
+            new_pos_scene = self._resizing_initial_item_pos + total_scene_shift
 
             self.prepareGeometryChange()
             self._w = new_w
@@ -267,11 +271,8 @@ class InfoAreaItem(BaseDraggableItem):
             # The item's origin (0,0) is its top-left. Transform origin is w/2, h/2.
             # Position self.pos() is the top-left point in scene coordinates.
             # To get the scene coordinates of the item's center (which is also its transform origin point):
-            current_transform_origin_local = self.transformOriginPoint() # This is (w/2, h/2)
-            center_point_scene = self.mapToScene(current_transform_origin_local)
-
-            self.config_data['center_x'] = center_point_scene.x()
-            self.config_data['center_y'] = center_point_scene.y()
+            self.config_data['center_x'] = self.pos().x() + self._w / 2
+            self.config_data['center_y'] = self.pos().y() + self._h / 2
 
             self.properties_changed.emit(self)
 
