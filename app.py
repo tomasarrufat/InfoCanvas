@@ -326,9 +326,11 @@ class InfoCanvasApp(QMainWindow):
             self.info_rect_text_input.blockSignals(True)
             self.info_rect_width_input.blockSignals(True)
             self.info_rect_height_input.blockSignals(True)
+            self.info_rect_angle_input.blockSignals(True)
             self.info_rect_text_input.setPlainText(rect_conf.get('text', ''))
             self.info_rect_width_input.setValue(int(rect_conf.get('width', 100)))
             self.info_rect_height_input.setValue(int(rect_conf.get('height', 50)))
+            self.info_rect_angle_input.setValue(float(rect_conf.get('angle', 0.0)))
             self.area_shape_combo.blockSignals(True)
             current_shape = rect_conf.get('shape', 'rectangle')
             self.area_shape_combo.setCurrentText('Ellipse' if current_shape == 'ellipse' else 'Rectangle')
@@ -410,10 +412,10 @@ class InfoCanvasApp(QMainWindow):
                 f"background-color: {current_font_color}; color: {contrasting_color};"
             )
 
-
             self.info_rect_text_input.blockSignals(False)
             self.info_rect_width_input.blockSignals(False)
             self.info_rect_height_input.blockSignals(False)
+            self.info_rect_angle_input.blockSignals(False)
             self.info_rect_properties_widget.setVisible(True)
 
         # Alignment buttons visibility
@@ -502,6 +504,15 @@ class InfoCanvasApp(QMainWindow):
             rect_conf['height'] = max(self.selected_item.MIN_HEIGHT, new_height)
             
             self.selected_item.properties_changed.emit(self.selected_item)
+
+    def update_selected_rect_angle(self):
+        if isinstance(self.selected_item, InfoAreaItem):
+            rect_conf = self.selected_item.config_data
+            new_angle = self.info_rect_angle_input.value()
+            rect_conf['angle'] = float(new_angle)
+            self.selected_item.setRotation(float(new_angle))
+            self.selected_item.properties_changed.emit(self.selected_item)
+            self.save_config()
 
     def update_selected_rect_show_on_hover(self, state):
         if isinstance(self.selected_item, InfoAreaItem):

@@ -208,6 +208,7 @@ class ItemOperations:
             "center_y": self.scene.height() / 2, # self.scene is app.scene
             "width": default_display_conf.get("box_width", 150), # Use resolved default
             "height": 50, # Default height
+            "angle": 0.0,
             "text": "New Information",
             "show_on_hover": True,
             "shape": "rectangle",

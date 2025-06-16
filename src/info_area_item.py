@@ -33,6 +33,7 @@ class InfoAreaItem(BaseDraggableItem):
         self._style_config_ref = None
         self._w = self.config_data.get('width', 100)
         self._h = self.config_data.get('height', 50)
+        self._angle = float(self.config_data.get('angle', 0.0))
         self._pen = QPen(Qt.NoPen)
         self._brush = QBrush(Qt.NoBrush)
         self.shape = rect_config.get('shape', 'rectangle')
@@ -201,6 +202,7 @@ class InfoAreaItem(BaseDraggableItem):
             self._h = new_rect.height()
             self.text_item.setTextWidth(self._w)
             self.setPos(new_rect.topLeft())
+            self.setTransformOriginPoint(self._w / 2, self._h / 2)
             self._center_text()
 
             self.update()
@@ -236,9 +238,12 @@ class InfoAreaItem(BaseDraggableItem):
         self.prepareGeometryChange()
         self._w = self.config_data.get('width', 100)
         self._h = self.config_data.get('height', 50)
+        self._angle = float(self.config_data.get('angle', 0.0))
         center_x = self.config_data.get('center_x', 0)
         center_y = self.config_data.get('center_y', 0)
         self.setPos(center_x - self._w / 2, center_y - self._h / 2)
+        self.setTransformOriginPoint(self._w / 2, self._h / 2)
+        self.setRotation(self._angle)
 
         self.text_item.setTextWidth(self._w)
         self._center_text()
