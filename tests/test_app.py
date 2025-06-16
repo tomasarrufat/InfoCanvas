@@ -460,7 +460,7 @@ def test_update_selected_rect_text(base_app_fixture, monkeypatch):
     initial_text = "Old Text"
     app.config['info_areas'] = [{
         "id": rect_id, "text": initial_text, "center_x": 10, "center_y": 10,
-        "width": 100, "height": 50, "z_index": 1
+        "width": 100, "height": 50, "z_index": 1, "shape": "rectangle"
     }]
     monkeypatch.setattr(app.scene, 'clear', MagicMock())
     monkeypatch.setattr(app.scene, 'addItem', MagicMock())
@@ -484,7 +484,7 @@ def test_update_selected_rect_dimensions(base_app_fixture, monkeypatch):
     rect_id = "rect_to_resize"
     app.config['info_areas'] = [{
         "id": rect_id, "text": "Resize me", "center_x": 20, "center_y": 20,
-        "width": 100, "height": 50, "z_index": 1
+        "width": 100, "height": 50, "z_index": 1, "shape": "rectangle"
     }]
     monkeypatch.setattr(app.scene, 'clear', MagicMock())
     monkeypatch.setattr(app.scene, 'addItem', MagicMock())
@@ -618,11 +618,11 @@ def test_ctrl_multi_select_info_areas(base_app_fixture, monkeypatch):
     app = base_app_fixture
     rect1 = {
         'id': 'rect1', 'width': 50, 'height': 40,
-        'center_x': 60, 'center_y': 50, 'text': 'A'
+        'center_x': 60, 'center_y': 50, 'text': 'A', 'shape': 'rectangle'
     }
     rect2 = {
         'id': 'rect2', 'width': 50, 'height': 40,
-        'center_x': 150, 'center_y': 50, 'text': 'B'
+        'center_x': 150, 'center_y': 50, 'text': 'B', 'shape': 'rectangle'
     }
     app.config['info_areas'] = [rect1, rect2]
     app.render_canvas_from_config()

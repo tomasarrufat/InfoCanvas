@@ -20,7 +20,10 @@ class TestCanvasManagerAlignment:
         items = []
         for i, (cx, cy, w, h, name_part) in enumerate(rect_details):
             rect_id = f"{name_part}_{datetime.datetime.now().timestamp()}_{i}"
-            rect_config = {"id": rect_id, "text": name_part, "center_x": cx, "center_y": cy, "width": w, "height": h, "z_index": i}
+            rect_config = {
+                "id": rect_id, "text": name_part, "center_x": cx, "center_y": cy,
+                "width": w, "height": h, "z_index": i, "shape": "rectangle"
+            }
             app_window.config['info_areas'].append(rect_config)
             item = InfoAreaItem(rect_config)
             manager.scene.addItem(item)
@@ -54,7 +57,10 @@ class TestCanvasManagerAlignment:
         items = []
         for i, (cx, cy, w, h, name_part) in enumerate(rect_details):
             rect_id = f"{name_part}_{datetime.datetime.now().timestamp()}_{i}"
-            rect_config = {"id": rect_id, "text": name_part, "center_x": cx, "center_y": cy, "width": w, "height": h, "z_index": i}
+            rect_config = {
+                "id": rect_id, "text": name_part, "center_x": cx, "center_y": cy,
+                "width": w, "height": h, "z_index": i, "shape": "rectangle"
+            }
             app_window.config['info_areas'].append(rect_config)
             item = InfoAreaItem(rect_config)
             manager.scene.addItem(item)

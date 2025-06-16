@@ -28,10 +28,14 @@ def test_ensure_base_projects_directory_exists(tmp_path, monkeypatch):
 
 def test_normalize_z_indices(qtbot):
     scene = QGraphicsScene()
-    cfg1 = {'id': 'r1', 'width': 10, 'height': 10, 'center_x': 5, 'center_y': 5,
-            'text': '', 'z_index': 0}
-    cfg2 = {'id': 'r2', 'width': 10, 'height': 10, 'center_x': 15, 'center_y': 5,
-            'text': '', 'z_index': 10}
+    cfg1 = {
+        'id': 'r1', 'width': 10, 'height': 10, 'center_x': 5, 'center_y': 5,
+        'text': '', 'z_index': 0, 'shape': 'rectangle'
+    }
+    cfg2 = {
+        'id': 'r2', 'width': 10, 'height': 10, 'center_x': 15, 'center_y': 5,
+        'text': '', 'z_index': 10, 'shape': 'rectangle'
+    }
     item1 = InfoAreaItem(cfg1)
     item2 = InfoAreaItem(cfg2)
     scene.addItem(item1)

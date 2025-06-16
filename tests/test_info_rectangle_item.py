@@ -41,10 +41,13 @@ def create_item_with_scene(default_text_config_values, qtbot, mock_parent_window
         base_config = {
             'id': 'rect1', 'width': 100, 'height': 50,
             'center_x': 50, 'center_y': 25, 'text': 'hello world',
-            'font_color': default_text_config_values['font_color'], 'font_size': default_text_config_values['font_size'],
-            'background_color': default_text_config_values['background_color'], 'padding': default_text_config_values['padding'],
+            'font_color': default_text_config_values['font_color'],
+            'font_size': default_text_config_values['font_size'],
+            'background_color': default_text_config_values['background_color'],
+            'padding': default_text_config_values['padding'],
             'vertical_alignment': default_text_config_values['vertical_alignment'],
             'horizontal_alignment': default_text_config_values['horizontal_alignment'],
+            'shape': 'rectangle',
         }
         if custom_config:
             base_config.update(custom_config)
@@ -52,6 +55,7 @@ def create_item_with_scene(default_text_config_values, qtbot, mock_parent_window
         item = InfoAreaItem(base_config)
         item.parent_window = parent_window
 
+        scene = None
         if add_to_scene:
             scene = QGraphicsScene()
             scene.setSceneRect(0, 0, 200, 200)
@@ -532,3 +536,11 @@ def test_update_appearance_view_mode_visibility(create_item_with_scene):
     item_always, _, _ = create_item_with_scene(custom_config={'show_on_hover': False})
     item_always.update_appearance(False, True)
     assert item_always.text_item.isVisible()
+
+
+def test_paint_ellipse_calls_correct_method(create_item_with_scene):
+    item, _, _ = create_item_with_scene(custom_config={'shape': 'ellipse'}, add_to_scene=False)
+    painter = Mock()
+    item.paint(painter, None)
+    painter.drawEllipse.assert_called_once()
+    painter.drawRect.assert_not_called()
