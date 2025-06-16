@@ -29,39 +29,47 @@ class InfoAreaItem(BaseDraggableItem):
     def __init__(self, rect_config, parent_item=None):
         super().__init__(parent_item)
         self.config_data = rect_config
-        self.config_data.setdefault('show_on_hover', True)
+        self.config_data.setdefault("show_on_hover", True)
         self._style_config_ref = None
-        self._w = self.config_data.get('width', 100)
-        self._h = self.config_data.get('height', 50)
-        self._angle = float(self.config_data.get('angle', 0.0))
+        self._w = self.config_data.get("width", 100)
+        self._h = self.config_data.get("height", 50)
+        self._angle = float(self.config_data.get("angle", 0.0))
         self._pen = QPen(Qt.NoPen)
         self._brush = QBrush(Qt.NoBrush)
-        self.shape = rect_config.get('shape', 'rectangle')
+        self.shape = rect_config.get("shape", "rectangle")
 
         # Formatting options
-        text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
-        self.vertical_alignment = self.config_data.get('vertical_alignment', text_format_defaults['vertical_alignment'])
-        self.horizontal_alignment = self.config_data.get('horizontal_alignment', text_format_defaults['horizontal_alignment'])
+        text_format_defaults = utils.get_default_config()["defaults"][
+            "info_rectangle_text_display"
+        ]
+        self.vertical_alignment = self.config_data.get(
+            "vertical_alignment", text_format_defaults["vertical_alignment"]
+        )
+        self.horizontal_alignment = self.config_data.get(
+            "horizontal_alignment", text_format_defaults["horizontal_alignment"]
+        )
 
-        self.setFlags(QGraphicsItem.ItemIsSelectable |
-                      QGraphicsItem.ItemIsMovable |
-                      QGraphicsItem.ItemSendsGeometryChanges)
+        self.setFlags(
+            QGraphicsItem.ItemIsSelectable
+            | QGraphicsItem.ItemIsMovable
+            | QGraphicsItem.ItemSendsGeometryChanges
+        )
         self.setAcceptHoverEvents(True)
         # Set initial stacking value
-        self.setZValue(self.config_data.get('z_index', utils.Z_VALUE_INFO_RECT))
+        self.setZValue(self.config_data.get("z_index", utils.Z_VALUE_INFO_RECT))
 
-        self.text_item = QGraphicsTextItem('', self)
+        self.text_item = QGraphicsTextItem("", self)
         # Default text color will be set in update_text_from_config
         # self.text_item.setDefaultTextColor(QColor("#000000")) # Removed, handled by update_text_from_config
 
         self._current_resize_handle = self.ResizeHandle.NONE
         self._resizing_initial_mouse_pos = QPointF()
         self._resizing_initial_rect = QRectF()
-        self._resizing_initial_center = QPointF()
-        self._resizing_initial_angle = 0.0
         self._is_resizing = False
-        self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Ensure it's a boolean
-        self._applied_style_values = {} # To track values set by the current style
+        self._was_movable = bool(
+            self.flags() & QGraphicsItem.ItemIsMovable
+        )  # Ensure it's a boolean
+        self._applied_style_values = {}  # To track values set by the current style
 
         self.update_geometry_from_config()
         self.update_text_from_config()
@@ -74,7 +82,7 @@ class InfoAreaItem(BaseDraggableItem):
     def paint(self, painter, option, widget=None):
         painter.setPen(self._pen)
         painter.setBrush(self._brush)
-        if self.shape == 'ellipse':
+        if self.shape == "ellipse":
             painter.drawEllipse(self.boundingRect())
         else:
             painter.drawRect(self.boundingRect())
@@ -87,42 +95,71 @@ class InfoAreaItem(BaseDraggableItem):
         on_top = abs(pos.y() - r.top()) < m
         on_bottom = abs(pos.y() - r.bottom()) < m
 
-        if on_top and on_left: return self.ResizeHandle.TOP_LEFT
-        if on_bottom and on_right: return self.ResizeHandle.BOTTOM_RIGHT
-        if on_top and on_right: return self.ResizeHandle.TOP_RIGHT
-        if on_bottom and on_left: return self.ResizeHandle.BOTTOM_LEFT
-        if on_top: return self.ResizeHandle.TOP
-        if on_bottom: return self.ResizeHandle.BOTTOM
-        if on_left: return self.ResizeHandle.LEFT
-        if on_right: return self.ResizeHandle.RIGHT
+        if on_top and on_left:
+            return self.ResizeHandle.TOP_LEFT
+        if on_bottom and on_right:
+            return self.ResizeHandle.BOTTOM_RIGHT
+        if on_top and on_right:
+            return self.ResizeHandle.TOP_RIGHT
+        if on_bottom and on_left:
+            return self.ResizeHandle.BOTTOM_LEFT
+        if on_top:
+            return self.ResizeHandle.TOP
+        if on_bottom:
+            return self.ResizeHandle.BOTTOM
+        if on_left:
+            return self.ResizeHandle.LEFT
+        if on_right:
+            return self.ResizeHandle.RIGHT
         return self.ResizeHandle.NONE
 
     def hoverMoveEvent(self, event):
         parent_win = None
-        if self.scene() and hasattr(self.scene(), 'parent_window'):
+        if self.scene() and hasattr(self.scene(), "parent_window"):
             parent_win = self.scene().parent_window
 
-        if self.isSelected() and parent_win and parent_win.current_mode == "edit" and not self._is_resizing :
+        if (
+            self.isSelected()
+            and parent_win
+            and parent_win.current_mode == "edit"
+            and not self._is_resizing
+        ):
             handle = self._get_resize_handle_at(event.pos())
             cursor_shape = Qt.ArrowCursor
             if handle != self.ResizeHandle.NONE:
-                if handle == self.ResizeHandle.TOP_LEFT or handle == self.ResizeHandle.BOTTOM_RIGHT:
+                if (
+                    handle == self.ResizeHandle.TOP_LEFT
+                    or handle == self.ResizeHandle.BOTTOM_RIGHT
+                ):
                     cursor_shape = Qt.SizeFDiagCursor
-                elif handle == self.ResizeHandle.TOP_RIGHT or handle == self.ResizeHandle.BOTTOM_LEFT:
+                elif (
+                    handle == self.ResizeHandle.TOP_RIGHT
+                    or handle == self.ResizeHandle.BOTTOM_LEFT
+                ):
                     cursor_shape = Qt.SizeBDiagCursor
-                elif handle == self.ResizeHandle.TOP or handle == self.ResizeHandle.BOTTOM:
+                elif (
+                    handle == self.ResizeHandle.TOP
+                    or handle == self.ResizeHandle.BOTTOM
+                ):
                     cursor_shape = Qt.SizeVerCursor
-                elif handle == self.ResizeHandle.LEFT or handle == self.ResizeHandle.RIGHT:
+                elif (
+                    handle == self.ResizeHandle.LEFT
+                    or handle == self.ResizeHandle.RIGHT
+                ):
                     cursor_shape = Qt.SizeHorCursor
             elif self.flags() & QGraphicsItem.ItemIsMovable:
-                 cursor_shape = Qt.PointingHandCursor
+                cursor_shape = Qt.PointingHandCursor
 
             if self.cursor().shape() != cursor_shape:
                 self.setCursor(QCursor(cursor_shape))
         elif not self._is_resizing:
             default_cursor_shape = Qt.ArrowCursor
-            if parent_win and parent_win.current_mode == "edit" and (self.flags() & QGraphicsItem.ItemIsMovable):
-                 default_cursor_shape = Qt.PointingHandCursor
+            if (
+                parent_win
+                and parent_win.current_mode == "edit"
+                and (self.flags() & QGraphicsItem.ItemIsMovable)
+            ):
+                default_cursor_shape = Qt.PointingHandCursor
             if self.cursor().shape() != default_cursor_shape:
                 self.setCursor(QCursor(default_cursor_shape))
         super().hoverMoveEvent(event)
@@ -130,41 +167,58 @@ class InfoAreaItem(BaseDraggableItem):
     def hoverLeaveEvent(self, event):
         if not self._is_resizing:
             default_cursor_shape = Qt.ArrowCursor
-            if self.scene() and hasattr(self.scene(), 'parent_window') and self.scene().parent_window.current_mode == "edit" and (self.flags() & QGraphicsItem.ItemIsMovable):
+            if (
+                self.scene()
+                and hasattr(self.scene(), "parent_window")
+                and self.scene().parent_window.current_mode == "edit"
+                and (self.flags() & QGraphicsItem.ItemIsMovable)
+            ):
                 default_cursor_shape = Qt.PointingHandCursor
             self.setCursor(QCursor(default_cursor_shape))
         super().hoverLeaveEvent(event)
 
     def mousePressEvent(self, event):
         parent_win = None
-        if self.scene() and hasattr(self.scene(), 'parent_window'):
+        if self.scene() and hasattr(self.scene(), "parent_window"):
             parent_win = self.scene().parent_window
 
-        if event.button() == Qt.LeftButton and self.isSelected() and parent_win and parent_win.current_mode == "edit":
+        if (
+            event.button() == Qt.LeftButton
+            and self.isSelected()
+            and parent_win
+            and parent_win.current_mode == "edit"
+        ):
             self._current_resize_handle = self._get_resize_handle_at(event.pos())
             if self._current_resize_handle != self.ResizeHandle.NONE:
                 self._is_resizing = True
                 self._resizing_initial_mouse_pos = event.scenePos()
-                self._resizing_initial_rect = self.sceneBoundingRect()
-                self._resizing_initial_angle = self.rotation()
-                self._resizing_initial_center = QPointF(
-                    self.config_data.get('center_x', self.scenePos().x() + self._w / 2),
-                    self.config_data.get('center_y', self.scenePos().y() + self._h / 2)
-                )
-                self.setRotation(0)
-                self.setPos(self._resizing_initial_center.x() - self._w / 2, self._resizing_initial_center.y() - self._h / 2)
+                self._resizing_initial_rect = QRectF(0, 0, self._w, self._h)
 
-                self._was_movable = bool(self.flags() & QGraphicsItem.ItemIsMovable) # Store as bool
+                self._was_movable = bool(
+                    self.flags() & QGraphicsItem.ItemIsMovable
+                )  # Store as bool
                 self.setFlag(QGraphicsItem.ItemIsMovable, False)
 
                 cursor_shape = Qt.ArrowCursor
-                if self._current_resize_handle == self.ResizeHandle.TOP_LEFT or self._current_resize_handle == self.ResizeHandle.BOTTOM_RIGHT:
+                if (
+                    self._current_resize_handle == self.ResizeHandle.TOP_LEFT
+                    or self._current_resize_handle == self.ResizeHandle.BOTTOM_RIGHT
+                ):
                     cursor_shape = Qt.SizeFDiagCursor
-                elif self._current_resize_handle == self.ResizeHandle.TOP_RIGHT or self._current_resize_handle == self.ResizeHandle.BOTTOM_LEFT:
+                elif (
+                    self._current_resize_handle == self.ResizeHandle.TOP_RIGHT
+                    or self._current_resize_handle == self.ResizeHandle.BOTTOM_LEFT
+                ):
                     cursor_shape = Qt.SizeBDiagCursor
-                elif self._current_resize_handle == self.ResizeHandle.TOP or self._current_resize_handle == self.ResizeHandle.BOTTOM:
+                elif (
+                    self._current_resize_handle == self.ResizeHandle.TOP
+                    or self._current_resize_handle == self.ResizeHandle.BOTTOM
+                ):
                     cursor_shape = Qt.SizeVerCursor
-                elif self._current_resize_handle == self.ResizeHandle.LEFT or self._current_resize_handle == self.ResizeHandle.RIGHT:
+                elif (
+                    self._current_resize_handle == self.ResizeHandle.LEFT
+                    or self._current_resize_handle == self.ResizeHandle.RIGHT
+                ):
                     cursor_shape = Qt.SizeHorCursor
                 self.setCursor(QCursor(cursor_shape))
 
@@ -172,35 +226,61 @@ class InfoAreaItem(BaseDraggableItem):
                 return
 
         super().mousePressEvent(event)
-        if event.button() == Qt.LeftButton: # This logic might need review if item_selected should only emit on actual selection change
+        if (
+            event.button() == Qt.LeftButton
+        ):  # This logic might need review if item_selected should only emit on actual selection change
             self.item_selected.emit(self)
             self.initial_pos = self.pos()
 
-
     def mouseMoveEvent(self, event):
         if self._is_resizing and self._current_resize_handle != self.ResizeHandle.NONE:
-            current_mouse_pos = event.scenePos()
-            delta = current_mouse_pos - self._resizing_initial_mouse_pos
+            current_mouse_pos_item = self.mapFromScene(event.scenePos())
+            initial_mouse_pos_item = self.mapFromScene(self._resizing_initial_mouse_pos)
+            delta = current_mouse_pos_item - initial_mouse_pos_item
 
             new_rect = QRectF(self._resizing_initial_rect)
 
-            if self._current_resize_handle in [self.ResizeHandle.TOP_LEFT, self.ResizeHandle.LEFT, self.ResizeHandle.BOTTOM_LEFT]:
+            if self._current_resize_handle in [
+                self.ResizeHandle.TOP_LEFT,
+                self.ResizeHandle.LEFT,
+                self.ResizeHandle.BOTTOM_LEFT,
+            ]:
                 new_rect.setLeft(self._resizing_initial_rect.left() + delta.x())
-            if self._current_resize_handle in [self.ResizeHandle.TOP_LEFT, self.ResizeHandle.TOP, self.ResizeHandle.TOP_RIGHT]:
+            if self._current_resize_handle in [
+                self.ResizeHandle.TOP_LEFT,
+                self.ResizeHandle.TOP,
+                self.ResizeHandle.TOP_RIGHT,
+            ]:
                 new_rect.setTop(self._resizing_initial_rect.top() + delta.y())
-            if self._current_resize_handle in [self.ResizeHandle.TOP_RIGHT, self.ResizeHandle.RIGHT, self.ResizeHandle.BOTTOM_RIGHT]:
+            if self._current_resize_handle in [
+                self.ResizeHandle.TOP_RIGHT,
+                self.ResizeHandle.RIGHT,
+                self.ResizeHandle.BOTTOM_RIGHT,
+            ]:
                 new_rect.setRight(self._resizing_initial_rect.right() + delta.x())
-            if self._current_resize_handle in [self.ResizeHandle.BOTTOM_LEFT, self.ResizeHandle.BOTTOM, self.ResizeHandle.BOTTOM_RIGHT]:
+            if self._current_resize_handle in [
+                self.ResizeHandle.BOTTOM_LEFT,
+                self.ResizeHandle.BOTTOM,
+                self.ResizeHandle.BOTTOM_RIGHT,
+            ]:
                 new_rect.setBottom(self._resizing_initial_rect.bottom() + delta.y())
 
             if new_rect.width() < self.MIN_WIDTH:
-                if self._current_resize_handle in [self.ResizeHandle.TOP_LEFT, self.ResizeHandle.LEFT, self.ResizeHandle.BOTTOM_LEFT]:
+                if self._current_resize_handle in [
+                    self.ResizeHandle.TOP_LEFT,
+                    self.ResizeHandle.LEFT,
+                    self.ResizeHandle.BOTTOM_LEFT,
+                ]:
                     new_rect.setLeft(new_rect.right() - self.MIN_WIDTH)
                 else:
                     new_rect.setRight(new_rect.left() + self.MIN_WIDTH)
 
             if new_rect.height() < self.MIN_HEIGHT:
-                if self._current_resize_handle in [self.ResizeHandle.TOP_LEFT, self.ResizeHandle.TOP, self.ResizeHandle.TOP_RIGHT]:
+                if self._current_resize_handle in [
+                    self.ResizeHandle.TOP_LEFT,
+                    self.ResizeHandle.TOP,
+                    self.ResizeHandle.TOP_RIGHT,
+                ]:
                     new_rect.setTop(new_rect.bottom() - self.MIN_HEIGHT)
                 else:
                     new_rect.setBottom(new_rect.top() + self.MIN_HEIGHT)
@@ -210,7 +290,8 @@ class InfoAreaItem(BaseDraggableItem):
             self._w = new_rect.width()
             self._h = new_rect.height()
             self.text_item.setTextWidth(self._w)
-            self.setPos(new_rect.topLeft())
+            new_pos = self.mapToScene(new_rect.topLeft())
+            self.setPos(new_pos)
             self.setTransformOriginPoint(self._w / 2, self._h / 2)
             self._center_text()
 
@@ -227,21 +308,24 @@ class InfoAreaItem(BaseDraggableItem):
             center_x = self.scenePos().x() + self._w / 2
             center_y = self.scenePos().y() + self._h / 2
 
-            self.setRotation(self._resizing_initial_angle)
-            self.setPos(center_x - self._w / 2, center_y - self._h / 2)
+            # Angle remains unchanged during resizing; ensure origin stays with new rect
 
-            self.config_data['width'] = self._w
-            self.config_data['height'] = self._h
-            self.config_data['center_x'] = center_x
-            self.config_data['center_y'] = center_y
-            self.config_data['angle'] = self._resizing_initial_angle
+            self.config_data["width"] = self._w
+            self.config_data["height"] = self._h
+            self.config_data["center_x"] = center_x
+            self.config_data["center_y"] = center_y
+            self.config_data["angle"] = self.rotation()
 
             self.properties_changed.emit(self)
 
             default_cursor_shape = Qt.ArrowCursor
-            if self.scene() and hasattr(self.scene(), 'parent_window') and self.scene().parent_window.current_mode == "edit":
+            if (
+                self.scene()
+                and hasattr(self.scene(), "parent_window")
+                and self.scene().parent_window.current_mode == "edit"
+            ):
                 if self.flags() & QGraphicsItem.ItemIsMovable:
-                     default_cursor_shape = Qt.PointingHandCursor
+                    default_cursor_shape = Qt.PointingHandCursor
             self.setCursor(QCursor(default_cursor_shape))
 
             event.accept()
@@ -250,11 +334,11 @@ class InfoAreaItem(BaseDraggableItem):
 
     def update_geometry_from_config(self):
         self.prepareGeometryChange()
-        self._w = self.config_data.get('width', 100)
-        self._h = self.config_data.get('height', 50)
-        self._angle = float(self.config_data.get('angle', 0.0))
-        center_x = self.config_data.get('center_x', 0)
-        center_y = self.config_data.get('center_y', 0)
+        self._w = self.config_data.get("width", 100)
+        self._h = self.config_data.get("height", 50)
+        self._angle = float(self.config_data.get("angle", 0.0))
+        center_x = self.config_data.get("center_x", 0)
+        center_y = self.config_data.get("center_y", 0)
         self.setPos(center_x - self._w / 2, center_y - self._h / 2)
         self.setTransformOriginPoint(self._w / 2, self._h / 2)
         self.setRotation(self._angle)
@@ -269,8 +353,11 @@ class InfoAreaItem(BaseDraggableItem):
         return self.config_data.get(key, default_value)
 
     def _center_text(self):
-        if not self.text_item: return
-        self.text_item.setPos(0,0) # Reset position, alignment handles actual placement
+        if not self.text_item:
+            return
+        self.text_item.setPos(
+            0, 0
+        )  # Reset position, alignment handles actual placement
 
         # Use the text item's own bounding rect for height calculation,
         # as it's more accurate for final positioning than font_metrics alone.
@@ -278,7 +365,11 @@ class InfoAreaItem(BaseDraggableItem):
 
         padding_str = self._get_style_value("padding", "5px")
         try:
-            padding_val = int(padding_str.lower().replace("px", "")) if "px" in padding_str.lower() else 5
+            padding_val = (
+                int(padding_str.lower().replace("px", ""))
+                if "px" in padding_str.lower()
+                else 5
+            )
         except ValueError:
             padding_val = 5
 
@@ -286,44 +377,61 @@ class InfoAreaItem(BaseDraggableItem):
             text_y_offset = padding_val
         elif self.vertical_alignment == "bottom":
             text_y_offset = self._h - text_height - padding_val
-        else: # center (default)
+        else:  # center (default)
             text_y_offset = (self._h - text_height) / 2
             text_y_offset = max(padding_val, text_y_offset)
             if text_y_offset + text_height > self._h - padding_val:
-                 text_y_offset = self._h - text_height - padding_val
+                text_y_offset = self._h - text_height - padding_val
 
         self.text_item.setY(text_y_offset)
 
         # Ensure horizontal alignment is also applied by _center_text
         current_doc_option = self.text_item.document().defaultTextOption()
-        h_align_map = {"left": Qt.AlignLeft, "center": Qt.AlignCenter, "right": Qt.AlignRight}
+        h_align_map = {
+            "left": Qt.AlignLeft,
+            "center": Qt.AlignCenter,
+            "right": Qt.AlignRight,
+        }
         alignment_flag = h_align_map.get(self.horizontal_alignment, Qt.AlignLeft)
         current_doc_option.setAlignment(alignment_flag)
         self.text_item.document().setDefaultTextOption(current_doc_option)
 
-
     def set_display_text(self, text):
-        self.config_data['text'] = text
+        self.config_data["text"] = text
         self.text_item.document().setMarkdown(text)
         self._center_text()
         self.update()
 
     def update_text_from_config(self):
-        default_text = self.config_data.get('text', '')
-        self.text_item.document().setMarkdown(self._get_style_value('text', default_text))
+        default_text = self.config_data.get("text", "")
+        self.text_item.document().setMarkdown(
+            self._get_style_value("text", default_text)
+        )
 
-        text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+        text_format_defaults = utils.get_default_config()["defaults"][
+            "info_rectangle_text_display"
+        ]
 
-        self.vertical_alignment = self._get_style_value('vertical_alignment', text_format_defaults['vertical_alignment'])
-        self.horizontal_alignment = self._get_style_value('horizontal_alignment', text_format_defaults['horizontal_alignment'])
-        font_color = self._get_style_value('font_color', text_format_defaults['font_color'])
-        font_size_str = self._get_style_value('font_size', text_format_defaults['font_size'])
+        self.vertical_alignment = self._get_style_value(
+            "vertical_alignment", text_format_defaults["vertical_alignment"]
+        )
+        self.horizontal_alignment = self._get_style_value(
+            "horizontal_alignment", text_format_defaults["horizontal_alignment"]
+        )
+        font_color = self._get_style_value(
+            "font_color", text_format_defaults["font_color"]
+        )
+        font_size_str = self._get_style_value(
+            "font_size", text_format_defaults["font_size"]
+        )
 
         try:
             font_size = int(str(font_size_str).lower().replace("px", ""))
         except ValueError:
             try:
-                default_font_size_val = int(str(text_format_defaults['font_size']).lower().replace("px",""))
+                default_font_size_val = int(
+                    str(text_format_defaults["font_size"]).lower().replace("px", "")
+                )
                 font_size = default_font_size_val
             except ValueError:
                 font_size = 14
@@ -336,7 +444,9 @@ class InfoAreaItem(BaseDraggableItem):
 
         current_doc_option = self.text_item.document().defaultTextOption()
         h_align_map = {
-            "left": Qt.AlignLeft, "center": Qt.AlignCenter, "right": Qt.AlignRight
+            "left": Qt.AlignLeft,
+            "center": Qt.AlignCenter,
+            "right": Qt.AlignRight,
         }
         alignment_flag = h_align_map.get(self.horizontal_alignment, Qt.AlignLeft)
         current_doc_option.setAlignment(alignment_flag)
@@ -349,7 +459,7 @@ class InfoAreaItem(BaseDraggableItem):
         if is_view_mode:
             self._pen = QPen(Qt.transparent)
             self._brush = QBrush(Qt.transparent)
-            self.text_item.setVisible(not self.config_data.get('show_on_hover', True))
+            self.text_item.setVisible(not self.config_data.get("show_on_hover", True))
         else:
             self.text_item.setVisible(True)
             if is_selected:
@@ -361,40 +471,50 @@ class InfoAreaItem(BaseDraggableItem):
         self.update()
 
     def itemChange(self, change, value):
-        if change == QGraphicsItem.ItemPositionHasChanged and self.scene() and not self._is_resizing:
-            self.config_data['center_x'] = value.x() + self._w / 2
-            self.config_data['center_y'] = value.y() + self._h / 2
+        if (
+            change == QGraphicsItem.ItemPositionHasChanged
+            and self.scene()
+            and not self._is_resizing
+        ):
+            self.config_data["center_x"] = value.x() + self._w / 2
+            self.config_data["center_y"] = value.y() + self._h / 2
             self._has_moved = True
         return super().itemChange(change, value)
 
     def apply_style(self, style_config_object):
         self._style_config_ref = style_config_object
 
-        if style_config_object and style_config_object.get('name'):
-            self.config_data['text_style_ref'] = style_config_object['name']
+        if style_config_object and style_config_object.get("name"):
+            self.config_data["text_style_ref"] = style_config_object["name"]
         else:
-            self.config_data.pop('text_style_ref', None)
+            self.config_data.pop("text_style_ref", None)
 
-        text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+        text_format_defaults = utils.get_default_config()["defaults"][
+            "info_rectangle_text_display"
+        ]
         all_style_keys = [
-            'text', 'font_color', 'font_size',
-            'vertical_alignment', 'horizontal_alignment', 'padding'
+            "text",
+            "font_color",
+            "font_size",
+            "vertical_alignment",
+            "horizontal_alignment",
+            "padding",
         ]
 
         if style_config_object:
-            self._applied_style_values.clear() # Clear previous record
+            self._applied_style_values.clear()  # Clear previous record
             for key in all_style_keys:
                 if key in style_config_object:
                     self.config_data[key] = style_config_object[key]
                     # Record that this value in config_data came directly from this style application
-                    if key != 'name': # 'name' is metadata for the style object itself
+                    if key != "name":  # 'name' is metadata for the style object itself
                         self._applied_style_values[key] = style_config_object[key]
                 elif key in text_format_defaults:
                     # If style doesn't have this key, config_data property reverts to global default.
                     # (This includes 'text' if it's in text_format_defaults and not in style_config_object,
                     # though 'text' often has special handling or might not be in text_format_defaults.)
                     self.config_data[key] = text_format_defaults[key]
-                elif key == 'text':
+                elif key == "text":
                     # This case ensures that if 'text' is not in style_config_object AND
                     # not in text_format_defaults (which would be unusual for 'text'),
                     # then item's current text is preserved.
@@ -405,13 +525,18 @@ class InfoAreaItem(BaseDraggableItem):
                     self.config_data.pop(key, None)
         else:
             # style_config_object is None (style is being removed)
-            if self._applied_style_values: # Check if there were values from a previous style
+            if (
+                self._applied_style_values
+            ):  # Check if there were values from a previous style
                 for key, style_set_value in self._applied_style_values.items():
                     # Only revert if current config value is THE SAME as what the style had set
-                    if key in self.config_data and self.config_data[key] == style_set_value:
-                        if key in text_format_defaults: # Revert to default
+                    if (
+                        key in self.config_data
+                        and self.config_data[key] == style_set_value
+                    ):
+                        if key in text_format_defaults:  # Revert to default
                             self.config_data[key] = text_format_defaults[key]
-                        else: # Should not happen if keys are well-defined
+                        else:  # Should not happen if keys are well-defined
                             # If a key was defined by style but has no default, remove it.
                             self.config_data.pop(key, None)
                 self._applied_style_values.clear()
