@@ -233,6 +233,25 @@ def test_export_to_html_copies_images(tmp_path_factory, tmp_path): # No base_app
     # Optionally, check content if important:
     # assert copied_image_path.read_bytes() == b'dummy image data'
 
+def test_export_html_contains_drag_script(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_drag")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config.setdefault('info_rectangles', []).append({
+        'id': 'drag1', 'center_x': 15, 'center_y': 15, 'width': 30, 'height': 20, 'text': 'd'
+    })
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "drag_export.html"
+
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert "addEventListener('mousedown'" in content
+    assert "requestAnimationFrame(anim)" in content
+    assert "animating = true" in content
+    assert "cancelAnimationFrame(" in content
+
 # Keep other tests like test_export_to_html_write_error,
 # test_export_to_html_uses_dialog, etc., as they are, because they test
 # app.py's handling of HtmlExporter's results or app.py's dialog logic.
