@@ -252,6 +252,14 @@ class UIBuilder:
         rect_height_layout.addWidget(app.info_rect_height_input)
         rect_props_layout.addLayout(rect_height_layout)
 
+        shape_layout = QHBoxLayout()
+        shape_layout.addWidget(QLabel("Area Shape:"))
+        app.area_shape_combo = QComboBox()
+        app.area_shape_combo.addItems(["Rectangle", "Ellipse"])
+        app.area_shape_combo.currentTextChanged.connect(app.update_selected_area_shape)
+        shape_layout.addWidget(app.area_shape_combo)
+        rect_props_layout.addLayout(shape_layout)
+
         app.rect_show_on_hover_checkbox = QCheckBox("Show text on hover only")
         app.rect_show_on_hover_checkbox.stateChanged.connect(app.update_selected_rect_show_on_hover)
         rect_props_layout.addWidget(app.rect_show_on_hover_checkbox)

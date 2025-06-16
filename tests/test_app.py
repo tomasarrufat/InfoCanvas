@@ -513,6 +513,35 @@ def test_update_selected_rect_dimensions(base_app_fixture, monkeypatch):
     selected_rect_item.update_geometry_from_config.assert_called_once()
 
 
+def test_update_selected_area_shape(base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    rect_id = "rect_change_shape"
+    app.config['info_areas'] = [{
+        "id": rect_id, "text": "shape test", "center_x": 20, "center_y": 20,
+        "width": 100, "height": 50, "shape": "rectangle", "z_index": 1
+    }]
+    monkeypatch.setattr(app.scene, 'clear', MagicMock())
+    monkeypatch.setattr(app.scene, 'addItem', MagicMock())
+    app.render_canvas_from_config()
+    selected_rect_item = app.item_map.get(rect_id)
+    assert selected_rect_item is not None
+    app.selected_item = selected_rect_item
+    app.update_properties_panel()
+    mock_slot = MagicMock()
+    selected_rect_item.properties_changed.connect(mock_slot)
+    monkeypatch.setattr(app, 'save_config', MagicMock())
+    monkeypatch.setattr(selected_rect_item, 'update_geometry_from_config', MagicMock())
+
+    app.area_shape_combo.setCurrentText("Ellipse")
+    app.update_selected_area_shape("Ellipse")
+
+    assert app.config['info_areas'][0]['shape'] == 'ellipse'
+    assert selected_rect_item.shape == 'ellipse'
+    mock_slot.assert_called_once_with(selected_rect_item)
+    app.save_config.assert_called_once()
+    selected_rect_item.update_geometry_from_config.assert_called_once()
+
+
 
 
 # --- Tests for Application State Reset --- #

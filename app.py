@@ -324,6 +324,10 @@ class InfoCanvasApp(QMainWindow):
             self.info_rect_text_input.setPlainText(rect_conf.get('text', ''))
             self.info_rect_width_input.setValue(int(rect_conf.get('width', 100)))
             self.info_rect_height_input.setValue(int(rect_conf.get('height', 50)))
+            self.area_shape_combo.blockSignals(True)
+            current_shape = rect_conf.get('shape', 'rectangle')
+            self.area_shape_combo.setCurrentText('Ellipse' if current_shape == 'ellipse' else 'Rectangle')
+            self.area_shape_combo.blockSignals(False)
             self.rect_show_on_hover_checkbox.blockSignals(True)
             self.rect_show_on_hover_checkbox.setChecked(rect_conf.get('show_on_hover', True))
             self.rect_show_on_hover_checkbox.blockSignals(False)
@@ -392,6 +396,7 @@ class InfoCanvasApp(QMainWindow):
             self.rect_v_align_combo.blockSignals(False)
             self.rect_font_size_combo.blockSignals(False)
             self.rect_style_combo.blockSignals(False)
+            self.area_shape_combo.blockSignals(False)
 
             # Update font color button preview
             current_font_color = rect_conf.get('font_color', default_text_config['font_color'])
@@ -499,6 +504,16 @@ class InfoCanvasApp(QMainWindow):
             rect_conf['show_on_hover'] = bool(state)
             self.selected_item.update_appearance(self.selected_item.isSelected(), self.current_mode == "view")
             self.save_config()
+
+    def update_selected_area_shape(self, shape_label):
+        if isinstance(self.selected_item, InfoAreaItem):
+            new_shape = 'ellipse' if shape_label.lower() == 'ellipse' else 'rectangle'
+            rect_conf = self.selected_item.config_data
+            if rect_conf.get('shape') != new_shape:
+                rect_conf['shape'] = new_shape
+                self.selected_item.shape = new_shape
+                self.selected_item.update()
+                self.selected_item.properties_changed.emit(self.selected_item)
 
 
     def delete_selected_info_rect(self):
