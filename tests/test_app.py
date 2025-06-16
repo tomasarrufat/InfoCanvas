@@ -536,7 +536,7 @@ def test_update_selected_area_shape(base_app_fixture, monkeypatch):
     app.update_selected_area_shape("Ellipse")
 
     assert app.config['info_areas'][0]['shape'] == 'ellipse'
-    assert selected_rect_item.shape == 'ellipse'
+    assert selected_rect_item.shape_type == 'ellipse'
     mock_slot.assert_called_once_with(selected_rect_item)
     app.save_config.assert_called_once()
     selected_rect_item.update_geometry_from_config.assert_called_once()
