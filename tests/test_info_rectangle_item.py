@@ -674,16 +674,9 @@ def test_resize_rotated_left_handle(create_item_with_scene, qtbot):
     assert item._w == pytest.approx(initial_width + increase_amount)
     assert item._h == pytest.approx(initial_height)
 
-    # Expected position change: item's local X-axis * increase_amount
-    expected_pos_change_scene = item_x_axis_scene * increase_amount
-    expected_final_pos = initial_item_pos + expected_pos_change_scene # This is incorrect, it should be initial_item_pos + item_x_axis_scene * pos_change_x_local from the code
-                                                                    # pos_change_x_local in code is 'delta_local_x' which is 'increase_amount' here
-
-    # From code: pos_change_x_local = delta_local_x (which is 'increase_amount' here)
-    # total_scene_shift = item_x_axis_scene * increase_amount
-    # new_pos_scene = self._resize_start_item_pos + total_scene_shift
-    expected_final_pos_x = initial_item_pos.x() + item_x_axis_scene.x() * increase_amount
-    expected_final_pos_y = initial_item_pos.y() + item_x_axis_scene.y() * increase_amount
+    # Expected position change: left edge moved left by increase_amount
+    expected_final_pos_x = initial_item_pos.x() - item_x_axis_scene.x() * increase_amount
+    expected_final_pos_y = initial_item_pos.y() - item_x_axis_scene.y() * increase_amount
 
     assert item.pos().x() == pytest.approx(expected_final_pos_x)
     assert item.pos().y() == pytest.approx(expected_final_pos_y)
@@ -719,12 +712,9 @@ def test_resize_rotated_top_handle(create_item_with_scene, qtbot):
     assert item._w == pytest.approx(initial_width)
     assert item._h == pytest.approx(initial_height + increase_amount)
 
-    # Expected position change: item's local Y-axis * increase_amount
-    # pos_change_y_local in code is 'delta_local_y' which is 'increase_amount' here
-    # total_scene_shift = item_y_axis_scene * increase_amount
-    # new_pos_scene = self._resize_start_item_pos + total_scene_shift
-    expected_final_pos_x = initial_item_pos.x() + item_y_axis_scene.x() * increase_amount
-    expected_final_pos_y = initial_item_pos.y() + item_y_axis_scene.y() * increase_amount
+    # Expected position change: top edge moved up by increase_amount
+    expected_final_pos_x = initial_item_pos.x() - item_y_axis_scene.x() * increase_amount
+    expected_final_pos_y = initial_item_pos.y() - item_y_axis_scene.y() * increase_amount
 
     assert item.pos().x() == pytest.approx(expected_final_pos_x)
     assert item.pos().y() == pytest.approx(expected_final_pos_y)
@@ -883,13 +873,9 @@ def test_resize_rotated_top_left_handle(create_item_with_scene, qtbot):
     assert item._w == pytest.approx(initial_width + increase_w)
     assert item._h == pytest.approx(initial_height + increase_h)
 
-    # Expected position change:
-    # pos_change_x_local = increase_w
-    # pos_change_y_local = increase_h
-    # total_scene_shift = (item_x_axis_scene * increase_w) + (item_y_axis_scene * increase_h)
-    # new_pos_scene = self._resize_start_item_pos + total_scene_shift
-    expected_pos_change_scene_x = item_x_axis_scene * increase_w
-    expected_pos_change_scene_y = item_y_axis_scene * increase_h
+    # Expected position change: both edges moved outward by increase_w/increase_h
+    expected_pos_change_scene_x = item_x_axis_scene * (-increase_w)
+    expected_pos_change_scene_y = item_y_axis_scene * (-increase_h)
     total_expected_scene_shift = expected_pos_change_scene_x + expected_pos_change_scene_y
 
     expected_final_pos_x = initial_item_pos.x() + total_expected_scene_shift.x()

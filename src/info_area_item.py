@@ -286,15 +286,9 @@ class InfoAreaItem(BaseDraggableItem):
 
             # Recalculate position shifts based on final dimensions
             if self._current_resize_handle in [self.ResizeHandle.LEFT, self.ResizeHandle.TOP_LEFT, self.ResizeHandle.BOTTOM_LEFT]:
-                if self.angle:
-                    pos_change_x_local = abs(new_w - self._resizing_initial_width)
-                else:
-                    pos_change_x_local = self._resizing_initial_width - new_w
+                pos_change_x_local = self._resizing_initial_width - new_w
             if self._current_resize_handle in [self.ResizeHandle.TOP, self.ResizeHandle.TOP_LEFT, self.ResizeHandle.TOP_RIGHT]:
-                if self.angle:
-                    pos_change_y_local = abs(new_h - self._resizing_initial_height)
-                else:
-                    pos_change_y_local = self._resizing_initial_height - new_h
+                pos_change_y_local = self._resizing_initial_height - new_h
 
             scene_shift_for_pos_x_component = item_x_axis_scene * pos_change_x_local
             scene_shift_for_pos_y_component = item_y_axis_scene * pos_change_y_local
