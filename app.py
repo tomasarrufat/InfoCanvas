@@ -533,7 +533,7 @@ class InfoCanvasApp(QMainWindow):
             rect_conf = self.selected_item.config_data
             if rect_conf.get('shape') != new_shape:
                 rect_conf['shape'] = new_shape
-                self.selected_item.shape = new_shape
+                self.selected_item.shape_type = new_shape
                 self.selected_item.update()
                 self.selected_item.properties_changed.emit(self.selected_item)
 

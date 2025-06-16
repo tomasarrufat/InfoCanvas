@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QGraphicsItem, QGraphicsTextItem, QApplication
 
 from .base_draggable_item import BaseDraggableItem
 from PyQt5.QtCore import Qt, QRectF, QPointF, pyqtSignal, QRect
-from PyQt5.QtGui import QColor, QBrush, QPen, QCursor, QTextOption
+from PyQt5.QtGui import QColor, QBrush, QPen, QCursor, QTextOption, QPainterPath
 
 from . import utils
 
@@ -40,7 +40,7 @@ class InfoAreaItem(BaseDraggableItem):
         self.setTransformOriginPoint(self._w / 2, self._h / 2)
         self._pen = QPen(Qt.NoPen)
         self._brush = QBrush(Qt.NoBrush)
-        self.shape = rect_config.get('shape', 'rectangle')
+        self.shape_type = rect_config.get('shape', 'rectangle')
 
         # Formatting options
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
@@ -84,10 +84,16 @@ class InfoAreaItem(BaseDraggableItem):
     def boundingRect(self):
         return QRectF(0, 0, self._w, self._h)
 
+    def shape(self):
+        path = QPainterPath()
+        path.addRect(self.boundingRect())
+        path.addEllipse(self._get_rotation_handle_rect())
+        return path
+
     def paint(self, painter, option, widget=None):
         painter.setPen(self._pen)
         painter.setBrush(self._brush)
-        if self.shape == 'ellipse':
+        if self.shape_type == 'ellipse':
             painter.drawEllipse(self.boundingRect())
         else:
             painter.drawRect(self.boundingRect())

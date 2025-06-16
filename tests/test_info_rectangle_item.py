@@ -1039,3 +1039,9 @@ def test_rotate_via_handle_updates_angle(create_item_with_scene, qtbot):
 
     assert item.rotation() == pytest.approx(90.0)
     assert item.config_data['angle'] == pytest.approx(90.0)
+
+
+def test_rotation_handle_in_shape(create_item_with_scene):
+    item, _, _ = create_item_with_scene()
+    handle_center = item._get_rotation_handle_rect().center()
+    assert item.shape().contains(handle_center)
