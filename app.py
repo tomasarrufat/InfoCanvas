@@ -36,8 +36,10 @@ class InfoCanvasApp(QMainWindow):
         self.config_snapshot_stack = []
         self.clipboard_data = None
         self.chronologically_first_selected_item = None
-        self.dark_mode_enabled = False
+        self.dark_mode_enabled = True
         self.default_palette = QApplication.palette()
+        self.default_style = QApplication.style().objectName()
+        self.apply_dark_palette()
 
         if not self._initial_project_setup():
             QTimer.singleShot(0, self.close)
@@ -639,22 +641,29 @@ class InfoCanvasApp(QMainWindow):
     def apply_dark_palette(self):
         QApplication.setStyle(QStyleFactory.create("Fusion"))
         dark_palette = QPalette()
-        dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.WindowText, Qt.white)
-        dark_palette.setColor(QPalette.Base, QColor(35, 35, 35))
-        dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
-        dark_palette.setColor(QPalette.ToolTipText, Qt.white)
-        dark_palette.setColor(QPalette.Text, Qt.white)
-        dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ButtonText, Qt.white)
-        dark_palette.setColor(QPalette.BrightText, Qt.red)
-        dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
-        dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-        dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+        colors = {
+            QPalette.Window: QColor(53, 53, 53),
+            QPalette.WindowText: Qt.white,
+            QPalette.Base: QColor(35, 35, 35),
+            QPalette.AlternateBase: QColor(53, 53, 53),
+            QPalette.ToolTipBase: Qt.white,
+            QPalette.ToolTipText: Qt.white,
+            QPalette.Text: Qt.white,
+            QPalette.Button: QColor(53, 53, 53),
+            QPalette.ButtonText: Qt.white,
+            QPalette.BrightText: Qt.red,
+            QPalette.Link: QColor(42, 130, 218),
+            QPalette.Highlight: QColor(42, 130, 218),
+            QPalette.HighlightedText: Qt.black,
+        }
+        for role, color in colors.items():
+            dark_palette.setColor(QPalette.Active, role, color)
+            dark_palette.setColor(QPalette.Inactive, role, color)
+            dark_palette.setColor(QPalette.Disabled, role, color)
         QApplication.setPalette(dark_palette)
 
     def apply_light_palette(self):
+        QApplication.setStyle(QStyleFactory.create(self.default_style))
         QApplication.setPalette(self.default_palette)
 
     def toggle_dark_mode(self, checked=False):

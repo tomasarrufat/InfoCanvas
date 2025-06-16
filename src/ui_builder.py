@@ -337,6 +337,7 @@ class UIBuilder:
         dark_mode_action.triggered.connect(app.toggle_dark_mode)
         file_menu.addAction(dark_mode_action)
         app.dark_mode_action = dark_mode_action
+        app.dark_mode_action.setChecked(app.dark_mode_enabled)
         exit_action = QAction('&Exit', app)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.triggered.connect(app.close)
