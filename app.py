@@ -3,8 +3,8 @@ import os
 import copy
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox,
-    QDialog, QStyleFactory, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton
+    QApplication, QColorDialog, QFileDialog, QMessageBox,
+    QDialog, QStyleFactory, QWidget, QVBoxLayout
 )
 from PyQt5.QtGui import (
     QColor, QBrush, QPalette
@@ -22,54 +22,15 @@ from src.text_style_manager import TextStyleManager
 from src.exporter import HtmlExporter # <--- NEW IMPORT
 from src.input_handler import InputHandler
 from src.canvas_manager import CanvasManager
+from src.frameless_window import FramelessWindow
 
 
-class TitleBar(QWidget):
-    """Custom title bar for the frameless window."""
-
-    def __init__(self, parent: QMainWindow):
-        super().__init__(parent)
-        self.parent = parent
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        self.title_label = QLabel("InfoCanvas", self)
-        layout.addWidget(self.title_label)
-        layout.addStretch()
-
-        self.min_btn = QPushButton("-", self)
-        self.min_btn.clicked.connect(parent.showMinimized)
-        layout.addWidget(self.min_btn)
-
-        self.max_btn = QPushButton("⬜", self)
-        self.max_btn.clicked.connect(self._toggle_max_restore)
-        layout.addWidget(self.max_btn)
-
-        self.close_btn = QPushButton("✕", self)
-        self.close_btn.clicked.connect(parent.close)
-        layout.addWidget(self.close_btn)
-
-    def _toggle_max_restore(self):
-        if self.parent.isMaximized():
-            self.parent.showNormal()
-        else:
-            self.parent.showMaximized()
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self._drag_pos = event.globalPos() - self.parent.frameGeometry().topLeft()
-            event.accept()
-
-    def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.LeftButton and hasattr(self, '_drag_pos'):
-            self.parent.move(event.globalPos() - self._drag_pos)
-            event.accept()
 # --- Main Application Window ---
-class InfoCanvasApp(QMainWindow):
+class InfoCanvasApp(FramelessWindow):
     MAX_UNDO_HISTORY = 100 # Maximum number of undo snapshots to keep
     def __init__(self):
         super().__init__()
         self.setGeometry(100, 100, 1200, 700)
-        self.setWindowFlag(Qt.FramelessWindowHint, True)
         utils.ensure_base_projects_directory_exists()
         self.project_io = ProjectIO()
         self.current_project_name = None
@@ -92,14 +53,7 @@ class InfoCanvasApp(QMainWindow):
         self.item_map = {}
         self.text_style_manager = TextStyleManager(self) # Moved up
         central_widget = UIBuilder(self).build()
-        outer_widget = QWidget()
-        outer_layout = QVBoxLayout(outer_widget)
-        outer_layout.setContentsMargins(0, 0, 0, 0)
-        outer_layout.setSpacing(0)
-        self.title_bar = TitleBar(self)
-        outer_layout.addWidget(self.title_bar)
-        outer_layout.addWidget(central_widget)
-        self.setCentralWidget(outer_widget)
+        self.set_content_widget(central_widget)
         self.canvas_manager = CanvasManager(self)
         self.item_operations = ItemOperations(self)
         self.input_handler = InputHandler(self)
@@ -277,15 +231,7 @@ class InfoCanvasApp(QMainWindow):
 
     def setup_ui(self):
         central_widget = UIBuilder(self).build()
-        outer_widget = QWidget()
-        outer_layout = QVBoxLayout(outer_widget)
-        outer_layout.setContentsMargins(0, 0, 0, 0)
-        outer_layout.setSpacing(0)
-        if not hasattr(self, 'title_bar'):
-            self.title_bar = TitleBar(self)
-        outer_layout.addWidget(self.title_bar)
-        outer_layout.addWidget(central_widget)
-        self.setCentralWidget(outer_widget)
+        self.set_content_widget(central_widget)
 
     def populate_controls_from_config(self):
         if not self.config or not hasattr(self, 'bg_width_input'):
