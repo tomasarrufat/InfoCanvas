@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QMenu, QAction
 from PyQt5.QtCore import Qt, QPoint, QRect, QEvent
 from PyQt5.QtGui import QMouseEvent
 
@@ -18,7 +18,57 @@ class CustomTitleBar(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
 
-        self.title = QLabel("Frameless App")
+        # File Menu Button
+        self.btn_file_menu = QPushButton("File")
+        self.btn_file_menu.setFixedSize(50, 30) # Fixed width, height matches title bar
+        self.btn_file_menu.setStyleSheet("""
+            QPushButton {
+                background-color: #333; color: white; border: none; font-weight: bold; padding: 0px 10px;
+            }
+            QPushButton:hover { background-color: #555; }
+            QPushButton:pressed { background-color: #222; }
+            QPushButton::menu-indicator { image: none; }
+        """)
+        self.file_menu = QMenu(self)
+        self.file_menu.setStyleSheet("""
+            QMenu {
+                background-color: #333;
+                color: white;
+                border: 1px solid #555;
+            }
+            QMenu::item:selected {
+                background-color: #555;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #555;
+                margin-left: 10px;
+                margin-right: 5px;
+            }
+        """)
+
+        manage_projects_action = QAction("Manage Projects", self)
+        save_config_action = QAction("Save Configuration", self)
+        export_html_action = QAction("Export to HTML", self)
+        exit_action = QAction("Exit", self)
+
+        # Connect QActions (assuming parent has these methods)
+        manage_projects_action.triggered.connect(self.parent._show_project_manager_dialog)
+        save_config_action.triggered.connect(lambda: self.parent.save_config())
+        export_html_action.triggered.connect(lambda: self.parent.export_to_html())
+        exit_action.triggered.connect(self.parent.close)
+
+        self.file_menu.addAction(manage_projects_action)
+        self.file_menu.addSeparator()
+        self.file_menu.addAction(save_config_action)
+        self.file_menu.addAction(export_html_action)
+        self.file_menu.addSeparator()
+        self.file_menu.addAction(exit_action)
+
+        self.btn_file_menu.clicked.connect(self.show_file_menu)
+
+
+        self.title = QLabel("Frameless App") # Default title, app can change it
         self.title.setFixedHeight(30)
         self.title.setStyleSheet("""
             background-color: #333;
@@ -64,8 +114,9 @@ class CustomTitleBar(QWidget):
             }
         """)
 
+        self.layout.addWidget(self.btn_file_menu) # Add file menu button first
         self.layout.addWidget(self.title)
-        self.layout.addStretch() # Pushes buttons to the right
+        self.layout.addStretch() # Pushes window control buttons to the right
         self.layout.addWidget(self.btn_minimize)
         self.layout.addWidget(self.btn_maximize)
         self.layout.addWidget(self.btn_close)
@@ -76,6 +127,10 @@ class CustomTitleBar(QWidget):
         self.btn_close.clicked.connect(self.parent.close)
         self.btn_minimize.clicked.connect(self.parent.showMinimized)
         self.btn_maximize.clicked.connect(self.toggle_maximize)
+
+    def show_file_menu(self):
+        menu_position = self.btn_file_menu.mapToGlobal(QPoint(0, self.btn_file_menu.height()))
+        self.file_menu.exec_(menu_position)
 
     def toggle_maximize(self):
         """Toggle between maximized and normal window state."""

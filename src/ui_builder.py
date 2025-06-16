@@ -39,33 +39,6 @@ class UIBuilder:
         app.controls_layout.setSpacing(5)
         main_content_layout.addWidget(app.controls_widget)
 
-
-        # File Operations Buttons (formerly menubar)
-        file_ops_label = QLabel("<b>File Operations:</b>")
-        app.controls_layout.addWidget(file_ops_label)
-
-        app.manage_projects_button = QPushButton("Manage Projects")
-        app.manage_projects_button.clicked.connect(app._show_project_manager_dialog)
-        app.controls_layout.addWidget(app.manage_projects_button)
-
-        app.save_config_button = QPushButton("Save Configuration")
-        app.save_config_button.setShortcut('Ctrl+S')
-        app.save_config_button.clicked.connect(lambda: app.save_config())
-        app.controls_layout.addWidget(app.save_config_button)
-
-        # Note: The existing "Export to HTML" button is kept below with view mode controls.
-        # This new button is specifically for the "File" menu replacement.
-        app.file_export_html_button = QPushButton("Export to HTML (File)")
-        app.file_export_html_button.clicked.connect(lambda: app.export_to_html())
-        app.controls_layout.addWidget(app.file_export_html_button)
-
-        app.exit_app_button = QPushButton("Exit Application")
-        app.exit_app_button.setShortcut('Ctrl+Q')
-        app.exit_app_button.clicked.connect(app.close)
-        app.controls_layout.addWidget(app.exit_app_button)
-
-        app.controls_layout.addSpacing(15) # Add some space after file operations
-
         # Mode switcher
         mode_group = QWidget()
         mode_layout = QHBoxLayout(mode_group)
