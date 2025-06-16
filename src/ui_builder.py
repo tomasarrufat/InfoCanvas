@@ -39,6 +39,8 @@ class UIBuilder:
 
         app.view = QGraphicsView(app.scene)
         app.view.setRenderHint(QPainter.SmoothPixmapTransform)
+        # Ensure the view starts at the upper-left corner of the scene
+        app.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         app.central_layout.addWidget(app.view)
 
         app.web_view = QWebEngineView()
