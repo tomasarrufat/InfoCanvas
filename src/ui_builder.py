@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
-    QWidget, QDockWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QComboBox, QSpinBox, QTextEdit, QAction, QGraphicsScene,
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QLabel, QComboBox, QSpinBox, QTextEdit, QGraphicsScene,
     QGraphicsView, QDoubleSpinBox, QMessageBox, QStackedLayout, QCheckBox
 )
 try:
@@ -25,38 +25,48 @@ class UIBuilder:
                                  "Cannot setup UI without a loaded project and configuration.")
             return
 
-        app.scene = QGraphicsScene(app)
-        app.scene.setBackgroundBrush(QBrush(QColor(app.config['background']['color'])))
-        app.scene.setSceneRect(0, 0,
-                               app.config['background']['width'],
-                               app.config['background']['height'])
-        app.scene.selectionChanged.connect(app.on_scene_selection_changed)
-        app.scene.parent_window = app
+        # Main content area widget and its layout
+        main_content_area_widget = QWidget()
+        main_content_layout = QHBoxLayout(main_content_area_widget)
+        main_content_layout.setContentsMargins(0, 0, 0, 0) # No margin for this layout
+        main_content_layout.setSpacing(5) # Spacing between controls and canvas
 
-        # Central widget with stacked layout to switch between graphics and web views
-        central_widget = QWidget()
-        app.central_layout = QStackedLayout(central_widget)
-
-        app.view = QGraphicsView(app.scene)
-        app.view.setRenderHint(QPainter.SmoothPixmapTransform)
-        # Ensure the view starts at the upper-left corner of the scene
-        app.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        app.central_layout.addWidget(app.view)
-
-        app.web_view = QWebEngineView()
-        app.central_layout.addWidget(app.web_view)
-        app.central_layout.setCurrentWidget(app.view)
-        app.setCentralWidget(central_widget)
-
-        app.controls_dock = QDockWidget("Controls", app)
-        app.controls_dock.setFixedWidth(350)
-        app.controls_dock.setFeatures(QDockWidget.DockWidgetMovable)
-
+        # Controls widget (formerly dock content)
         app.controls_widget = QWidget()
+        app.controls_widget.setFixedWidth(350)
         app.controls_layout = QVBoxLayout(app.controls_widget)
-        app.controls_dock.setWidget(app.controls_widget)
-        app.addDockWidget(Qt.LeftDockWidgetArea, app.controls_dock)
+        app.controls_layout.setContentsMargins(5,5,5,5) # Margins for content within controls
+        app.controls_layout.setSpacing(5)
+        main_content_layout.addWidget(app.controls_widget)
 
+
+        # File Operations Buttons (formerly menubar)
+        file_ops_label = QLabel("<b>File Operations:</b>")
+        app.controls_layout.addWidget(file_ops_label)
+
+        app.manage_projects_button = QPushButton("Manage Projects")
+        app.manage_projects_button.clicked.connect(app._show_project_manager_dialog)
+        app.controls_layout.addWidget(app.manage_projects_button)
+
+        app.save_config_button = QPushButton("Save Configuration")
+        app.save_config_button.setShortcut('Ctrl+S')
+        app.save_config_button.clicked.connect(lambda: app.save_config())
+        app.controls_layout.addWidget(app.save_config_button)
+
+        # Note: The existing "Export to HTML" button is kept below with view mode controls.
+        # This new button is specifically for the "File" menu replacement.
+        app.file_export_html_button = QPushButton("Export to HTML (File)")
+        app.file_export_html_button.clicked.connect(lambda: app.export_to_html())
+        app.controls_layout.addWidget(app.file_export_html_button)
+
+        app.exit_app_button = QPushButton("Exit Application")
+        app.exit_app_button.setShortcut('Ctrl+Q')
+        app.exit_app_button.clicked.connect(app.close)
+        app.controls_layout.addWidget(app.exit_app_button)
+
+        app.controls_layout.addSpacing(15) # Add some space after file operations
+
+        # Mode switcher
         mode_group = QWidget()
         mode_layout = QHBoxLayout(mode_group)
         mode_layout.addWidget(QLabel("Mode:"))
@@ -66,9 +76,14 @@ class UIBuilder:
         mode_layout.addWidget(app.mode_switcher)
         app.controls_layout.addWidget(mode_group)
 
+        # Edit mode controls container
         app.edit_mode_controls_widget = QWidget()
         edit_mode_layout = QVBoxLayout(app.edit_mode_controls_widget)
+        edit_mode_layout.setContentsMargins(0,0,0,0)
+        edit_mode_layout.setSpacing(5)
 
+
+        # Background controls
         bg_group = QWidget()
         bg_layout = QVBoxLayout(bg_group)
         bg_layout.addWidget(QLabel("<b>Background:</b>"))
@@ -316,26 +331,48 @@ class UIBuilder:
 
         app.export_html_button = QPushButton("Export to HTML")
         app.export_html_button.clicked.connect(lambda checked=False: app.export_to_html())
-        app.controls_layout.addWidget(app.export_html_button)
+        app.controls_layout.addWidget(app.export_html_button) # This is the one shown in view mode
         app.controls_layout.addStretch()
 
-        menubar = app.menuBar()
-        file_menu = menubar.addMenu('&File')
-        project_action = QAction('&Manage Projects...', app)
-        project_action.triggered.connect(app._show_project_manager_dialog)
-        file_menu.addAction(project_action)
-        file_menu.addSeparator()
-        save_action = QAction('&Save Configuration', app)
-        save_action.setShortcut('Ctrl+S')
-        save_action.triggered.connect(lambda: app.save_config())
-        file_menu.addAction(save_action)
-        export_action = QAction('&Export to HTML', app)
-        export_action.triggered.connect(lambda checked=False: app.export_to_html())
-        file_menu.addAction(export_action)
-        exit_action = QAction('&Exit', app)
-        exit_action.setShortcut('Ctrl+Q')
-        exit_action.triggered.connect(app.close)
-        file_menu.addAction(exit_action)
+        # Central widget (canvas area)
+        central_widget = QWidget()
+        app.central_layout = QStackedLayout(central_widget)
+        app.central_layout.setContentsMargins(0,0,0,0)
 
-        app.statusBar().showMessage(
-            f"Project '{app.current_project_name}' loaded. Ready.")
+        app.scene = QGraphicsScene(app)
+        app.scene.setBackgroundBrush(QBrush(QColor(app.config['background']['color'])))
+        app.scene.setSceneRect(0, 0,
+                               app.config['background']['width'],
+                               app.config['background']['height'])
+        app.scene.selectionChanged.connect(app.on_scene_selection_changed)
+        app.scene.parent_window = app # For item context menu
+
+        app.view = QGraphicsView(app.scene)
+        app.view.setRenderHint(QPainter.SmoothPixmapTransform)
+        app.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        app.central_layout.addWidget(app.view)
+
+        app.web_view = QWebEngineView()
+        app.central_layout.addWidget(app.web_view)
+        app.central_layout.setCurrentWidget(app.view)
+
+        main_content_layout.addWidget(central_widget, 1) # Add central_widget with stretch factor
+
+        # Add the main_content_area_widget to the FramelessWindow's content_layout
+        app.content_layout.addWidget(main_content_area_widget)
+
+        # Custom Status Label (replaces status bar)
+        app.status_label = QLabel(f"Project '{app.current_project_name}' loaded. Ready.")
+        app.status_label.setObjectName("StatusBarLabel")
+        app.status_label.setFixedHeight(25) # Example fixed height
+        app.status_label.setStyleSheet("""
+            #StatusBarLabel {
+                background-color: #222; /* Dark background */
+                color: white; /* Light text */
+                padding-left: 10px;
+                font-size: 9pt;
+                border-top: 1px solid #444; /* Subtle top border */
+            }
+        """)
+        # Add status_label to the bottom of app.content_layout
+        app.content_layout.addWidget(app.status_label)

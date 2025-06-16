@@ -3,13 +3,14 @@ import os
 import copy
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QColorDialog, QFileDialog, QMessageBox, QDialog
+    QApplication, QColorDialog, QFileDialog, QMessageBox, QDialog
 )
 from PyQt5.QtGui import (
     QColor, QBrush
 )
 from PyQt5.QtCore import Qt, QTimer, QUrl
 
+from src.frameless_window import FramelessWindow
 from src import utils
 from src.draggable_image_item import DraggableImageItem
 from src.info_area_item import InfoAreaItem
@@ -22,11 +23,10 @@ from src.exporter import HtmlExporter # <--- NEW IMPORT
 from src.input_handler import InputHandler
 from src.canvas_manager import CanvasManager
 # --- Main Application Window ---
-class InfoCanvasApp(QMainWindow):
+class InfoCanvasApp(FramelessWindow):
     MAX_UNDO_HISTORY = 100 # Maximum number of undo snapshots to keep
     def __init__(self):
         super().__init__()
-        self.setGeometry(100, 100, 1200, 700)
         utils.ensure_base_projects_directory_exists()
         self.project_io = ProjectIO()
         self.current_project_name = None
@@ -74,10 +74,13 @@ class InfoCanvasApp(QMainWindow):
         return self.project_io.ensure_project_structure_exists(project_path)
 
     def _update_window_title(self):
-        if self.current_project_name:
-            self.setWindowTitle(f"InfoCanvas - {self.current_project_name}")
-        else:
-            self.setWindowTitle("InfoCanvas - No Project Loaded")
+        if hasattr(self, 'title_bar') and self.title_bar: # Ensure title_bar exists
+            if self.current_project_name:
+                self.title_bar.title.setText(f"InfoCanvas - {self.current_project_name}")
+            else:
+                self.title_bar.title.setText("InfoCanvas - No Project Loaded")
+        # Also call super's setWindowTitle for OS taskbar (optional, FramelessWindow sets a default)
+        # super().setWindowTitle(f"InfoCanvas - {self.current_project_name if self.current_project_name else 'No Project'}")
 
     def _reset_application_to_no_project_state(self):
         """Resets the UI and internal state when no project is loaded or current is deleted."""
@@ -95,9 +98,9 @@ class InfoCanvasApp(QMainWindow):
             self.update_properties_panel() # Hide properties panels
             self.edit_mode_controls_widget.setEnabled(False) # Disable edit controls
         self._update_window_title()
-        status_bar = self.statusBar()
-        if status_bar is not None:
-            status_bar.showMessage("No project loaded. Please create or load a project from the File menu.")
+        # status_bar = self.statusBar() # Removed
+        # if status_bar is not None: # Removed
+            # status_bar.showMessage("No project loaded. Please create or load a project from the File menu.") # Removed
 
         if hasattr(self, 'item_operations'):
             self.item_operations.config = self.config
@@ -145,9 +148,9 @@ class InfoCanvasApp(QMainWindow):
             project_name = dialog.selected_project_name
             
             if project_name == self.current_project_name and os.path.exists(self._get_project_config_path(project_name)):
-                status_bar = self.statusBar()
-                if status_bar is not None:
-                    status_bar.showMessage(f"Project '{project_name}' is already loaded.", 2000)
+                # status_bar = self.statusBar() # Removed
+                # if status_bar is not None: # Removed
+                    # status_bar.showMessage(f"Project '{project_name}' is already loaded.", 2000) # Removed
                 return
 
             is_new = not os.path.exists(os.path.join(utils.PROJECTS_BASE_DIR, project_name))
@@ -162,9 +165,9 @@ class InfoCanvasApp(QMainWindow):
                     self.update_mode_ui()
                     if hasattr(self, 'edit_mode_controls_widget'):
                         self.edit_mode_controls_widget.setEnabled(True) # Ensure controls are enabled
-                status_bar = self.statusBar()
-                if hasattr(self, 'statusBar') and status_bar is not None:
-                    status_bar.showMessage(f"Switched to project: {project_name}", 3000)
+                # status_bar = self.statusBar() # Removed
+                # if hasattr(self, 'statusBar') and status_bar is not None: # Removed
+                    # status_bar.showMessage(f"Switched to project: {project_name}", 3000) # Removed
             else:
                 QMessageBox.warning(self, "Project Switch Failed", f"Could not switch to project '{project_name}'.")
                 self._reset_application_to_no_project_state() # If switch fails, reset
@@ -198,7 +201,7 @@ class InfoCanvasApp(QMainWindow):
             self.current_project_path,
             config_to_save,
             item_map=self.item_map,
-            status_bar=self.statusBar(),
+            # status_bar=self.statusBar(), # Removed
             current_project_name=self.current_project_name,
         )
 
@@ -637,7 +640,8 @@ if __name__ == '__main__':
     app = QApplication.instance() or QApplication(sys.argv)
     
     main_window = InfoCanvasApp()
-    if main_window.current_project_name: 
+    if main_window.current_project_name:
+        main_window.setGeometry(100, 100, 1200, 700)
         main_window.show()
         sys.exit(app.exec_())
     else:
