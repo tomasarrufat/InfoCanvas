@@ -264,8 +264,8 @@ def test_mouse_move_resizing_handles(create_item_with_scene, handle_type, initia
         mock_super_move.assert_not_called()
 
     assert item.pos() == expected_final_pos_scene
-    assert item.boundingRect().width() == pytest.approx(expected_final_width)
-    assert item.boundingRect().height() == pytest.approx(expected_final_height)
+    assert item._w == pytest.approx(expected_final_width)
+    assert item._h == pytest.approx(expected_final_height)
     assert item.text_item.textWidth() == pytest.approx(expected_final_width)
     assert event.isAccepted() is True
 
@@ -1045,3 +1045,9 @@ def test_rotation_handle_in_shape(create_item_with_scene):
     item, _, _ = create_item_with_scene()
     handle_center = item._get_rotation_handle_rect().center()
     assert item.shape().contains(handle_center)
+
+
+def test_rotation_handle_in_bounding_rect(create_item_with_scene):
+    item, _, _ = create_item_with_scene()
+    handle_center = item._get_rotation_handle_rect().center()
+    assert item.boundingRect().contains(handle_center)

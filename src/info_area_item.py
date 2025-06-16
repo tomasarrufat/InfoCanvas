@@ -82,11 +82,13 @@ class InfoAreaItem(BaseDraggableItem):
         self._resizing_initial_height = self._h
 
     def boundingRect(self):
-        return QRectF(0, 0, self._w, self._h)
+        rect = QRectF(0, 0, self._w, self._h)
+        return rect.united(self._get_rotation_handle_rect())
 
     def shape(self):
         path = QPainterPath()
-        path.addRect(self.boundingRect())
+        path.setFillRule(Qt.WindingFill)
+        path.addRect(QRectF(0, 0, self._w, self._h))
         path.addEllipse(self._get_rotation_handle_rect())
         return path
 
@@ -105,7 +107,7 @@ class InfoAreaItem(BaseDraggableItem):
             painter.drawEllipse(handle_rect)
 
     def _get_resize_handle_at(self, pos):
-        r = self.boundingRect()
+        r = QRectF(0, 0, self._w, self._h)
         m = self.RESIZE_MARGIN
         on_left = abs(pos.x() - r.left()) < m
         on_right = abs(pos.x() - r.right()) < m
