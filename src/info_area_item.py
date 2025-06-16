@@ -95,10 +95,11 @@ class InfoAreaItem(BaseDraggableItem):
     def paint(self, painter, option, widget=None):
         painter.setPen(self._pen)
         painter.setBrush(self._brush)
+        inner_rect = QRectF(0, 0, self._w, self._h)
         if self.shape_type == 'ellipse':
-            painter.drawEllipse(self.boundingRect())
+            painter.drawEllipse(inner_rect)
         else:
-            painter.drawRect(self.boundingRect())
+            painter.drawRect(inner_rect)
 
         if self.isSelected():
             handle_rect = self._get_rotation_handle_rect()
