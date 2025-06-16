@@ -15,8 +15,9 @@ def test_export_to_html_writes_file(tmp_path_factory, tmp_path): # No base_app_f
 
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "Test Project HTML"
-    sample_config.setdefault('info_rectangles', []).append({
-        'id': 'r1', 'center_x': 50, 'center_y': 50, 'width': 20, 'height': 20, 'text': 'hello'
+    sample_config.setdefault('info_areas', []).append({
+        'id': 'r1', 'center_x': 50, 'center_y': 50, 'width': 20, 'height': 20,
+        'text': 'hello', 'shape': 'rectangle'
     })
 
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
@@ -52,6 +53,7 @@ def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base
         'text': 'Formatted Text\nWith Newlines & <HTML>!', 'font_color': '#FF0000',
         'font_size': '20px', 'background_color': '#FFFF00', 'padding': '10px',
         'horizontal_alignment': 'center', 'vertical_alignment': 'middle',
+        'shape': 'rectangle',
     }
     # Ensure all keys from default_text_config are present if not overridden
     for key, val in default_text_config.items():
@@ -59,7 +61,7 @@ def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base
 
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "Rich Text Test"
-    sample_config.setdefault('info_rectangles', []).append(rect_config_formatted)
+    sample_config.setdefault('info_areas', []).append(rect_config_formatted)
 
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
     out_file = tmp_path / "export_formatted.html"
@@ -94,9 +96,9 @@ def test_export_html_markdown(tmp_path_factory, tmp_path):
 
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "MD Test"
-    sample_config.setdefault('info_rectangles', []).append({
+    sample_config.setdefault('info_areas', []).append({
         'id': 'md1', 'center_x': 10, 'center_y': 10, 'width': 50, 'height': 20,
-        'text': 'This is **bold**', 'font_color': '#000000'
+        'text': 'This is **bold**', 'font_color': '#000000', 'shape': 'rectangle'
     })
 
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
@@ -115,14 +117,15 @@ def test_export_html_heading_font_sizes(tmp_path_factory, tmp_path):
 
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "Heading Test"
-    sample_config.setdefault('info_rectangles', []).append({
+    sample_config.setdefault('info_areas', []).append({
         'id': 'h1',
         'center_x': 5,
         'center_y': 5,
         'width': 20,
         'height': 20,
         'text': '# Heading',
-        'font_color': '#000000'
+        'font_color': '#000000',
+        'shape': 'rectangle'
     })
 
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
@@ -138,9 +141,9 @@ def test_export_html_always_visible(tmp_path_factory, tmp_path):
     os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
     sample_config = utils.get_default_config()
     sample_config['project_name'] = "Always"
-    sample_config.setdefault('info_rectangles', []).append({
+    sample_config.setdefault('info_areas', []).append({
         'id': 'r1', 'center_x': 10, 'center_y': 10, 'width': 30, 'height': 20,
-        'text': 'show', 'show_on_hover': False
+        'text': 'show', 'show_on_hover': False, 'shape': 'rectangle'
     })
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
     out_file = tmp_path / "export_always.html"
@@ -238,8 +241,9 @@ def test_export_html_contains_drag_script(tmp_path_factory, tmp_path):
     os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
 
     sample_config = utils.get_default_config()
-    sample_config.setdefault('info_rectangles', []).append({
-        'id': 'drag1', 'center_x': 15, 'center_y': 15, 'width': 30, 'height': 20, 'text': 'd'
+    sample_config.setdefault('info_areas', []).append({
+        'id': 'drag1', 'center_x': 15, 'center_y': 15, 'width': 30, 'height': 20,
+        'text': 'd', 'shape': 'rectangle'
     })
 
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
@@ -251,6 +255,24 @@ def test_export_html_contains_drag_script(tmp_path_factory, tmp_path):
     assert "requestAnimationFrame(anim)" in content
     assert "animating = true" in content
     assert "cancelAnimationFrame(" in content
+
+
+def test_export_html_ellipse_shape(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_ellipse")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config.setdefault('info_areas', []).append({
+        'id': 'e1', 'center_x': 20, 'center_y': 20, 'width': 40, 'height': 30,
+        'text': 'ellipse', 'shape': 'ellipse'
+    })
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "export_ellipse.html"
+
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert "border-radius:50%" in content
 
 # Keep other tests like test_export_to_html_write_error,
 # test_export_to_html_uses_dialog, etc., as they are, because they test

@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QGraphicsScene, QMessageBox, QApplication
 
 from . import utils
 from .draggable_image_item import DraggableImageItem
-from .info_rectangle_item import InfoRectangleItem
+from .info_area_item import InfoAreaItem
 
 
 class CanvasManager(QObject):
@@ -80,8 +80,8 @@ class CanvasManager(QObject):
             self.scene.addItem(item)
             app.item_map[img_conf['id']] = item
 
-        for rect_conf in config.get('info_rectangles', []):
-            item = InfoRectangleItem(rect_conf)
+        for rect_conf in config.get('info_areas', []):
+            item = InfoAreaItem(rect_conf)
             item.item_selected.connect(self.on_graphics_item_selected)
             item.item_moved.connect(self.on_graphics_item_moved)
             item.properties_changed.connect(self.on_graphics_item_properties_changed)
@@ -120,7 +120,7 @@ class CanvasManager(QObject):
             return
 
         selected_items = self.scene.selectedItems()
-        current_info_rects = [i for i in selected_items if isinstance(i, InfoRectangleItem)]
+        current_info_rects = [i for i in selected_items if isinstance(i, InfoAreaItem)]
         num_selected = len(current_info_rects)
 
         if num_selected == 0:
@@ -133,7 +133,7 @@ class CanvasManager(QObject):
                 app.chronologically_first_selected_item = sorted_rects[0] if sorted_rects else None
 
         for item in self.scene.items():
-            if isinstance(item, InfoRectangleItem):
+            if isinstance(item, InfoAreaItem):
                 item.update_appearance(item.isSelected(), app.current_mode == "view")
 
         if selected_items and app.selected_item not in selected_items:
@@ -153,7 +153,7 @@ class CanvasManager(QObject):
             return
 
         ctrl_pressed = QApplication.keyboardModifiers() & Qt.ControlModifier
-        if ctrl_pressed and isinstance(graphics_item, InfoRectangleItem):
+        if ctrl_pressed and isinstance(graphics_item, InfoAreaItem):
             if graphics_item.isSelected():
                 app.selected_item = graphics_item
             else:
@@ -162,11 +162,11 @@ class CanvasManager(QObject):
             app.update_properties_panel()
             return
 
-        if app.selected_item is graphics_item and isinstance(app.selected_item, InfoRectangleItem):
+        if app.selected_item is graphics_item and isinstance(app.selected_item, InfoAreaItem):
             app.selected_item.update_appearance(True, app.current_mode == "view")
 
         if app.selected_item is not graphics_item:
-            if app.selected_item and isinstance(app.selected_item, InfoRectangleItem):
+            if app.selected_item and isinstance(app.selected_item, InfoAreaItem):
                 app.selected_item.update_appearance(False, app.current_mode == "view")
 
             app.selected_item = graphics_item
@@ -179,10 +179,10 @@ class CanvasManager(QObject):
                 for item_in_scene in self.scene.items():
                     if item_in_scene is not app.selected_item and item_in_scene.isSelected():
                         item_in_scene.setSelected(False)
-                        if isinstance(item_in_scene, InfoRectangleItem):
+                        if isinstance(item_in_scene, InfoAreaItem):
                             item_in_scene.update_appearance(False, app.current_mode == "view")
                 app.selected_item.setSelected(True)
-                if isinstance(app.selected_item, InfoRectangleItem):
+                if isinstance(app.selected_item, InfoAreaItem):
                     app.selected_item.update_appearance(True, app.current_mode == "view")
                 try:
                     self.scene.selectionChanged.connect(self.on_scene_selection_changed)
@@ -196,7 +196,7 @@ class CanvasManager(QObject):
 
     def on_graphics_item_properties_changed(self, graphics_item):
         self.app.save_config()
-        if isinstance(graphics_item, InfoRectangleItem):
+        if isinstance(graphics_item, InfoAreaItem):
             graphics_item.update_geometry_from_config()
             self.app.update_properties_panel()
 
@@ -205,7 +205,7 @@ class CanvasManager(QObject):
         if not self.scene:
             return
         selected_items = self.scene.selectedItems()
-        rects = [i for i in selected_items if isinstance(i, InfoRectangleItem)]
+        rects = [i for i in selected_items if isinstance(i, InfoAreaItem)]
         if len(rects) < 2:
             return
         app = self.app
@@ -227,7 +227,7 @@ class CanvasManager(QObject):
         if not self.scene:
             return
         selected_items = self.scene.selectedItems()
-        rects = [i for i in selected_items if isinstance(i, InfoRectangleItem)]
+        rects = [i for i in selected_items if isinstance(i, InfoAreaItem)]
         if len(rects) < 2:
             return
         app = self.app

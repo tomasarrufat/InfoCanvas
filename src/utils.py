@@ -46,7 +46,7 @@ def get_default_config():
             "color": "#DDDDDD"
         },
         "images": [],
-        "info_rectangles": []
+        "info_areas": []
     }
 
 # --- Z-index Management Helpers ---

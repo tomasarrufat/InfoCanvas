@@ -7,7 +7,7 @@ from PyQt5.QtGui import QColor, QBrush, QPen, QCursor, QTextOption
 from . import utils
 
 
-class InfoRectangleItem(BaseDraggableItem):
+class InfoAreaItem(BaseDraggableItem):
     item_selected = pyqtSignal(QGraphicsItem)
     properties_changed = pyqtSignal(QGraphicsItem)
 
@@ -35,6 +35,7 @@ class InfoRectangleItem(BaseDraggableItem):
         self._h = self.config_data.get('height', 50)
         self._pen = QPen(Qt.NoPen)
         self._brush = QBrush(Qt.NoBrush)
+        self.shape = rect_config.get('shape', 'rectangle')
 
         # Formatting options
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
@@ -70,7 +71,10 @@ class InfoRectangleItem(BaseDraggableItem):
     def paint(self, painter, option, widget=None):
         painter.setPen(self._pen)
         painter.setBrush(self._brush)
-        painter.drawRect(self.boundingRect())
+        if self.shape == 'ellipse':
+            painter.drawEllipse(self.boundingRect())
+        else:
+            painter.drawRect(self.boundingRect())
 
     def _get_resize_handle_at(self, pos):
         r = self.boundingRect()

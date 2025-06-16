@@ -6,7 +6,7 @@ import pytest
 from PyQt5.QtWidgets import QGraphicsScene
 
 from src import utils
-from src.info_rectangle_item import InfoRectangleItem
+from src.info_area_item import InfoAreaItem
 
 
 def test_allowed_file_positive():
@@ -17,7 +17,7 @@ def test_allowed_file_negative():
 
 def test_get_default_config_structure():
     cfg = utils.get_default_config()
-    assert 'background' in cfg and 'images' in cfg and 'info_rectangles' in cfg
+    assert 'background' in cfg and 'images' in cfg and 'info_areas' in cfg
 
 def test_ensure_base_projects_directory_exists(tmp_path, monkeypatch):
     temp_dir = tmp_path / 'projects'
@@ -28,12 +28,16 @@ def test_ensure_base_projects_directory_exists(tmp_path, monkeypatch):
 
 def test_normalize_z_indices(qtbot):
     scene = QGraphicsScene()
-    cfg1 = {'id': 'r1', 'width': 10, 'height': 10, 'center_x': 5, 'center_y': 5,
-            'text': '', 'z_index': 0}
-    cfg2 = {'id': 'r2', 'width': 10, 'height': 10, 'center_x': 15, 'center_y': 5,
-            'text': '', 'z_index': 10}
-    item1 = InfoRectangleItem(cfg1)
-    item2 = InfoRectangleItem(cfg2)
+    cfg1 = {
+        'id': 'r1', 'width': 10, 'height': 10, 'center_x': 5, 'center_y': 5,
+        'text': '', 'z_index': 0, 'shape': 'rectangle'
+    }
+    cfg2 = {
+        'id': 'r2', 'width': 10, 'height': 10, 'center_x': 15, 'center_y': 5,
+        'text': '', 'z_index': 10, 'shape': 'rectangle'
+    }
+    item1 = InfoAreaItem(cfg1)
+    item2 = InfoAreaItem(cfg2)
     scene.addItem(item1)
     scene.addItem(item2)
     utils.normalize_z_indices(scene)

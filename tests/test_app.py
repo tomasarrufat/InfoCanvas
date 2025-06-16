@@ -23,7 +23,7 @@ from app import InfoCanvasApp
 from src import utils # For utils.PROJECTS_BASE_DIR etc.
 from src.project_manager_dialog import ProjectManagerDialog # For mocking
 from src.draggable_image_item import DraggableImageItem # Added
-from src.info_rectangle_item import InfoRectangleItem # Added
+from src.info_area_item import InfoAreaItem # Added
 from src.project_io import ProjectIO
 from src.ui_builder import UIBuilder
 
@@ -317,7 +317,7 @@ def test_on_mode_changed(base_app_fixture, monkeypatch):
     mock_image_item = MagicMock(spec=DraggableImageItem)
     mock_image_item.config_data = {'id': 'img1'}
     mock_image_item.isEnabled.return_value = True
-    mock_info_rect_item = MagicMock(spec=InfoRectangleItem)
+    mock_info_rect_item = MagicMock(spec=InfoAreaItem)
     mock_info_rect_item.config_data = {'id': 'rect1'}
     mock_info_rect_item.isSelected.return_value = False
     mock_info_rect_item.isEnabled.return_value = True
@@ -458,9 +458,9 @@ def test_update_selected_rect_text(base_app_fixture, monkeypatch):
     app = base_app_fixture
     rect_id = "rect_to_edit_text"
     initial_text = "Old Text"
-    app.config['info_rectangles'] = [{
+    app.config['info_areas'] = [{
         "id": rect_id, "text": initial_text, "center_x": 10, "center_y": 10,
-        "width": 100, "height": 50, "z_index": 1
+        "width": 100, "height": 50, "z_index": 1, "shape": "rectangle"
     }]
     monkeypatch.setattr(app.scene, 'clear', MagicMock())
     monkeypatch.setattr(app.scene, 'addItem', MagicMock())
@@ -474,7 +474,7 @@ def test_update_selected_rect_text(base_app_fixture, monkeypatch):
     new_text = "This is the new text for the rectangle."
     app.info_rect_text_input.setPlainText(new_text)
     app.update_selected_rect_text()
-    assert app.config['info_rectangles'][0]['text'] == new_text
+    assert app.config['info_areas'][0]['text'] == new_text
     selected_rect_item.set_display_text.assert_called_once_with(new_text)
     app.save_config.assert_called_once()
 
@@ -482,9 +482,9 @@ def test_update_selected_rect_text(base_app_fixture, monkeypatch):
 def test_update_selected_rect_dimensions(base_app_fixture, monkeypatch):
     app = base_app_fixture
     rect_id = "rect_to_resize"
-    app.config['info_rectangles'] = [{
+    app.config['info_areas'] = [{
         "id": rect_id, "text": "Resize me", "center_x": 20, "center_y": 20,
-        "width": 100, "height": 50, "z_index": 1
+        "width": 100, "height": 50, "z_index": 1, "shape": "rectangle"
     }]
     monkeypatch.setattr(app.scene, 'clear', MagicMock())
     monkeypatch.setattr(app.scene, 'addItem', MagicMock())
@@ -506,9 +506,38 @@ def test_update_selected_rect_dimensions(base_app_fixture, monkeypatch):
     app.info_rect_width_input.blockSignals(False)
     app.info_rect_height_input.blockSignals(False)
     app.update_selected_rect_dimensions()
-    assert app.config['info_rectangles'][0]['width'] == new_width
-    assert app.config['info_rectangles'][0]['height'] == new_height
+    assert app.config['info_areas'][0]['width'] == new_width
+    assert app.config['info_areas'][0]['height'] == new_height
     mock_slot_for_properties_changed.assert_called_once_with(selected_rect_item)
+    app.save_config.assert_called_once()
+    selected_rect_item.update_geometry_from_config.assert_called_once()
+
+
+def test_update_selected_area_shape(base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    rect_id = "rect_change_shape"
+    app.config['info_areas'] = [{
+        "id": rect_id, "text": "shape test", "center_x": 20, "center_y": 20,
+        "width": 100, "height": 50, "shape": "rectangle", "z_index": 1
+    }]
+    monkeypatch.setattr(app.scene, 'clear', MagicMock())
+    monkeypatch.setattr(app.scene, 'addItem', MagicMock())
+    app.render_canvas_from_config()
+    selected_rect_item = app.item_map.get(rect_id)
+    assert selected_rect_item is not None
+    app.selected_item = selected_rect_item
+    app.update_properties_panel()
+    mock_slot = MagicMock()
+    selected_rect_item.properties_changed.connect(mock_slot)
+    monkeypatch.setattr(app, 'save_config', MagicMock())
+    monkeypatch.setattr(selected_rect_item, 'update_geometry_from_config', MagicMock())
+
+    app.area_shape_combo.setCurrentText("Ellipse")
+    app.update_selected_area_shape("Ellipse")
+
+    assert app.config['info_areas'][0]['shape'] == 'ellipse'
+    assert selected_rect_item.shape == 'ellipse'
+    mock_slot.assert_called_once_with(selected_rect_item)
     app.save_config.assert_called_once()
     selected_rect_item.update_geometry_from_config.assert_called_once()
 
@@ -585,17 +614,17 @@ def test_handle_deleted_other_project(base_app_fixture, monkeypatch):
 # Test 'test_font_color_change_updates_item_and_ui' was REMOVED as it's now in test_text_style_manager.py
 # Test 'test_project_load_style_application_and_update' was REMOVED as it's now in test_text_style_manager.py
 
-def test_ctrl_multi_select_info_rectangles(base_app_fixture, monkeypatch):
+def test_ctrl_multi_select_info_areas(base_app_fixture, monkeypatch):
     app = base_app_fixture
     rect1 = {
         'id': 'rect1', 'width': 50, 'height': 40,
-        'center_x': 60, 'center_y': 50, 'text': 'A'
+        'center_x': 60, 'center_y': 50, 'text': 'A', 'shape': 'rectangle'
     }
     rect2 = {
         'id': 'rect2', 'width': 50, 'height': 40,
-        'center_x': 150, 'center_y': 50, 'text': 'B'
+        'center_x': 150, 'center_y': 50, 'text': 'B', 'shape': 'rectangle'
     }
-    app.config['info_rectangles'] = [rect1, rect2]
+    app.config['info_areas'] = [rect1, rect2]
     app.render_canvas_from_config()
     item1 = app.item_map['rect1']
     item2 = app.item_map['rect2']
@@ -647,5 +676,26 @@ def test_save_config_does_not_duplicate_snapshot(base_app_fixture, monkeypatch):
     app.save_config()
 
     assert len(app.config_snapshot_stack) == 1
+
+
+def test_switch_to_project_updates_item_operations_config(base_app_fixture, monkeypatch):
+    app = base_app_fixture
+    old_config = app.config
+    assert app.item_operations.config is old_config
+
+    new_config = {"project_name": "new_proj"}
+
+    def mock_switch(project_name, is_new_project=False):
+        app.project_io.current_project_name = project_name
+        app.project_io.current_project_path = os.path.join(utils.PROJECTS_BASE_DIR, project_name)
+        app.project_io.config = new_config
+        return True
+
+    monkeypatch.setattr(app.project_io, "switch_to_project", mock_switch)
+
+    app._switch_to_project("new_proj")
+
+    assert app.config is new_config
+    assert app.item_operations.config is new_config
 
 

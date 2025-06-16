@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import MagicMock, patch, ANY
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QComboBox, QPushButton, QMessageBox, QInputDialog, QTextEdit # Added QTextEdit for InfoRectangleItem mock if needed
+from PyQt5.QtWidgets import QComboBox, QPushButton, QMessageBox, QInputDialog, QTextEdit # Added QTextEdit for InfoAreaItem mock if needed
 
-# Assuming utils.py and InfoRectangleItem are in src and path is set up
+# Assuming utils.py and InfoAreaItem are in src and path is set up
 from src import utils
-from src.info_rectangle_item import InfoRectangleItem # Needed for spec and isinstance
+from src.info_area_item import InfoAreaItem # Needed for spec and isinstance
 from src.text_style_manager import TextStyleManager
 
 @pytest.fixture
@@ -35,8 +35,8 @@ def text_style_manager_fixture(monkeypatch):
     mock_app.main_window = None # For dialog parents, can be simple None or MagicMock if specific methods are called
 
     # Selected item setup
-    # Provide a more complete mock for InfoRectangleItem if its methods are called by TextStyleManager
-    mock_selected_item = MagicMock(spec=InfoRectangleItem)
+    # Provide a more complete mock for InfoAreaItem if its methods are called by TextStyleManager
+    mock_selected_item = MagicMock(spec=InfoAreaItem)
     mock_selected_item.config_data = {} # Default empty config
     mock_selected_item.apply_style = MagicMock()
     mock_app.selected_item = mock_selected_item
@@ -191,11 +191,11 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
     mock_qmessagebox.question.return_value = QMessageBox.Yes # Confirm overwrite
 
     # Mock item map for testing update propagation
-    mock_rect_refing_style = MagicMock(spec=InfoRectangleItem)
+    mock_rect_refing_style = MagicMock(spec=InfoAreaItem)
     mock_rect_refing_style.config_data = {'id': 'rect_ref1', 'text_style_ref': 'NewSavedStyle'}
     mock_rect_refing_style.apply_style = MagicMock()
 
-    mock_rect_not_refing_style = MagicMock(spec=InfoRectangleItem)
+    mock_rect_not_refing_style = MagicMock(spec=InfoAreaItem)
     mock_rect_not_refing_style.config_data = {'id': 'rect_other', 'text_style_ref': 'SomeOtherStyle'}
     mock_rect_not_refing_style.apply_style = MagicMock()
 

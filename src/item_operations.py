@@ -8,7 +8,7 @@ from PyQt5.QtGui import QImageReader, QPixmap, QTransform
 
 from src import utils
 from src.draggable_image_item import DraggableImageItem
-from src.info_rectangle_item import InfoRectangleItem
+from src.info_area_item import InfoAreaItem
 
 class ItemOperations:
     def __init__(self, app):
@@ -197,7 +197,7 @@ class ItemOperations:
             self.app.update_properties_panel() # Call app's method
             self.app.statusBar().showMessage(f"Image '{img_conf['path']}' deleted.", 3000) # app's statusBar
 
-    def add_info_rectangle(self):
+    def add_info_area(self):
         rect_id = f"rect_{datetime.datetime.now().timestamp()}"
         # Access app's config for defaults, then utils if not found
         default_display_conf = self.config.get("defaults", {}).get("info_rectangle_text_display", utils.get_default_config()["defaults"]["info_rectangle_text_display"])
@@ -210,13 +210,14 @@ class ItemOperations:
             "height": 50, # Default height
             "text": "New Information",
             "show_on_hover": True,
+            "shape": "rectangle",
             "z_index": self._get_next_z_index(), # Local method
         }
 
-        if 'info_rectangles' not in self.config: self.config['info_rectangles'] = [] # self.config is app.config
-        self.config['info_rectangles'].append(new_rect_config)
+        if 'info_areas' not in self.config: self.config['info_areas'] = [] # self.config is app.config
+        self.config['info_areas'].append(new_rect_config)
 
-        item = InfoRectangleItem(new_rect_config) # Z-value set in item's __init__
+        item = InfoAreaItem(new_rect_config) # Z-value set in item's __init__
 
         # Connect signals to app's CanvasManager handlers
         item.item_selected.connect(self.app.canvas_manager.on_graphics_item_selected)
@@ -233,7 +234,7 @@ class ItemOperations:
         item.setSelected(True)
 
     def delete_selected_info_rect(self):
-        if not isinstance(self.app.selected_item, InfoRectangleItem): # Access app's selected_item
+        if not isinstance(self.app.selected_item, InfoAreaItem): # Access app's selected_item
             QMessageBox.information(self.app, "Delete Info Area", "No info area selected.") # parent is self.app
             return
 
@@ -243,8 +244,8 @@ class ItemOperations:
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
         if reply == QMessageBox.Yes:
-            if rect_conf in self.config.get('info_rectangles', []): # self.config is app.config
-                self.config['info_rectangles'].remove(rect_conf)
+            if rect_conf in self.config.get('info_areas', []): # self.config is app.config
+                self.config['info_areas'].remove(rect_conf)
 
             self.scene.removeItem(self.app.selected_item) # self.scene is app.scene
             if rect_conf.get('id') in self.item_map: del self.item_map[rect_conf['id']] # self.item_map is app.item_map
@@ -261,7 +262,7 @@ class ItemOperations:
             self.app.statusBar().showMessage("Clipboard is empty.", 2000)
             return False # Indicate failure
 
-        # Currently, only InfoRectangleItem paste is supported from original logic
+        # Currently, only InfoAreaItem paste is supported from original logic
         if not isinstance(self.app.clipboard_data, dict) or 'text' not in self.app.clipboard_data:
             self.app.statusBar().showMessage("Clipboard data is not for an info area.", 2000)
             return False # Indicate failure
@@ -274,11 +275,11 @@ class ItemOperations:
         new_item_config['center_y'] = new_item_config.get('center_y', self.scene.height() / 2) + 20 # self.scene is app.scene
         new_item_config['z_index'] = self._get_next_z_index() # Local method
 
-        if 'info_rectangles' not in self.config: # self.config is app.config
-            self.config['info_rectangles'] = []
-        self.config['info_rectangles'].append(new_item_config)
+        if 'info_areas' not in self.config: # self.config is app.config
+            self.config['info_areas'] = []
+        self.config['info_areas'].append(new_item_config)
 
-        item = InfoRectangleItem(new_item_config) # Z-value set in item's __init__
+        item = InfoAreaItem(new_item_config) # Z-value set in item's __init__
 
         # Connect signals to app's CanvasManager handlers
         item.item_selected.connect(self.app.canvas_manager.on_graphics_item_selected)
@@ -296,7 +297,7 @@ class ItemOperations:
         return True # Indicate success
 
     def copy_selected_item_to_clipboard(self):
-        if self.app.selected_item and isinstance(self.app.selected_item, InfoRectangleItem) and \
+        if self.app.selected_item and isinstance(self.app.selected_item, InfoAreaItem) and \
            self.app.current_mode == "edit": # Check app's current_mode
             self.app.clipboard_data = copy.deepcopy(self.app.selected_item.config_data) # Use app's clipboard
             self.app.statusBar().showMessage("Info rectangle copied to clipboard.", 2000) # Use app's status bar
@@ -308,7 +309,7 @@ class ItemOperations:
             if isinstance(self.app.selected_item, DraggableImageItem):
                 self.delete_selected_image() # This method now uses self.app.selected_item
                 return True
-            elif isinstance(self.app.selected_item, InfoRectangleItem):
+            elif isinstance(self.app.selected_item, InfoAreaItem):
                 self.delete_selected_info_rect() # This method now uses self.app.selected_item
                 return True
         return False
