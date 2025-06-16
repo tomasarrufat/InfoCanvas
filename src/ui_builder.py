@@ -254,6 +254,17 @@ class UIBuilder:
         rect_height_layout.addWidget(app.info_rect_height_input)
         rect_props_layout.addLayout(rect_height_layout)
 
+        # Angle control
+        angle_layout = QHBoxLayout()
+        angle_layout.addWidget(QLabel("Angle:"))
+        app.info_rect_angle_input = QDoubleSpinBox()
+        app.info_rect_angle_input.setRange(-360.0, 360.0)
+        app.info_rect_angle_input.setSingleStep(1.0)
+        app.info_rect_angle_input.setValue(0.0)
+        app.info_rect_angle_input.valueChanged.connect(app.update_selected_item_angle)
+        angle_layout.addWidget(app.info_rect_angle_input)
+        rect_props_layout.addLayout(angle_layout)
+
         shape_layout = QHBoxLayout()
         shape_layout.addWidget(QLabel("Area Shape:"))
         app.area_shape_combo = QComboBox()

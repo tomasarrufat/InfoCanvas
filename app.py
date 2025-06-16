@@ -340,6 +340,12 @@ class InfoCanvasApp(QMainWindow):
             self.info_rect_text_input.setPlainText(rect_conf.get('text', ''))
             self.info_rect_width_input.setValue(int(rect_conf.get('width', 100)))
             self.info_rect_height_input.setValue(int(rect_conf.get('height', 50)))
+
+            # Angle input
+            self.info_rect_angle_input.blockSignals(True)
+            self.info_rect_angle_input.setValue(rect_conf.get('angle', 0.0))
+            self.info_rect_angle_input.blockSignals(False)
+
             self.area_shape_combo.blockSignals(True)
             current_shape = rect_conf.get('shape', 'rectangle')
             self.area_shape_combo.setCurrentText('Ellipse' if current_shape == 'ellipse' else 'Rectangle')
@@ -531,6 +537,14 @@ class InfoCanvasApp(QMainWindow):
                 self.selected_item.update()
                 self.selected_item.properties_changed.emit(self.selected_item)
 
+    def update_selected_item_angle(self, angle_value):
+        if isinstance(self.selected_item, InfoAreaItem):
+            self.selected_item.config_data['angle'] = angle_value
+            # update_geometry_from_config will handle setRotation and setTransformOriginPoint
+            self.selected_item.update_geometry_from_config()
+            # Emit properties_changed to ensure everything (like saving) is triggered
+            self.selected_item.properties_changed.emit(self.selected_item)
+            # self.save_config() # properties_changed should trigger save via on_graphics_item_properties_changed
 
     def delete_selected_info_rect(self):
         self.item_operations.delete_selected_info_rect()

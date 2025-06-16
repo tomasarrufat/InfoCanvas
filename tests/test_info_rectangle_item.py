@@ -1,4 +1,5 @@
 import pytest
+import math # Added for calculations in resize tests
 from PyQt5.QtCore import QPointF, Qt, QRectF, QPoint
 from PyQt5.QtGui import QColor, QFont, QTextOption, QCursor
 from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsView, QGraphicsSceneMouseEvent, QGraphicsSceneHoverEvent, QGraphicsItem
@@ -544,3 +545,449 @@ def test_paint_ellipse_calls_correct_method(create_item_with_scene):
     item.paint(painter, None)
     painter.drawEllipse.assert_called_once()
     painter.drawRect.assert_not_called()
+
+
+# --- Tests for Angle Functionality ---
+
+def test_info_area_item_initialization_with_angle(create_item_with_scene):
+    """Test item initializes with a specific angle from config."""
+    item, _, _ = create_item_with_scene(custom_config={'angle': 45.0})
+    assert item.angle == pytest.approx(45.0)
+    assert item.rotation() == pytest.approx(45.0)
+    assert item.config_data['angle'] == pytest.approx(45.0)
+
+def test_info_area_item_initialization_default_angle(create_item_with_scene):
+    """Test item initializes with a default angle (0.0) if not in config."""
+    item, _, _ = create_item_with_scene(custom_config={}) # No angle specified
+    assert item.angle == pytest.approx(0.0)
+    assert item.rotation() == pytest.approx(0.0)
+    assert item.config_data.get('angle', 0.0) == pytest.approx(0.0)
+
+def test_info_area_item_set_angle_updates_rotation(create_item_with_scene):
+    """Test setting angle in config_data and calling update_geometry_from_config applies rotation."""
+    item, _, _ = create_item_with_scene()
+
+    # Initial state (default angle)
+    assert item.angle == pytest.approx(0.0)
+    assert item.rotation() == pytest.approx(0.0)
+
+    item.config_data['angle'] = 30.0
+    item.update_geometry_from_config()
+
+    assert item.angle == pytest.approx(30.0)
+    assert item.rotation() == pytest.approx(30.0)
+    assert item.config_data['angle'] == pytest.approx(30.0)
+
+def test_info_area_item_transform_origin_is_center(create_item_with_scene):
+    """Test transformOriginPoint is at the center of the item and updates with size."""
+    initial_width = 100
+    initial_height = 50
+    item, _, _ = create_item_with_scene(custom_config={'width': initial_width, 'height': initial_height})
+
+    assert item.transformOriginPoint().x() == pytest.approx(initial_width / 2)
+    assert item.transformOriginPoint().y() == pytest.approx(initial_height / 2)
+
+    # Change width and height and update
+    new_width = 120
+    new_height = 60
+    item.config_data['width'] = new_width
+    item.config_data['height'] = new_height
+    item.update_geometry_from_config()
+
+    assert item.transformOriginPoint().x() == pytest.approx(new_width / 2)
+    assert item.transformOriginPoint().y() == pytest.approx(new_height / 2)
+
+
+# --- Tests for Resizing Rotated Item ---
+
+def test_resize_rotated_right_handle(create_item_with_scene, qtbot):
+    angle_deg = 30.0
+    initial_width, initial_height = 100, 50
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'angle': angle_deg, 'width': initial_width, 'height': initial_height, 'center_x': 100, 'center_y': 100},
+        add_to_scene=True
+    )
+    item.setSelected(True)
+    mock_parent_window.current_mode = "edit"
+    initial_pos = item.pos()
+
+    # Press on the right handle
+    press_local_pos = QPointF(item._w, item._h / 2) # Approx middle of right edge
+    press_scene_pos = item.mapToScene(press_local_pos)
+    press_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_local_pos, scene_pos=press_scene_pos)
+    item._current_resize_handle = InfoAreaItem.ResizeHandle.RIGHT # Manually set for test clarity
+    item.mousePressEvent(press_event)
+
+    # Simulate mouse move: drag by delta_val_local_x along item's X-axis
+    delta_val_local_x = 20
+    angle_rad = math.radians(angle_deg)
+    item_x_axis_scene = QPointF(math.cos(angle_rad), math.sin(angle_rad))
+    mouse_move_delta_scene = item_x_axis_scene * delta_val_local_x
+    move_to_scene_pos = item._resize_start_mouse_scene_pos + mouse_move_delta_scene
+
+    move_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(0,0), scene_pos=move_to_scene_pos, button=Qt.LeftButton)
+    item.mouseMoveEvent(move_event)
+
+    assert item._w == pytest.approx(initial_width + delta_val_local_x)
+    assert item._h == pytest.approx(initial_height)
+    # For right handle drag, pos_change_x_local and pos_change_y_local are 0, so item.pos() should be initial_pos.
+    assert item.pos().x() == pytest.approx(initial_pos.x())
+    assert item.pos().y() == pytest.approx(initial_pos.y())
+    assert item.rotation() == pytest.approx(angle_deg)
+
+def test_resize_rotated_left_handle(create_item_with_scene, qtbot):
+    angle_deg = 45.0
+    initial_width, initial_height = 100, 50
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'angle': angle_deg, 'width': initial_width, 'height': initial_height, 'center_x': 150, 'center_y': 150},
+        add_to_scene=True
+    )
+    item.setSelected(True)
+    mock_parent_window.current_mode = "edit"
+    initial_item_pos = item.pos()
+
+    # Press on the left handle
+    press_local_pos = QPointF(0, item._h / 2)
+    press_scene_pos = item.mapToScene(press_local_pos)
+    press_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_local_pos, scene_pos=press_scene_pos)
+    item._current_resize_handle = InfoAreaItem.ResizeHandle.LEFT
+    item.mousePressEvent(press_event)
+
+    # Simulate mouse move: drag by delta_val_local_x along item's negative X-axis (increasing width to the left)
+    delta_val_local_x = -20 # Mouse moves left relative to item's X-axis, so delta_local_x in formula is positive
+                            # mouse_move_event.scenePos() - _resize_start_mouse_scene_pos projected on item_x_axis gives delta_local_x
+                            # If we want to increase width by 20 to the left, mouse must move by -20 along item's X axis.
+                            # The delta_local_x in the item's code will be positive 20 due to "new_w -= delta_local_x" logic.
+                            # So, the mouse movement needs to result in a positive delta_local_x in the item's calculation.
+                            # This means the mouse_delta_scene projected on item_x_axis_scene should be +20 if we use the formula's delta_local_x
+                            # Let's use a positive "increase_amount" and adjust the scene delta.
+    increase_amount = 20
+    angle_rad = math.radians(angle_deg)
+    item_x_axis_scene = QPointF(math.cos(angle_rad), math.sin(angle_rad))
+    # Mouse moves opposite to item's X-axis to increase width to the left
+    mouse_move_delta_scene = item_x_axis_scene * (-increase_amount)
+    move_to_scene_pos = item._resize_start_mouse_scene_pos + mouse_move_delta_scene
+
+    move_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(0,0), scene_pos=move_to_scene_pos, button=Qt.LeftButton)
+    item.mouseMoveEvent(move_event)
+
+    assert item._w == pytest.approx(initial_width + increase_amount)
+    assert item._h == pytest.approx(initial_height)
+
+    # Expected position change: item's local X-axis * increase_amount
+    expected_pos_change_scene = item_x_axis_scene * increase_amount
+    expected_final_pos = initial_item_pos + expected_pos_change_scene # This is incorrect, it should be initial_item_pos + item_x_axis_scene * pos_change_x_local from the code
+                                                                    # pos_change_x_local in code is 'delta_local_x' which is 'increase_amount' here
+
+    # From code: pos_change_x_local = delta_local_x (which is 'increase_amount' here)
+    # total_scene_shift = item_x_axis_scene * increase_amount
+    # new_pos_scene = self._resize_start_item_pos + total_scene_shift
+    expected_final_pos_x = initial_item_pos.x() + item_x_axis_scene.x() * increase_amount
+    expected_final_pos_y = initial_item_pos.y() + item_x_axis_scene.y() * increase_amount
+
+    assert item.pos().x() == pytest.approx(expected_final_pos_x)
+    assert item.pos().y() == pytest.approx(expected_final_pos_y)
+    assert item.rotation() == pytest.approx(angle_deg)
+
+def test_resize_rotated_top_handle(create_item_with_scene, qtbot):
+    angle_deg = 20.0
+    initial_width, initial_height = 100, 50
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'angle': angle_deg, 'width': initial_width, 'height': initial_height, 'center_x': 120, 'center_y': 80},
+        add_to_scene=True
+    )
+    item.setSelected(True)
+    mock_parent_window.current_mode = "edit"
+    initial_item_pos = item.pos()
+
+    press_local_pos = QPointF(item._w / 2, 0)
+    press_scene_pos = item.mapToScene(press_local_pos)
+    press_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_local_pos, scene_pos=press_scene_pos)
+    item._current_resize_handle = InfoAreaItem.ResizeHandle.TOP
+    item.mousePressEvent(press_event)
+
+    increase_amount = 15 # How much we want to increase height by moving mouse "up" relative to item
+    angle_rad = math.radians(angle_deg)
+    item_y_axis_scene = QPointF(-math.sin(angle_rad), math.cos(angle_rad))
+
+    mouse_move_delta_scene = item_y_axis_scene * (-increase_amount) # Mouse moves opposite to item's Y-axis
+    move_to_scene_pos = item._resize_start_mouse_scene_pos + mouse_move_delta_scene
+
+    move_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(0,0), scene_pos=move_to_scene_pos, button=Qt.LeftButton)
+    item.mouseMoveEvent(move_event)
+
+    assert item._w == pytest.approx(initial_width)
+    assert item._h == pytest.approx(initial_height + increase_amount)
+
+    # Expected position change: item's local Y-axis * increase_amount
+    # pos_change_y_local in code is 'delta_local_y' which is 'increase_amount' here
+    # total_scene_shift = item_y_axis_scene * increase_amount
+    # new_pos_scene = self._resize_start_item_pos + total_scene_shift
+    expected_final_pos_x = initial_item_pos.x() + item_y_axis_scene.x() * increase_amount
+    expected_final_pos_y = initial_item_pos.y() + item_y_axis_scene.y() * increase_amount
+
+    assert item.pos().x() == pytest.approx(expected_final_pos_x)
+    assert item.pos().y() == pytest.approx(expected_final_pos_y)
+    assert item.rotation() == pytest.approx(angle_deg)
+
+
+def test_resize_rotated_bottom_handle(create_item_with_scene, qtbot):
+    angle_deg = 60.0
+    initial_width, initial_height = 100, 50
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'angle': angle_deg, 'width': initial_width, 'height': initial_height, 'center_x': 100, 'center_y': 100},
+        add_to_scene=True
+    )
+    item.setSelected(True)
+    mock_parent_window.current_mode = "edit"
+    initial_pos = item.pos()
+
+    press_local_pos = QPointF(item._w / 2, item._h)
+    press_scene_pos = item.mapToScene(press_local_pos)
+    press_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_local_pos, scene_pos=press_scene_pos)
+    item._current_resize_handle = InfoAreaItem.ResizeHandle.BOTTOM
+    item.mousePressEvent(press_event)
+
+    delta_val_local_y = 25
+    angle_rad = math.radians(angle_deg)
+    item_y_axis_scene = QPointF(-math.sin(angle_rad), math.cos(angle_rad))
+    mouse_move_delta_scene = item_y_axis_scene * delta_val_local_y
+    move_to_scene_pos = item._resize_start_mouse_scene_pos + mouse_move_delta_scene
+
+    move_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(0,0), scene_pos=move_to_scene_pos, button=Qt.LeftButton)
+    item.mouseMoveEvent(move_event)
+
+    assert item._w == pytest.approx(initial_width)
+    assert item._h == pytest.approx(initial_height + delta_val_local_y)
+    # For bottom handle drag, pos_change_x_local and pos_change_y_local are 0.
+    assert item.pos().x() == pytest.approx(initial_pos.x())
+    assert item.pos().y() == pytest.approx(initial_pos.y())
+    assert item.rotation() == pytest.approx(angle_deg)
+
+
+def test_resize_rotated_with_min_height_constraint(create_item_with_scene, qtbot):
+    angle_deg = 30.0
+    initial_width, initial_height = 50, 50 # Start near MIN_HEIGHT
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'angle': angle_deg, 'width': initial_width, 'height': initial_height, 'center_x': 100, 'center_y': 100},
+        add_to_scene=True
+    )
+    item.setSelected(True)
+    mock_parent_window.current_mode = "edit"
+    initial_item_pos = item.pos()
+
+    press_local_pos = QPointF(item._w / 2, 0) # Top handle
+    press_scene_pos = item.mapToScene(press_local_pos)
+    press_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_local_pos, scene_pos=press_scene_pos)
+    item._current_resize_handle = InfoAreaItem.ResizeHandle.TOP
+    item.mousePressEvent(press_event)
+
+    decrease_amount_attempt = 40 # Try to decrease height by 40 (50 - 40 = 10, which is < MIN_HEIGHT)
+
+    angle_rad = math.radians(angle_deg)
+    item_y_axis_scene = QPointF(-math.sin(angle_rad), math.cos(angle_rad))
+
+    mouse_move_delta_scene = item_y_axis_scene * decrease_amount_attempt # Mouse moves towards item's positive Y-axis
+    move_to_scene_pos = item._resize_start_mouse_scene_pos + mouse_move_delta_scene
+
+    move_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(0,0), scene_pos=move_to_scene_pos, button=Qt.LeftButton)
+    item.mouseMoveEvent(move_event)
+
+    assert item._w == pytest.approx(initial_width)
+    assert item._h == pytest.approx(InfoAreaItem.MIN_HEIGHT)
+
+    # The amount the item's origin (top-left point) shifts in its local Y direction.
+    pos_change_y_local_effective = initial_height - InfoAreaItem.MIN_HEIGHT
+
+    expected_final_pos_x = initial_item_pos.x() + item_y_axis_scene.x() * pos_change_y_local_effective
+    expected_final_pos_y = initial_item_pos.y() + item_y_axis_scene.y() * pos_change_y_local_effective
+
+    assert item.pos().x() == pytest.approx(expected_final_pos_x)
+    assert item.pos().y() == pytest.approx(expected_final_pos_y)
+    assert item.rotation() == pytest.approx(angle_deg)
+
+
+def test_resize_rotated_bottom_right_handle(create_item_with_scene, qtbot):
+    angle_deg = 45.0
+    initial_width, initial_height = 100, 50
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'angle': angle_deg, 'width': initial_width, 'height': initial_height, 'center_x': 100, 'center_y': 100},
+        add_to_scene=True
+    )
+    item.setSelected(True)
+    mock_parent_window.current_mode = "edit"
+    initial_pos = item.pos() # Top-left of the item's bounding box in scene coords
+
+    # Press on the bottom-right handle
+    press_local_pos = QPointF(item._w, item._h)
+    press_scene_pos = item.mapToScene(press_local_pos)
+    press_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_local_pos, scene_pos=press_scene_pos)
+    item._current_resize_handle = InfoAreaItem.ResizeHandle.BOTTOM_RIGHT
+    item.mousePressEvent(press_event)
+
+    # Simulate mouse move: drag by (delta_x, delta_y) in item's local rotated coordinates
+    delta_local_x_val = 20
+    delta_local_y_val = 15
+
+    angle_rad = math.radians(angle_deg)
+    item_x_axis_scene = QPointF(math.cos(angle_rad), math.sin(angle_rad))
+    item_y_axis_scene = QPointF(-math.sin(angle_rad), math.cos(angle_rad)) # Item's Y in scene
+
+    mouse_move_delta_scene = (item_x_axis_scene * delta_local_x_val) + (item_y_axis_scene * delta_local_y_val)
+    move_to_scene_pos = item._resize_start_mouse_scene_pos + mouse_move_delta_scene
+
+    move_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(0,0), scene_pos=move_to_scene_pos, button=Qt.LeftButton)
+    item.mouseMoveEvent(move_event)
+
+    assert item._w == pytest.approx(initial_width + delta_local_x_val)
+    assert item._h == pytest.approx(initial_height + delta_local_y_val)
+    # For bottom-right handle, pos_change_x_local and pos_change_y_local are 0. Item's (0,0) point should be stable.
+    assert item.pos().x() == pytest.approx(initial_pos.x())
+    assert item.pos().y() == pytest.approx(initial_pos.y())
+    assert item.rotation() == pytest.approx(angle_deg)
+
+
+def test_resize_rotated_top_left_handle(create_item_with_scene, qtbot):
+    angle_deg = 45.0
+    initial_width, initial_height = 100, 50
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'angle': angle_deg, 'width': initial_width, 'height': initial_height, 'center_x': 150, 'center_y': 150},
+        add_to_scene=True
+    )
+    item.setSelected(True)
+    mock_parent_window.current_mode = "edit"
+    initial_item_pos = item.pos()
+
+    # Press on the top-left handle
+    press_local_pos = QPointF(0, 0)
+    press_scene_pos = item.mapToScene(press_local_pos)
+    press_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_local_pos, scene_pos=press_scene_pos)
+    item._current_resize_handle = InfoAreaItem.ResizeHandle.TOP_LEFT
+    item.mousePressEvent(press_event)
+
+    # Simulate mouse move: increase width by 'increase_w' and height by 'increase_h' by moving mouse towards top-left
+    increase_w = 20
+    increase_h = 10
+
+    angle_rad = math.radians(angle_deg)
+    item_x_axis_scene = QPointF(math.cos(angle_rad), math.sin(angle_rad))
+    item_y_axis_scene = QPointF(-math.sin(angle_rad), math.cos(angle_rad))
+
+    # Mouse moves opposite to item's X-axis and Y-axis
+    mouse_move_delta_scene = (item_x_axis_scene * (-increase_w)) + (item_y_axis_scene * (-increase_h))
+    move_to_scene_pos = item._resize_start_mouse_scene_pos + mouse_move_delta_scene
+
+    move_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(0,0), scene_pos=move_to_scene_pos, button=Qt.LeftButton)
+    item.mouseMoveEvent(move_event)
+
+    assert item._w == pytest.approx(initial_width + increase_w)
+    assert item._h == pytest.approx(initial_height + increase_h)
+
+    # Expected position change:
+    # pos_change_x_local = increase_w
+    # pos_change_y_local = increase_h
+    # total_scene_shift = (item_x_axis_scene * increase_w) + (item_y_axis_scene * increase_h)
+    # new_pos_scene = self._resize_start_item_pos + total_scene_shift
+    expected_pos_change_scene_x = item_x_axis_scene * increase_w
+    expected_pos_change_scene_y = item_y_axis_scene * increase_h
+    total_expected_scene_shift = expected_pos_change_scene_x + expected_pos_change_scene_y
+
+    expected_final_pos_x = initial_item_pos.x() + total_expected_scene_shift.x()
+    expected_final_pos_y = initial_item_pos.y() + total_expected_scene_shift.y()
+
+    assert item.pos().x() == pytest.approx(expected_final_pos_x)
+    assert item.pos().y() == pytest.approx(expected_final_pos_y)
+    assert item.rotation() == pytest.approx(angle_deg)
+
+
+def test_resize_rotated_with_min_width_constraint(create_item_with_scene, qtbot):
+    angle_deg = 30.0
+    initial_width, initial_height = 50, 50 # Start near MIN_WIDTH
+    item, scene, mock_parent_window = create_item_with_scene(
+        custom_config={'angle': angle_deg, 'width': initial_width, 'height': initial_height, 'center_x': 100, 'center_y': 100},
+        add_to_scene=True
+    )
+    item.setSelected(True)
+    mock_parent_window.current_mode = "edit"
+    initial_item_pos = item.pos()
+
+    # Press on the left handle
+    press_local_pos = QPointF(0, item._h / 2)
+    press_scene_pos = item.mapToScene(press_local_pos)
+    press_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_local_pos, scene_pos=press_scene_pos)
+    item._current_resize_handle = InfoAreaItem.ResizeHandle.LEFT
+    item.mousePressEvent(press_event)
+
+    # Try to decrease width by 40 (50 - 40 = 10, which is < MIN_WIDTH)
+    decrease_amount_attempt = 40
+    # This means mouse moves towards item's positive X-axis by 'decrease_amount_attempt'
+
+    angle_rad = math.radians(angle_deg)
+    item_x_axis_scene = QPointF(math.cos(angle_rad), math.sin(angle_rad))
+
+    mouse_move_delta_scene = item_x_axis_scene * decrease_amount_attempt
+    move_to_scene_pos = item._resize_start_mouse_scene_pos + mouse_move_delta_scene
+
+    move_event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMouseMove, QPointF(0,0), scene_pos=move_to_scene_pos, button=Qt.LeftButton)
+    item.mouseMoveEvent(move_event)
+
+    assert item._w == pytest.approx(InfoAreaItem.MIN_WIDTH)
+    assert item._h == pytest.approx(initial_height)
+
+    # Calculate expected position:
+    # new_w becomes MIN_WIDTH. Original was initial_width.
+    # delta_local_x from mouse was 'decrease_amount_attempt'.
+    # actual_dw = MIN_WIDTH - initial_width  (e.g. 20 - 50 = -30)
+    # constrained_dw = MIN_WIDTH - initial_width (same)
+    # dw_diff = constrained_dw - actual_dw (where actual_dw was based on delta_local_x before constraint)
+    # The pos_change_x_local is adjusted by dw_diff.
+    # Original delta_local_x (from mouse) is decrease_amount_attempt = 40.
+    # new_w (before constraint) = initial_width - decrease_amount_attempt = 50 - 40 = 10.
+    # pos_change_x_local (before constraint) = decrease_amount_attempt = 40.
+    # After constraint: new_w = MIN_WIDTH (20).
+    # actual_dw_unconstrained = 10 - 50 = -40
+    # constrained_dw = MIN_WIDTH - initial_width = 20 - 50 = -30
+    # dw_diff = constrained_dw - actual_dw_unconstrained = -30 - (-40) = 10
+    # pos_change_x_local (after constraint) = pos_change_x_local_before_constraint + dw_diff = 40 + 10 = 50. No, this is wrong.
+    # Let's re-evaluate from item code:
+    # pos_change_x_local = delta_local_x (which is decrease_amount_attempt = 40 here)
+    # actual_dw = new_w (10) - self._resize_start_item_width (50) = -40
+    # new_w (10) < self.MIN_WIDTH (20) is true.
+    # constrained_dw = self.MIN_WIDTH (20) - self._resize_start_item_width (50) = -30
+    # dw_diff = constrained_dw (-30) - actual_dw (-40) = 10
+    # pos_change_x_local += dw_diff  => pos_change_x_local = 40 + 10 = 50.
+    # This means the item's origin effectively moved by 50 units along its local X-axis.
+
+    expected_pos_change_local = initial_width - InfoAreaItem.MIN_WIDTH # How much the left edge actually moved in local units
+                                                                       # This is the amount the item's origin had to shift
+                                                                       # If width changed from 50 to 20, left edge moved by 30.
+                                                                       # So pos_change_x_local should be 30.
+
+    # The actual shift of the item's origin (top-left point)
+    # is by `pos_change_x_local` along `item_x_axis_scene`.
+    # `pos_change_x_local` is `delta_local_x` (from mouse) + `dw_diff` (from constraint).
+    # `delta_local_x` (from mouse) = `decrease_amount_attempt` = 40.
+    # `dw_diff` = 10.
+    # So, effective `pos_change_x_local` for position update = 40 + 10 = 50. This still feels high.
+    # Let's trace: Initial left edge at 0. Target left edge at 40. Width becomes 10. Origin moves by 40.
+    # Constraint: Width becomes 20. Left edge was at 0. Width is 50. Target left edge at 30 (50-20). Origin moves by 30.
+    # So pos_change_x_local should be 30.
+    # delta_local_x = 40. new_w = 10. pos_change_x_local = 40.
+    # actual_dw = 10 - 50 = -40.
+    # new_w < MIN_WIDTH: 10 < 20.
+    # constrained_dw = 20 - 50 = -30.
+    # dw_diff = -30 - (-40) = 10.
+    # pos_change_x_local (40) += dw_diff (10) => pos_change_x_local = 50.
+    # This means self.setPos(self._resize_start_item_pos + item_x_axis_scene * 50). This is a large shift.
+
+    # The amount the item's origin (top-left point) shifts in its local X direction.
+    # If width changes from W_start to W_end, and it's a left-handle drag,
+    # the item's origin shifts by (W_start - W_end) in its local X.
+    pos_change_x_local_effective = initial_width - InfoAreaItem.MIN_WIDTH
+
+    expected_final_pos_x = initial_item_pos.x() + item_x_axis_scene.x() * pos_change_x_local_effective
+    expected_final_pos_y = initial_item_pos.y() + item_x_axis_scene.y() * pos_change_x_local_effective
+
+    assert item.pos().x() == pytest.approx(expected_final_pos_x)
+    assert item.pos().y() == pytest.approx(expected_final_pos_y)
+    assert item.rotation() == pytest.approx(angle_deg)
