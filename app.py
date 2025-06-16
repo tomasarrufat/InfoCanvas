@@ -53,6 +53,17 @@ class InfoCanvasApp(QMainWindow):
         self.render_canvas_from_config()
         self.update_mode_ui()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Ensure view scrollbars are positioned at the top-left when the window first shows
+        if hasattr(self, 'view'):
+            hbar = self.view.horizontalScrollBar()
+            vbar = self.view.verticalScrollBar()
+            if hbar:
+                hbar.setValue(hbar.minimum())
+            if vbar:
+                vbar.setValue(vbar.minimum())
+
     def _get_project_config_path(self, project_name_or_path):
         return self.project_io.get_project_config_path(project_name_or_path)
 

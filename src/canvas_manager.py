@@ -109,6 +109,12 @@ class CanvasManager(QObject):
 
         app.update_mode_ui()
         app.update_properties_panel()
+        # Ensure the view is scrolled to the top-left corner after rendering
+        if hasattr(app, 'view'):
+            if app.view.verticalScrollBar():
+                app.view.verticalScrollBar().setValue(app.view.verticalScrollBar().minimum())
+            if app.view.horizontalScrollBar():
+                app.view.horizontalScrollBar().setValue(app.view.horizontalScrollBar().minimum())
 
     # ---- Selection Handling -------------------------------------------
     def on_scene_selection_changed(self):
