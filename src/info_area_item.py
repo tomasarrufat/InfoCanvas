@@ -109,10 +109,10 @@ class InfoAreaItem(BaseDraggableItem):
     def _get_resize_handle_at(self, pos):
         r = QRectF(0, 0, self._w, self._h)
         m = self.RESIZE_MARGIN
-        on_left = abs(pos.x() - r.left()) < m
-        on_right = abs(pos.x() - r.right()) < m
-        on_top = abs(pos.y() - r.top()) < m
-        on_bottom = abs(pos.y() - r.bottom()) < m
+        on_left = abs(pos.x() - r.left()) <= m
+        on_right = abs(pos.x() - r.right()) <= m
+        on_top = abs(pos.y() - r.top()) <= m
+        on_bottom = abs(pos.y() - r.bottom()) <= m
 
         if on_top and on_left: return self.ResizeHandle.TOP_LEFT
         if on_bottom and on_right: return self.ResizeHandle.BOTTOM_RIGHT
