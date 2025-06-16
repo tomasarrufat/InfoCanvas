@@ -238,8 +238,8 @@ class UIBuilder:
         rect_width_layout = QHBoxLayout()
         rect_width_layout.addWidget(QLabel("Width (px):"))
         app.info_rect_width_input = QSpinBox()
-        from .info_rectangle_item import InfoRectangleItem
-        app.info_rect_width_input.setRange(InfoRectangleItem.MIN_WIDTH, 2000)
+        from .info_area_item import InfoAreaItem
+        app.info_rect_width_input.setRange(InfoAreaItem.MIN_WIDTH, 2000)
         app.info_rect_width_input.valueChanged.connect(app.update_selected_rect_dimensions)
         rect_width_layout.addWidget(app.info_rect_width_input)
         rect_props_layout.addLayout(rect_width_layout)
@@ -247,7 +247,7 @@ class UIBuilder:
         rect_height_layout = QHBoxLayout()
         rect_height_layout.addWidget(QLabel("Height (px):"))
         app.info_rect_height_input = QSpinBox()
-        app.info_rect_height_input.setRange(InfoRectangleItem.MIN_HEIGHT, 2000)
+        app.info_rect_height_input.setRange(InfoAreaItem.MIN_HEIGHT, 2000)
         app.info_rect_height_input.valueChanged.connect(app.update_selected_rect_dimensions)
         rect_height_layout.addWidget(app.info_rect_height_input)
         rect_props_layout.addLayout(rect_height_layout)

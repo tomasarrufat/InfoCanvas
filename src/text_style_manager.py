@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QColorDialog, QInputDialog, QMessageBox
 from PyQt5.QtGui import QColor
 
 from src import utils
-from src.info_rectangle_item import InfoRectangleItem
+from src.info_area_item import InfoAreaItem
 
 class TextStyleManager:
     def __init__(self, app):
@@ -66,7 +66,7 @@ class TextStyleManager:
         self.app.rect_style_combo.blockSignals(False)
 
     def save_current_item_style(self):
-        if not isinstance(self.app.selected_item, InfoRectangleItem):
+        if not isinstance(self.app.selected_item, InfoAreaItem):
             QMessageBox.warning(self.app.main_window if hasattr(self.app, 'main_window') else None, "Save Style", "Please select an Info Area to save its style.")
             return
 
@@ -117,7 +117,7 @@ class TextStyleManager:
         self.load_styles_into_dropdown()
 
         for item_in_map in self.app.item_map.values():
-            if isinstance(item_in_map, InfoRectangleItem):
+            if isinstance(item_in_map, InfoAreaItem):
                 if item_in_map.config_data.get('text_style_ref') == style_name:
                     item_in_map.apply_style(style_object_updated)
 
@@ -135,7 +135,7 @@ class TextStyleManager:
             self.app.statusBar().showMessage(f"Text style '{style_name}' saved and applied.", 2000)
 
     def handle_style_selection(self, style_name):
-        if not isinstance(self.app.selected_item, InfoRectangleItem) or not style_name :
+        if not isinstance(self.app.selected_item, InfoAreaItem) or not style_name :
             return
 
         controls_to_block = []
@@ -190,7 +190,7 @@ class TextStyleManager:
 
 
     def handle_format_change(self, value=None):
-        if isinstance(self.app.selected_item, InfoRectangleItem):
+        if isinstance(self.app.selected_item, InfoAreaItem):
             config = self.app.selected_item.config_data
             default_display_conf = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
@@ -227,7 +227,7 @@ class TextStyleManager:
 
 
     def handle_font_color_change(self):
-        if not self.app.selected_item or not isinstance(self.app.selected_item, InfoRectangleItem):
+        if not self.app.selected_item or not isinstance(self.app.selected_item, InfoAreaItem):
             return
 
         item_config = self.app.selected_item.config_data

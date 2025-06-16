@@ -1,7 +1,7 @@
 import datetime
 import pytest
 from src.canvas_manager import CanvasManager
-from src.info_rectangle_item import InfoRectangleItem
+from src.info_area_item import InfoAreaItem
 
 class TestCanvasManagerAlignment:
     def test_horizontal_alignment_logic(self, base_app_fixture, monkeypatch):
@@ -22,7 +22,7 @@ class TestCanvasManagerAlignment:
             rect_id = f"{name_part}_{datetime.datetime.now().timestamp()}_{i}"
             rect_config = {"id": rect_id, "text": name_part, "center_x": cx, "center_y": cy, "width": w, "height": h, "z_index": i}
             app_window.config['info_rectangles'].append(rect_config)
-            item = InfoRectangleItem(rect_config)
+            item = InfoAreaItem(rect_config)
             manager.scene.addItem(item)
             app_window.item_map[rect_id] = item
             items.append(item)
@@ -56,7 +56,7 @@ class TestCanvasManagerAlignment:
             rect_id = f"{name_part}_{datetime.datetime.now().timestamp()}_{i}"
             rect_config = {"id": rect_id, "text": name_part, "center_x": cx, "center_y": cy, "width": w, "height": h, "z_index": i}
             app_window.config['info_rectangles'].append(rect_config)
-            item = InfoRectangleItem(rect_config)
+            item = InfoAreaItem(rect_config)
             manager.scene.addItem(item)
             app_window.item_map[rect_id] = item
             items.append(item)

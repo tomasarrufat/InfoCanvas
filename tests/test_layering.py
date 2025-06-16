@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QGraphicsScene
 from PyQt5.QtGui import QPixmap
 
-from src.info_rectangle_item import InfoRectangleItem
+from src.info_area_item import InfoAreaItem
 from src.draggable_image_item import DraggableImageItem
 from src.utils import bring_to_front, send_to_back, bring_forward, send_backward
 
@@ -10,8 +10,8 @@ def create_scene_items():
     scene = QGraphicsScene()
     cfg1 = {'id': 'r1', 'width': 10, 'height': 10, 'center_x': 5, 'center_y': 5, 'text': '', 'z_index': 0}
     cfg2 = {'id': 'r2', 'width': 10, 'height': 10, 'center_x': 15, 'center_y': 5, 'text': '', 'z_index': 1}
-    item1 = InfoRectangleItem(cfg1)
-    item2 = InfoRectangleItem(cfg2)
+    item1 = InfoAreaItem(cfg1)
+    item2 = InfoAreaItem(cfg2)
     scene.addItem(item1)
     scene.addItem(item2)
     return scene, item1, item2
@@ -25,7 +25,7 @@ def create_image_and_rect():
     rect_cfg = {'id': 'r1', 'width': 10, 'height': 10, 'center_x': 5, 'center_y': 5,
                 'text': '', 'z_index': 1}
     img = DraggableImageItem(pix, img_cfg)
-    rect = InfoRectangleItem(rect_cfg)
+    rect = InfoAreaItem(rect_cfg)
     scene.addItem(img)
     scene.addItem(rect)
     return scene, img, rect

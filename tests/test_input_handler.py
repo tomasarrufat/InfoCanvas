@@ -6,7 +6,7 @@ from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import QLineEdit, QSpinBox
 
 from src.input_handler import InputHandler
-from src.info_rectangle_item import InfoRectangleItem
+from src.info_area_item import InfoAreaItem
 
 
 def create_key_event(key, modifiers=Qt.NoModifier, text=""):
@@ -90,7 +90,7 @@ def test_key_press_shortcuts_wrong_mode(mock_focus_widget, base_app_fixture):
     handler = app.input_handler
     mock_focus_widget.return_value = app.view
     app.current_mode = "view"
-    app.selected_item = MagicMock(spec=InfoRectangleItem)
+    app.selected_item = MagicMock(spec=InfoAreaItem)
     app.clipboard_data = None
     app.item_operations.copy_selected_item_to_clipboard = MagicMock(return_value=False)
     app.item_operations.paste_item_from_clipboard = MagicMock(return_value=False)
@@ -119,7 +119,7 @@ def test_key_press_shortcuts_input_focused(mock_focus_widget, base_app_fixture):
     mock_focus_widget.return_value = MagicMock(spec=['__class__', '__name__'])
     mock_focus_widget.return_value.__class__ = QLineEdit
     app.current_mode = "edit"
-    app.selected_item = MagicMock(spec=InfoRectangleItem)
+    app.selected_item = MagicMock(spec=InfoAreaItem)
     app.clipboard_data = None
     app.item_operations.copy_selected_item_to_clipboard = MagicMock(return_value=False)
     app.item_operations.paste_item_from_clipboard = MagicMock(return_value=False)

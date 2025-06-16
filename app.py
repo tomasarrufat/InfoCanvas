@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, QTimer, QUrl
 
 from src import utils
 from src.draggable_image_item import DraggableImageItem
-from src.info_rectangle_item import InfoRectangleItem
+from src.info_area_item import InfoAreaItem
 from src.project_manager_dialog import ProjectManagerDialog
 from src.project_io import ProjectIO
 from src.ui_builder import UIBuilder
@@ -248,9 +248,9 @@ class InfoCanvasApp(QMainWindow):
         if hasattr(self, 'export_html_button'):
             self.export_html_button.setVisible(not is_edit_mode)
         for item_id, graphics_item in self.item_map.items():
-            if isinstance(graphics_item, (DraggableImageItem, InfoRectangleItem)):
+            if isinstance(graphics_item, (DraggableImageItem, InfoAreaItem)):
                 graphics_item.setEnabled(is_edit_mode) 
-                if isinstance(graphics_item, InfoRectangleItem):
+                if isinstance(graphics_item, InfoAreaItem):
                     graphics_item.update_appearance(graphics_item.isSelected(), not is_edit_mode)
             
             if is_edit_mode:
@@ -258,7 +258,7 @@ class InfoCanvasApp(QMainWindow):
                     graphics_item.setCursor(Qt.CursorShape.PointingHandCursor if graphics_item.isEnabled() else Qt.CursorShape.ArrowCursor)
             else:
                 graphics_item.setCursor(Qt.CursorShape.ArrowCursor)
-                if isinstance(graphics_item, InfoRectangleItem):
+                if isinstance(graphics_item, InfoAreaItem):
                     if graphics_item.config_data.get('show_on_hover', True):
                         graphics_item.setToolTip(graphics_item.config_data.get('text', ''))
                     else:
@@ -316,7 +316,7 @@ class InfoCanvasApp(QMainWindow):
             self.img_scale_input.setValue(img_conf.get('scale', 1.0))
             self.img_scale_input.blockSignals(False)
             self.image_properties_widget.setVisible(True)
-        elif isinstance(self.selected_item, InfoRectangleItem):
+        elif isinstance(self.selected_item, InfoAreaItem):
             rect_conf = self.selected_item.config_data
             self.info_rect_text_input.blockSignals(True)
             self.info_rect_width_input.blockSignals(True)
@@ -411,7 +411,7 @@ class InfoCanvasApp(QMainWindow):
             selected_graphics_items = self.scene.selectedItems()
             selected_info_rect_count = 0
             for item in selected_graphics_items:
-                if isinstance(item, InfoRectangleItem):
+                if isinstance(item, InfoAreaItem):
                     selected_info_rect_count += 1
 
             if selected_info_rect_count >= 2: # Changed condition from > 2 to >= 2
@@ -424,12 +424,12 @@ class InfoCanvasApp(QMainWindow):
             self.align_horizontal_button.setVisible(False)
             self.align_vertical_button.setVisible(False)
 
-        if not isinstance(self.selected_item, InfoRectangleItem) or self.current_mode == "view": # Also hide if not an InfoRect or in view mode
+        if not isinstance(self.selected_item, InfoAreaItem) or self.current_mode == "view": # Also hide if not an InfoRect or in view mode
              # This check is a bit redundant if info_rect_properties_widget is already hidden,
              # but ensures buttons are hidden if the main widget for them is hidden.
              self.align_horizontal_button.setVisible(False)
              self.align_vertical_button.setVisible(False)
-             # The rest of the else block for non-InfoRectangleItem selection
+             # The rest of the else block for non-InfoAreaItem selection
              if hasattr(self, 'rect_h_align_combo'): # Check if one of the new controls exists
                 # Find the parent QWidget for the text_format_group to hide it
                 # Assuming rect_props_layout.itemAt(1) is text_format_group (index might change based on final layout)
@@ -440,7 +440,7 @@ class InfoCanvasApp(QMainWindow):
                 # So, specific hiding of text_format_group might not be needed if it's part of info_rect_properties_widget.
                 pass
         # Final check: if the main properties widget is hidden, alignment buttons should also be hidden.
-        # This handles cases where self.selected_item might be None or not an InfoRectangleItem,
+        # This handles cases where self.selected_item might be None or not an InfoAreaItem,
         # leading to info_rect_properties_widget being hidden earlier in this method.
         if not self.info_rect_properties_widget.isVisible():
             self.align_horizontal_button.setVisible(False)
@@ -472,7 +472,7 @@ class InfoCanvasApp(QMainWindow):
 
     def update_selected_rect_text(self):
         """Called when the text in the info_rect_text_input (QTextEdit) changes."""
-        if isinstance(self.selected_item, InfoRectangleItem):
+        if isinstance(self.selected_item, InfoAreaItem):
             rect_conf = self.selected_item.config_data
             new_text = self.info_rect_text_input.toPlainText()
 
@@ -483,7 +483,7 @@ class InfoCanvasApp(QMainWindow):
 
     def update_selected_rect_dimensions(self):
         """Called when width/height spinboxes in the properties panel change."""
-        if isinstance(self.selected_item, InfoRectangleItem):
+        if isinstance(self.selected_item, InfoAreaItem):
             rect_conf = self.selected_item.config_data
             new_width = self.info_rect_width_input.value()
             new_height = self.info_rect_height_input.value()
@@ -494,7 +494,7 @@ class InfoCanvasApp(QMainWindow):
             self.selected_item.properties_changed.emit(self.selected_item)
 
     def update_selected_rect_show_on_hover(self, state):
-        if isinstance(self.selected_item, InfoRectangleItem):
+        if isinstance(self.selected_item, InfoAreaItem):
             rect_conf = self.selected_item.config_data
             rect_conf['show_on_hover'] = bool(state)
             self.selected_item.update_appearance(self.selected_item.isSelected(), self.current_mode == "view")

@@ -5,21 +5,21 @@ from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsView, QGraphi
 from pytestqt.qt_compat import qt_api
 from unittest.mock import Mock, patch
 
-from src.info_rectangle_item import InfoRectangleItem
+from src.info_area_item import InfoAreaItem
 from src import utils # For default config
 
 # QApplication instance is typically managed by pytest-qt's qapp fixture.
 
 # Constants for resize handles
-TOP_LEFT = InfoRectangleItem.ResizeHandle.TOP_LEFT
-TOP = InfoRectangleItem.ResizeHandle.TOP
-TOP_RIGHT = InfoRectangleItem.ResizeHandle.TOP_RIGHT
-LEFT = InfoRectangleItem.ResizeHandle.LEFT
-RIGHT = InfoRectangleItem.ResizeHandle.RIGHT
-BOTTOM_LEFT = InfoRectangleItem.ResizeHandle.BOTTOM_LEFT
-BOTTOM = InfoRectangleItem.ResizeHandle.BOTTOM
-BOTTOM_RIGHT = InfoRectangleItem.ResizeHandle.BOTTOM_RIGHT
-NONE = InfoRectangleItem.ResizeHandle.NONE
+TOP_LEFT = InfoAreaItem.ResizeHandle.TOP_LEFT
+TOP = InfoAreaItem.ResizeHandle.TOP
+TOP_RIGHT = InfoAreaItem.ResizeHandle.TOP_RIGHT
+LEFT = InfoAreaItem.ResizeHandle.LEFT
+RIGHT = InfoAreaItem.ResizeHandle.RIGHT
+BOTTOM_LEFT = InfoAreaItem.ResizeHandle.BOTTOM_LEFT
+BOTTOM = InfoAreaItem.ResizeHandle.BOTTOM
+BOTTOM_RIGHT = InfoAreaItem.ResizeHandle.BOTTOM_RIGHT
+NONE = InfoAreaItem.ResizeHandle.NONE
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def create_item_with_scene(default_text_config_values, qtbot, mock_parent_window
         if custom_config:
             base_config.update(custom_config)
 
-        item = InfoRectangleItem(base_config)
+        item = InfoAreaItem(base_config)
         item.parent_window = parent_window
 
         if add_to_scene:
@@ -88,7 +88,7 @@ def item_fixture(create_item_with_scene):
     (QPointF(50, 49), BOTTOM, 100, 50),
     (QPointF(1, 49), BOTTOM_LEFT, 100, 50),
     (QPointF(1, 25), LEFT, 100, 50),
-    (QPointF(InfoRectangleItem.RESIZE_MARGIN + 5, InfoRectangleItem.RESIZE_MARGIN + 5), NONE, 100, 50),
+    (QPointF(InfoAreaItem.RESIZE_MARGIN + 5, InfoAreaItem.RESIZE_MARGIN + 5), NONE, 100, 50),
     (QPointF(50, 25), NONE, 100, 50),
 ])
 def test_get_all_resize_handles(create_item_with_scene, pos, expected_handle, item_width, item_height):
@@ -128,14 +128,14 @@ def create_mock_hover_event(pos, scene_pos=None):
 
 # --- Test mousePressEvent (Focus on Resize Logic, Direct Call) ---
 @pytest.mark.parametrize("handle_type, press_pos, expected_cursor_shape", [
-    (InfoRectangleItem.ResizeHandle.TOP_LEFT, QPointF(1,1), Qt.SizeFDiagCursor),
-    (InfoRectangleItem.ResizeHandle.TOP, QPointF(50,1), Qt.SizeVerCursor),
-    (InfoRectangleItem.ResizeHandle.TOP_RIGHT, QPointF(99,1), Qt.SizeBDiagCursor),
-    (InfoRectangleItem.ResizeHandle.LEFT, QPointF(1,25), Qt.SizeHorCursor),
-    (InfoRectangleItem.ResizeHandle.RIGHT, QPointF(99,25), Qt.SizeHorCursor),
-    (InfoRectangleItem.ResizeHandle.BOTTOM_LEFT, QPointF(1,49), Qt.SizeBDiagCursor),
-    (InfoRectangleItem.ResizeHandle.BOTTOM, QPointF(50,49), Qt.SizeVerCursor),
-    (InfoRectangleItem.ResizeHandle.BOTTOM_RIGHT, QPointF(99,49), Qt.SizeFDiagCursor),
+    (InfoAreaItem.ResizeHandle.TOP_LEFT, QPointF(1,1), Qt.SizeFDiagCursor),
+    (InfoAreaItem.ResizeHandle.TOP, QPointF(50,1), Qt.SizeVerCursor),
+    (InfoAreaItem.ResizeHandle.TOP_RIGHT, QPointF(99,1), Qt.SizeBDiagCursor),
+    (InfoAreaItem.ResizeHandle.LEFT, QPointF(1,25), Qt.SizeHorCursor),
+    (InfoAreaItem.ResizeHandle.RIGHT, QPointF(99,25), Qt.SizeHorCursor),
+    (InfoAreaItem.ResizeHandle.BOTTOM_LEFT, QPointF(1,49), Qt.SizeBDiagCursor),
+    (InfoAreaItem.ResizeHandle.BOTTOM, QPointF(50,49), Qt.SizeVerCursor),
+    (InfoAreaItem.ResizeHandle.BOTTOM_RIGHT, QPointF(99,49), Qt.SizeFDiagCursor),
 ])
 def test_mouse_press_on_resize_handles(create_item_with_scene, handle_type, press_pos, expected_cursor_shape):
     item, scene, mock_parent_window = create_item_with_scene(custom_config={'width':100, 'height':50})
@@ -147,7 +147,7 @@ def test_mouse_press_on_resize_handles(create_item_with_scene, handle_type, pres
     event_scene_pos = item.mapToScene(press_pos)
     event = create_mock_mouse_event(QGraphicsSceneMouseEvent.GraphicsSceneMousePress, press_pos, scene_pos=event_scene_pos)
 
-    with patch.object(InfoRectangleItem, 'super', create=True) as mock_super:
+    with patch.object(InfoAreaItem, 'super', create=True) as mock_super:
         mock_super.return_value.mousePressEvent = Mock()
         item.mousePressEvent(event)
         if handle_type != NONE:
@@ -265,10 +265,10 @@ def test_mouse_move_resizing_handles(create_item_with_scene, handle_type, initia
     assert event.isAccepted() is True
 
 @pytest.mark.parametrize("handle_type, mouse_delta_scene, expected_dim, expected_val, final_pos_attr, final_pos_val", [
-    (LEFT, QPointF(90,0), "_w", InfoRectangleItem.MIN_WIDTH, "x", 50 + 100 - InfoRectangleItem.MIN_WIDTH),
-    (RIGHT, QPointF(-90,0), "_w", InfoRectangleItem.MIN_WIDTH, "x", 50),
-    (TOP, QPointF(0,40), "_h", InfoRectangleItem.MIN_HEIGHT, "y", 50 + 50 - InfoRectangleItem.MIN_HEIGHT),
-    (BOTTOM, QPointF(0,-40), "_h", InfoRectangleItem.MIN_HEIGHT, "y", 50),
+    (LEFT, QPointF(90,0), "_w", InfoAreaItem.MIN_WIDTH, "x", 50 + 100 - InfoAreaItem.MIN_WIDTH),
+    (RIGHT, QPointF(-90,0), "_w", InfoAreaItem.MIN_WIDTH, "x", 50),
+    (TOP, QPointF(0,40), "_h", InfoAreaItem.MIN_HEIGHT, "y", 50 + 50 - InfoAreaItem.MIN_HEIGHT),
+    (BOTTOM, QPointF(0,-40), "_h", InfoAreaItem.MIN_HEIGHT, "y", 50),
 ])
 def test_mouse_move_resizing_min_constraints(create_item_with_scene, handle_type, mouse_delta_scene, expected_dim, expected_val, final_pos_attr, final_pos_val):
     initial_pos = QPointF(50,50)
@@ -308,7 +308,7 @@ def test_mouse_release_after_resizing(create_item_with_scene):
     QApplication.processEvents()
 
     item._is_resizing = True
-    item._current_resize_handle = InfoRectangleItem.ResizeHandle.BOTTOM_RIGHT
+    item._current_resize_handle = InfoAreaItem.ResizeHandle.BOTTOM_RIGHT
     item._was_movable = bool(item.flags() & QGraphicsItem.ItemIsMovable)
     item.setFlag(QGraphicsItem.ItemIsMovable, False)
 
@@ -413,13 +413,13 @@ def test_update_text_from_config_invalid_font_size(create_item_with_scene, defau
     mock_defaults = {"defaults": {"info_rectangle_text_display": default_text_config_values.copy()}}
     mock_defaults["defaults"]["info_rectangle_text_display"]['font_size'] = "12px"
 
-    with patch('src.info_rectangle_item.utils.get_default_config', return_value=mock_defaults):
+    with patch('src.info_area_item.utils.get_default_config', return_value=mock_defaults):
         item.update_text_from_config()
     assert item.text_item.font().pixelSize() == 12
 
     item.config_data['font_size'] = "another_invalid"
     mock_defaults["defaults"]["info_rectangle_text_display"]['font_size'] = "bad_default_px"
-    with patch('src.info_rectangle_item.utils.get_default_config', return_value=mock_defaults):
+    with patch('src.info_area_item.utils.get_default_config', return_value=mock_defaults):
         item.update_text_from_config()
     assert item.text_item.font().pixelSize() == 14
 

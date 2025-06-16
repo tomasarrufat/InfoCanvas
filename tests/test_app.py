@@ -23,7 +23,7 @@ from app import InfoCanvasApp
 from src import utils # For utils.PROJECTS_BASE_DIR etc.
 from src.project_manager_dialog import ProjectManagerDialog # For mocking
 from src.draggable_image_item import DraggableImageItem # Added
-from src.info_rectangle_item import InfoRectangleItem # Added
+from src.info_area_item import InfoAreaItem # Added
 from src.project_io import ProjectIO
 from src.ui_builder import UIBuilder
 
@@ -317,7 +317,7 @@ def test_on_mode_changed(base_app_fixture, monkeypatch):
     mock_image_item = MagicMock(spec=DraggableImageItem)
     mock_image_item.config_data = {'id': 'img1'}
     mock_image_item.isEnabled.return_value = True
-    mock_info_rect_item = MagicMock(spec=InfoRectangleItem)
+    mock_info_rect_item = MagicMock(spec=InfoAreaItem)
     mock_info_rect_item.config_data = {'id': 'rect1'}
     mock_info_rect_item.isSelected.return_value = False
     mock_info_rect_item.isEnabled.return_value = True

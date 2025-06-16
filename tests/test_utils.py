@@ -6,7 +6,7 @@ import pytest
 from PyQt5.QtWidgets import QGraphicsScene
 
 from src import utils
-from src.info_rectangle_item import InfoRectangleItem
+from src.info_area_item import InfoAreaItem
 
 
 def test_allowed_file_positive():
@@ -32,8 +32,8 @@ def test_normalize_z_indices(qtbot):
             'text': '', 'z_index': 0}
     cfg2 = {'id': 'r2', 'width': 10, 'height': 10, 'center_x': 15, 'center_y': 5,
             'text': '', 'z_index': 10}
-    item1 = InfoRectangleItem(cfg1)
-    item2 = InfoRectangleItem(cfg2)
+    item1 = InfoAreaItem(cfg1)
+    item2 = InfoAreaItem(cfg2)
     scene.addItem(item1)
     scene.addItem(item2)
     utils.normalize_z_indices(scene)
