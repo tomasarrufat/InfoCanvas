@@ -36,6 +36,16 @@ class InfoCanvasApp(FramelessWindow):
         self.clipboard_data = None
         self.chronologically_first_selected_item = None
 
+        # Simple proxy for backward compatibility with QStatusBar-based code
+        class _StatusProxy:
+            def __init__(self, label):
+                self._label = label
+            def showMessage(self, message, timeout=0):
+                if self._label is not None:
+                    self._label.setText(message)
+
+        self._status_proxy = _StatusProxy(None)
+
         if not self._initial_project_setup():
             QTimer.singleShot(0, self.close)
             return
@@ -45,6 +55,9 @@ class InfoCanvasApp(FramelessWindow):
         self.item_map = {}
         self.text_style_manager = TextStyleManager(self) # Moved up
         UIBuilder(self).build()
+        # After UI is built we should have status_label available
+        if hasattr(self, 'status_label'):
+            self._status_proxy._label = self.status_label
         self.canvas_manager = CanvasManager(self)
         self.item_operations = ItemOperations(self)
         self.input_handler = InputHandler(self)
@@ -52,6 +65,10 @@ class InfoCanvasApp(FramelessWindow):
         self.populate_controls_from_config()
         self.render_canvas_from_config()
         self.update_mode_ui()
+
+    def statusBar(self):
+        """Return a minimal object with a ``showMessage`` method for test compatibility."""
+        return self._status_proxy
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -98,9 +115,9 @@ class InfoCanvasApp(FramelessWindow):
             self.update_properties_panel() # Hide properties panels
             self.edit_mode_controls_widget.setEnabled(False) # Disable edit controls
         self._update_window_title()
-        # status_bar = self.statusBar() # Removed
-        # if status_bar is not None: # Removed
-            # status_bar.showMessage("No project loaded. Please create or load a project from the File menu.") # Removed
+        status_bar = self.statusBar()
+        if status_bar is not None:
+            status_bar.showMessage("No project loaded. Please create or load a project from the File menu.")
 
         if hasattr(self, 'item_operations'):
             self.item_operations.config = self.config
@@ -201,7 +218,7 @@ class InfoCanvasApp(FramelessWindow):
             self.current_project_path,
             config_to_save,
             item_map=self.item_map,
-            # status_bar=self.statusBar(), # Removed
+            status_bar=self.statusBar(),
             current_project_name=self.current_project_name,
         )
 

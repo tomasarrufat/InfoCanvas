@@ -61,7 +61,7 @@ class ProjectIO:
             QMessageBox.warning(None, "Load Error", f"Error loading config file{config_file_path}: {e}.")
             return None
 
-    def save_config(self, project_path, config_data, item_map=None, status_bar_label=None, current_project_name=None):
+    def save_config(self, project_path, config_data, item_map=None, status_bar=None, current_project_name=None):
         """Save configuration to file, but only if it's different from the last saved config."""
         if not project_path:
             if config_data and "project_name" in config_data:
@@ -124,11 +124,8 @@ class ProjectIO:
             self.last_saved_config = copy.deepcopy(config_to_save)
             
             status_message = f"Configuration for '{config_to_save.get('project_name', 'Unknown Project')}' saved."
-            if status_bar_label is not None:
-                status_bar_label.setText(status_message)
-                # If you want the message to disappear after a timeout, you'd need a QTimer here
-                # or handle it in the main app after save_config returns.
-                # For simplicity, it will just set the text.
+            if status_bar is not None:
+                status_bar.showMessage(status_message, 2000)
             else:
                 print(status_message)
             return True
