@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QComboBox, QSpinBox, QTextEdit, QGraphicsScene,
-    QGraphicsView, QDoubleSpinBox, QMessageBox, QStackedLayout, QCheckBox
+    QGraphicsView, QDoubleSpinBox, QMessageBox, QStackedLayout, QCheckBox,
+    QScrollArea
 )
 try:
     from PyQt5.QtWebEngineWidgets import QWebEngineView
@@ -31,13 +32,31 @@ class UIBuilder:
         main_content_layout.setContentsMargins(0, 0, 0, 0) # No margin for this layout
         main_content_layout.setSpacing(5) # Spacing between controls and canvas
 
-        # Controls widget (formerly dock content)
+        # Controls widget (main container for the left panel)
         app.controls_widget = QWidget()
         app.controls_widget.setFixedWidth(350)
-        app.controls_layout = QVBoxLayout(app.controls_widget)
-        app.controls_layout.setContentsMargins(5,5,5,5) # Margins for content within controls
-        app.controls_layout.setSpacing(5)
         main_content_layout.addWidget(app.controls_widget)
+
+        # Outer layout for app.controls_widget (to hold scrollArea and status_label)
+        outer_controls_layout = QVBoxLayout(app.controls_widget)
+        outer_controls_layout.setContentsMargins(0,0,0,0) # No margins for the outer layout itself
+        outer_controls_layout.setSpacing(0) # No spacing for the outer layout
+
+        # Scroll Area for the actual controls
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QScrollArea.NoFrame) # Optional: remove scroll area border
+
+        scroll_area_content_widget = QWidget() # This widget will contain app.controls_layout
+        scroll_area.setWidget(scroll_area_content_widget)
+
+        # The existing app.controls_layout is now for scroll_area_content_widget
+        app.controls_layout = QVBoxLayout(scroll_area_content_widget)
+        app.controls_layout.setContentsMargins(5,5,5,5) # Keep existing margins for content
+        app.controls_layout.setSpacing(5)     # Keep existing spacing for content
+
+        # Add scroll_area to the outer_controls_layout, making it expand
+        outer_controls_layout.addWidget(scroll_area, 1) # The '1' makes it take available space
 
         # Mode switcher
         mode_group = QWidget()
@@ -306,9 +325,8 @@ class UIBuilder:
         app.export_html_button.clicked.connect(lambda checked=False: app.export_to_html())
         app.controls_layout.addWidget(app.export_html_button) # This is the one shown in view mode
 
-        # Custom Status Label for controls panel (created later, added here)
-        # app.status_label will be added here before the stretch
-
+        # app.status_label will be added to outer_controls_layout, not here.
+        # The stretch remains in app.controls_layout (the inner, scrollable one).
         app.controls_layout.addStretch()
 
         # Central widget (canvas area)
@@ -351,5 +369,5 @@ class UIBuilder:
                 border-top: 1px solid #444; /* Subtle top border */
             }
         """)
-        # Add status_label to the controls_layout, before the final stretch
-        app.controls_layout.insertWidget(app.controls_layout.count() - 1, app.status_label)
+        # Add status_label to the outer_controls_layout, after the scroll_area
+        outer_controls_layout.addWidget(app.status_label)
