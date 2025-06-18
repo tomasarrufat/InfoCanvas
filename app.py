@@ -36,7 +36,8 @@ class InfoCanvasApp(FramelessWindow):
         self.clipboard_data = None
         self.chronologically_first_selected_item = None
         self.dark_mode_enabled = False
-        self._default_palette = QApplication.instance().palette()
+
+        self.apply_dark_palette()
 
         if not self._initial_project_setup():
             QTimer.singleShot(0, self.close)
@@ -654,30 +655,26 @@ class InfoCanvasApp(FramelessWindow):
     def align_selected_rects_vertically(self):
         self.canvas_manager.align_selected_rects_vertically()
 
-    def toggle_dark_mode(self, enabled):
-        """Toggle application dark mode based on the menu action state."""
+    def apply_dark_palette(self):
+        """Apply a dark theme to the application."""
         qapp = QApplication.instance()
-        if enabled:
-            palette = QPalette()
-            palette.setColor(QPalette.Window, QColor(53, 53, 53))
-            palette.setColor(QPalette.WindowText, Qt.white)
-            palette.setColor(QPalette.Base, QColor(25, 25, 25))
-            palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-            palette.setColor(QPalette.ToolTipBase, Qt.white)
-            palette.setColor(QPalette.ToolTipText, Qt.white)
-            palette.setColor(QPalette.Text, Qt.white)
-            palette.setColor(QPalette.Button, QColor(53, 53, 53))
-            palette.setColor(QPalette.ButtonText, Qt.white)
-            palette.setColor(QPalette.BrightText, Qt.red)
-            palette.setColor(QPalette.Link, QColor(42, 130, 218))
-            palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-            palette.setColor(QPalette.HighlightedText, Qt.black)
-            qapp.setStyle("Fusion")
-            qapp.setPalette(palette)
-            self.dark_mode_enabled = True
-        else:
-            qapp.setPalette(self._default_palette)
-            self.dark_mode_enabled = False
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(53, 53, 53))
+        palette.setColor(QPalette.WindowText, Qt.white)
+        palette.setColor(QPalette.Base, QColor(25, 25, 25))
+        palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        palette.setColor(QPalette.ToolTipBase, Qt.white)
+        palette.setColor(QPalette.ToolTipText, Qt.white)
+        palette.setColor(QPalette.Text, Qt.white)
+        palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ButtonText, Qt.white)
+        palette.setColor(QPalette.BrightText, Qt.red)
+        palette.setColor(QPalette.Link, QColor(42, 130, 218))
+        palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+        palette.setColor(QPalette.HighlightedText, Qt.black)
+        qapp.setStyle("Fusion")
+        qapp.setPalette(palette)
+        self.dark_mode_enabled = True
 
 if __name__ == '__main__':
     app = QApplication.instance() or QApplication(sys.argv)

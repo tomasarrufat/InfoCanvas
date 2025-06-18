@@ -699,15 +699,10 @@ def test_switch_to_project_updates_item_operations_config(base_app_fixture, monk
     assert app.item_operations.config is new_config
 
 
-def test_toggle_dark_mode_changes_palette(base_app_fixture):
+def test_dark_palette_applied_on_start(base_app_fixture):
     app = base_app_fixture
     qapp = QApplication.instance()
-    original_color = qapp.palette().color(QPalette.Window)
-    app.toggle_dark_mode(True)
     assert app.dark_mode_enabled
-    assert qapp.palette().color(QPalette.Window) != original_color
-    app.toggle_dark_mode(False)
-    assert not app.dark_mode_enabled
-    assert qapp.palette().color(QPalette.Window) == original_color
+    assert qapp.palette().color(QPalette.Window) == QColor(53, 53, 53)
 
 

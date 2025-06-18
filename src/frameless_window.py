@@ -50,22 +50,18 @@ class CustomTitleBar(QWidget):
         manage_projects_action = QAction("Manage Projects", self)
         save_config_action = QAction("Save Configuration", self)
         export_html_action = QAction("Export to HTML", self)
-        dark_mode_action = QAction("Dark Mode", self)
-        dark_mode_action.setCheckable(True)
         exit_action = QAction("Exit", self)
 
         # Connect QActions (assuming parent has these methods)
         manage_projects_action.triggered.connect(self.parent._show_project_manager_dialog)
         save_config_action.triggered.connect(lambda: self.parent.save_config())
         export_html_action.triggered.connect(lambda: self.parent.export_to_html())
-        dark_mode_action.toggled.connect(self.parent.toggle_dark_mode)
         exit_action.triggered.connect(self.parent.close)
 
         self.file_menu.addAction(manage_projects_action)
         self.file_menu.addSeparator()
         self.file_menu.addAction(save_config_action)
         self.file_menu.addAction(export_html_action)
-        self.file_menu.addAction(dark_mode_action)
         self.file_menu.addSeparator()
         self.file_menu.addAction(exit_action)
 
