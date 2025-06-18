@@ -3,7 +3,7 @@ import os
 import copy
 
 from PyQt5.QtWidgets import (
-    QApplication, QColorDialog, QFileDialog, QMessageBox, QDialog
+    QApplication, QColorDialog, QFileDialog, QMessageBox, QDialog, QStatusBar
 )
 from PyQt5.QtGui import (
     QColor, QBrush, QPalette
@@ -48,6 +48,7 @@ class InfoCanvasApp(FramelessWindow):
         self.item_map = {}
         self.text_style_manager = TextStyleManager(self) # Moved up
         UIBuilder(self).build()
+
         self.canvas_manager = CanvasManager(self)
         self.item_operations = ItemOperations(self)
         self.input_handler = InputHandler(self)
@@ -101,9 +102,8 @@ class InfoCanvasApp(FramelessWindow):
             self.update_properties_panel() # Hide properties panels
             self.edit_mode_controls_widget.setEnabled(False) # Disable edit controls
         self._update_window_title()
-        status_bar = self.statusBar()
-        if status_bar is not None:
-            status_bar.showMessage("No project loaded. Please create or load a project from the File menu.")
+        if self.status_bar is not None:
+            self.status_bar.showMessage("No project loaded. Please create or load a project from the File menu.", 2000)
 
         if hasattr(self, 'item_operations'):
             self.item_operations.config = self.config
@@ -204,7 +204,7 @@ class InfoCanvasApp(FramelessWindow):
             self.current_project_path,
             config_to_save,
             item_map=self.item_map,
-            # status_bar=self.statusBar(), # Removed
+            status_bar=self.status_bar,
             current_project_name=self.current_project_name,
         )
 
@@ -293,22 +293,42 @@ class InfoCanvasApp(FramelessWindow):
             self.selected_item = None
         self.update_properties_panel()
 
+    def _reset_status_bar_message(self, timeout=2000):
+        """Reset the status bar message after a timeout."""
+        if self.status_bar is not None:
+            self.status_bar.showMessage("", timeout)
+
+    def _show_temporary_message(self, message, timeout=2000):
+        """Show a temporary message in the status bar."""
+        if self.status_bar is not None:
+            self.status_bar.showMessage(message, timeout)
+
+    def _show_permanent_message(self, message):
+        """Show a permanent message in the status bar (until changed)."""
+        if self.status_bar is not None:
+            self.status_bar.showMessage(message)
+
+    def _clear_status_bar_message(self):
+        """Clear the status bar message."""
+        if self.status_bar is not None:
+            self.status_bar.clearMessage()
+
+    def _set_status_bar_style(self, background_color, text_color):
+        """Set the style of the status bar."""
+        if self.status_bar is not None:
+            self.status_bar.setStyleSheet(f"background-color: {background_color}; color: {text_color};")
+
+    def _reset_status_bar_style(self):
+        """Reset the status bar style to default."""
+        if self.status_bar is not None:
+            self.status_bar.setStyleSheet("")
+
     class _LabelStatusBar:
         def __init__(self, label):
             self.label = label
         def showMessage(self, msg):
             if self.label:
                 self.label.setText(msg)
-
-    def statusBar(self):
-        """Provide compatibility with tests expecting a status bar."""
-        label = getattr(self, "status_label", None)
-        if not hasattr(self, "_status_bar_wrapper"):
-            self._status_bar_wrapper = self._LabelStatusBar(label)
-        else:
-            self._status_bar_wrapper.label = label
-        return self._status_bar_wrapper
-
 
     def choose_bg_color(self):
         # Ensure config and background section exist
@@ -687,4 +707,4 @@ if __name__ == '__main__':
     else:
         print("Application initialization failed: No project loaded or startup cancelled.")
         if not main_window.isVisible(): 
-            sys.exit(0) 
+            sys.exit(0)

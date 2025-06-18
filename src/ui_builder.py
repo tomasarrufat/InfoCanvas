@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QComboBox, QSpinBox, QTextEdit, QGraphicsScene,
     QGraphicsView, QDoubleSpinBox, QMessageBox, QStackedLayout, QCheckBox,
-    QScrollArea
+    QScrollArea, QStatusBar
 )
 try:
     from PyQt5.QtWebEngineWidgets import QWebEngineView
@@ -325,9 +325,23 @@ class UIBuilder:
         app.export_html_button.clicked.connect(lambda checked=False: app.export_to_html())
         app.controls_layout.addWidget(app.export_html_button) # This is the one shown in view mode
 
-        # app.status_label will be added to outer_controls_layout, not here.
-        # The stretch remains in app.controls_layout (the inner, scrollable one).
-        app.controls_layout.addStretch()
+        # QStatusBar (modern status bar, replaces status_label)
+        from PyQt5.QtWidgets import QStatusBar
+        app.status_bar = QStatusBar()
+        app.status_bar.setObjectName("StatusBar")
+        app.status_bar.setFixedHeight(25)
+        app.status_bar.setStyleSheet("""
+            QStatusBar#StatusBar {
+                background-color: #222;
+                color: white;
+                padding-left: 10px;
+                font-size: 9pt;
+                border-top: 1px solid #444;
+            }
+        """)
+        app.status_bar.showMessage(f"Project '{app.current_project_name}' loaded. Ready.")
+        # Add status_bar to the outer_controls_layout, after the scroll_area
+        outer_controls_layout.addWidget(app.status_bar)
 
         # Central widget (canvas area)
         central_widget = QWidget()
@@ -355,19 +369,3 @@ class UIBuilder:
 
         # Add the main_content_area_widget to the FramelessWindow's content_layout
         app.content_layout.addWidget(main_content_area_widget)
-
-        # Custom Status Label (replaces status bar)
-        app.status_label = QLabel(f"Project '{app.current_project_name}' loaded. Ready.")
-        app.status_label.setObjectName("StatusBarLabel")
-        app.status_label.setFixedHeight(25) # Example fixed height
-        app.status_label.setStyleSheet("""
-            #StatusBarLabel {
-                background-color: #222; /* Dark background */
-                color: white; /* Light text */
-                padding-left: 10px;
-                font-size: 9pt;
-                border-top: 1px solid #444; /* Subtle top border */
-            }
-        """)
-        # Add status_label to the outer_controls_layout, after the scroll_area
-        outer_controls_layout.addWidget(app.status_label)
