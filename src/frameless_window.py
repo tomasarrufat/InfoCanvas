@@ -195,9 +195,10 @@ class FramelessWindow(QWidget):
 
         # Content area
         self.content = QWidget()
-        self.content.setObjectName("FramelessContent") # For styling
-        self.content.setStyleSheet("#FramelessContent { background-color: #f0f0f0; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; }")
+        self.content.setObjectName("FramelessContent")
+        self.content.setStyleSheet("#FramelessContent { background-color: #222; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; }")
         self.content_layout = QVBoxLayout()
+        self.content_layout.setContentsMargins(0,0,0,0)
         self.content.setLayout(self.content_layout)
 
         # Add widgets to the main_layout (inside container)
