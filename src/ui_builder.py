@@ -305,6 +305,10 @@ class UIBuilder:
         app.export_html_button = QPushButton("Export to HTML")
         app.export_html_button.clicked.connect(lambda checked=False: app.export_to_html())
         app.controls_layout.addWidget(app.export_html_button) # This is the one shown in view mode
+
+        # Custom Status Label for controls panel (created later, added here)
+        # app.status_label will be added here before the stretch
+
         app.controls_layout.addStretch()
 
         # Central widget (canvas area)
@@ -347,5 +351,5 @@ class UIBuilder:
                 border-top: 1px solid #444; /* Subtle top border */
             }
         """)
-        # Add status_label to the bottom of app.content_layout
-        app.content_layout.addWidget(app.status_label)
+        # Add status_label to the controls_layout, before the final stretch
+        app.controls_layout.insertWidget(app.controls_layout.count() - 1, app.status_label)
