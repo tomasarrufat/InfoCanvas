@@ -103,6 +103,7 @@ The project follows this basic structure:
     -   The application window will open, displaying the main interface.
     -   **Mode Selection:**
         -   Use the "Mode" dropdown in the "Controls" panel (usually docked on the left) to switch between "Edit Mode" and "View Mode".
+        -   The interface uses a dark theme by default.
     -   **Edit Mode:**
         -   **Background:** Adjust canvas background color and dimensions (width, height) using the controls.
         -   **Images:**

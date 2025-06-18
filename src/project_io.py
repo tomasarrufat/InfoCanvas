@@ -123,11 +123,17 @@ class ProjectIO:
             # Store the saved config
             self.last_saved_config = copy.deepcopy(config_to_save)
             
+            status_message = f"Configuration for '{config_to_save.get('project_name', 'Unknown Project')}' saved."
             if status_bar is not None:
-                status_name = current_project_name or config_to_save.get("project_name", "Unknown Project")
-                status_bar.showMessage(f"Configuration for '{status_name}' saved.", 2000)
+                if hasattr(status_bar, 'showMessage'):
+                    status_bar.showMessage(status_message, 2000)
+                else:
+                    status_bar.setText(status_message)
+                # If you want the message to disappear after a timeout, you'd need a QTimer here
+                # or handle it in the main app after save_config returns.
+                # For simplicity, it will just set the text.
             else:
-                print(f"Configuration for '{config_to_save.get('project_name', 'Unknown Project')}' saved.")
+                print(status_message)
             return True
         except IOError as e:
             QMessageBox.critical(None, "Save Error", f"Error saving config file {config_file_path}: {e}.")
