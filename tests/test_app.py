@@ -6,7 +6,7 @@ import pytest
 from pytestqt.qt_compat import qt_api
 from PyQt5.QtWidgets import QApplication, QDialog, QGraphicsScene, QGraphicsView, QMessageBox, QLineEdit, QWidget
 from PyQt5.QtCore import QTimer, Qt, QRectF, QUrl
-from PyQt5.QtGui import QColor, QKeyEvent # Added QKeyEvent
+from PyQt5.QtGui import QColor, QKeyEvent, QPalette
 
 import shutil
 import json
@@ -697,5 +697,17 @@ def test_switch_to_project_updates_item_operations_config(base_app_fixture, monk
 
     assert app.config is new_config
     assert app.item_operations.config is new_config
+
+
+def test_toggle_dark_mode_changes_palette(base_app_fixture):
+    app = base_app_fixture
+    qapp = QApplication.instance()
+    original_color = qapp.palette().color(QPalette.Window)
+    app.toggle_dark_mode(True)
+    assert app.dark_mode_enabled
+    assert qapp.palette().color(QPalette.Window) != original_color
+    app.toggle_dark_mode(False)
+    assert not app.dark_mode_enabled
+    assert qapp.palette().color(QPalette.Window) == original_color
 
 

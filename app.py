@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QApplication, QColorDialog, QFileDialog, QMessageBox, QDialog
 )
 from PyQt5.QtGui import (
-    QColor, QBrush
+    QColor, QBrush, QPalette
 )
 from PyQt5.QtCore import Qt, QTimer, QUrl
 
@@ -35,6 +35,8 @@ class InfoCanvasApp(FramelessWindow):
         self.config_snapshot_stack = []
         self.clipboard_data = None
         self.chronologically_first_selected_item = None
+        self.dark_mode_enabled = False
+        self._default_palette = QApplication.instance().palette()
 
         if not self._initial_project_setup():
             QTimer.singleShot(0, self.close)
@@ -98,9 +100,9 @@ class InfoCanvasApp(FramelessWindow):
             self.update_properties_panel() # Hide properties panels
             self.edit_mode_controls_widget.setEnabled(False) # Disable edit controls
         self._update_window_title()
-        # status_bar = self.statusBar() # Removed
-        # if status_bar is not None: # Removed
-            # status_bar.showMessage("No project loaded. Please create or load a project from the File menu.") # Removed
+        status_bar = self.statusBar()
+        if status_bar is not None:
+            status_bar.showMessage("No project loaded. Please create or load a project from the File menu.")
 
         if hasattr(self, 'item_operations'):
             self.item_operations.config = self.config
@@ -289,6 +291,22 @@ class InfoCanvasApp(FramelessWindow):
             if hasattr(self, 'scene') and self.scene: self.scene.clearSelection()
             self.selected_item = None
         self.update_properties_panel()
+
+    class _LabelStatusBar:
+        def __init__(self, label):
+            self.label = label
+        def showMessage(self, msg):
+            if self.label:
+                self.label.setText(msg)
+
+    def statusBar(self):
+        """Provide compatibility with tests expecting a status bar."""
+        label = getattr(self, "status_label", None)
+        if not hasattr(self, "_status_bar_wrapper"):
+            self._status_bar_wrapper = self._LabelStatusBar(label)
+        else:
+            self._status_bar_wrapper.label = label
+        return self._status_bar_wrapper
 
 
     def choose_bg_color(self):
@@ -635,6 +653,31 @@ class InfoCanvasApp(FramelessWindow):
 
     def align_selected_rects_vertically(self):
         self.canvas_manager.align_selected_rects_vertically()
+
+    def toggle_dark_mode(self, enabled):
+        """Toggle application dark mode based on the menu action state."""
+        qapp = QApplication.instance()
+        if enabled:
+            palette = QPalette()
+            palette.setColor(QPalette.Window, QColor(53, 53, 53))
+            palette.setColor(QPalette.WindowText, Qt.white)
+            palette.setColor(QPalette.Base, QColor(25, 25, 25))
+            palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+            palette.setColor(QPalette.ToolTipBase, Qt.white)
+            palette.setColor(QPalette.ToolTipText, Qt.white)
+            palette.setColor(QPalette.Text, Qt.white)
+            palette.setColor(QPalette.Button, QColor(53, 53, 53))
+            palette.setColor(QPalette.ButtonText, Qt.white)
+            palette.setColor(QPalette.BrightText, Qt.red)
+            palette.setColor(QPalette.Link, QColor(42, 130, 218))
+            palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+            palette.setColor(QPalette.HighlightedText, Qt.black)
+            qapp.setStyle("Fusion")
+            qapp.setPalette(palette)
+            self.dark_mode_enabled = True
+        else:
+            qapp.setPalette(self._default_palette)
+            self.dark_mode_enabled = False
 
 if __name__ == '__main__':
     app = QApplication.instance() or QApplication(sys.argv)
