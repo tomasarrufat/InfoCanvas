@@ -174,7 +174,7 @@ class UIBuilder:
         rect_props_layout.addWidget(app.align_vertical_button)
 
         app.connect_rects_button = QPushButton("Connect Selected Areas")
-        app.connect_rects_button.clicked.connect(app.connect_selected_info_areas)
+        app.connect_rects_button.clicked.connect(app.on_connect_disconnect_clicked)
         app.connect_rects_button.setVisible(False)
         rect_props_layout.addWidget(app.connect_rects_button)
 

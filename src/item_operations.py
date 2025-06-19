@@ -301,6 +301,9 @@ class ItemOperations:
         if len(selected) != 2:
             return
         src_item, dst_item = selected[0], selected[1]
+        # Prevent duplicate connection
+        if self._connection_exists(src_item.config_data.get('id'), dst_item.config_data.get('id')):
+            return
         line_id = f"conn_{datetime.datetime.now().timestamp()}"
         line_conf = {
             "id": line_id,
@@ -323,6 +326,34 @@ class ItemOperations:
         line_item.setSelected(True)
         self.app.selected_item = line_item
         self.app.update_properties_panel()
+
+    def disconnect_selected_info_areas(self):
+        selected = [i for i in self.scene.selectedItems() if isinstance(i, InfoAreaItem)]
+        if len(selected) != 2:
+            return
+        id1 = selected[0].config_data.get('id')
+        id2 = selected[1].config_data.get('id')
+        connections = self.config.get('connections', [])
+        for conn in connections:
+            if ((conn.get('source') == id1 and conn.get('destination') == id2) or
+                (conn.get('source') == id2 and conn.get('destination') == id1)):
+                connections.remove(conn)
+                item = self.item_map.pop(conn.get('id'), None)
+                if item:
+                    self.scene.removeItem(item)
+                    if self.app.selected_item is item:
+                        self.app.selected_item = None
+                self.app.save_config()
+                self.app.update_properties_panel()
+                break
+
+    def _connection_exists(self, id1, id2):
+        for conn in self.config.get('connections', []):
+            s = conn.get('source')
+            d = conn.get('destination')
+            if (s == id1 and d == id2) or (s == id2 and d == id1):
+                return True
+        return False
 
     def copy_selected_item_to_clipboard(self):
         if self.app.selected_item and isinstance(self.app.selected_item, InfoAreaItem) and \

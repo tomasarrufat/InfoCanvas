@@ -397,6 +397,11 @@ class InfoCanvasApp(FramelessWindow):
             self.align_horizontal_button.setVisible(True)
             self.align_vertical_button.setVisible(True)
             if selected_info_rect_count == 2:
+                rects = [i for i in self.scene.selectedItems() if isinstance(i, InfoAreaItem)]
+                if len(rects) == 2 and self.connection_exists(rects[0].config_data.get('id'), rects[1].config_data.get('id')):
+                    self.connect_rects_button.setText("Disconnect Areas")
+                else:
+                    self.connect_rects_button.setText("Connect Selected Areas")
                 self.connect_rects_button.setVisible(True)
             self.info_rect_properties_widget.setVisible(True)
             return
@@ -607,6 +612,30 @@ class InfoCanvasApp(FramelessWindow):
 
     def connect_selected_info_areas(self):
         self.item_operations.connect_selected_info_areas()
+
+    def disconnect_selected_info_areas(self):
+        self.item_operations.disconnect_selected_info_areas()
+
+    def on_connect_disconnect_clicked(self):
+        if not hasattr(self, 'scene') or not self.scene:
+            return
+        selected = [i for i in self.scene.selectedItems() if isinstance(i, InfoAreaItem)]
+        if len(selected) != 2:
+            return
+        id1 = selected[0].config_data.get('id')
+        id2 = selected[1].config_data.get('id')
+        if self.connection_exists(id1, id2):
+            self.disconnect_selected_info_areas()
+        else:
+            self.connect_selected_info_areas()
+
+    def connection_exists(self, id1, id2):
+        for conn in self.config.get('connections', []):
+            s = conn.get('source')
+            d = conn.get('destination')
+            if (s == id1 and d == id2) or (s == id2 and d == id1):
+                return True
+        return False
 
     def update_selected_line_thickness(self):
         if isinstance(self.selected_item, ConnectionLineItem):
