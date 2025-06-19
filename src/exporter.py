@@ -167,12 +167,13 @@ class HtmlExporter:
             start_x, start_y, end_x, end_y = utils.compute_connection_points(src, dst)
             color = conn.get('line_color', '#00ffff')
             thickness = conn.get('thickness', 2)
+            opacity = conn.get('opacity', 1.0)
             z = conn.get('z_index', 0)
             line_data = (
                 f"data-source='{conn.get('source')}' data-destination='{conn.get('destination')}'"
             )
             lines.append(
-                f"<svg class='connection-line' {line_data} style='position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' /></svg>"
+                f"<svg class='connection-line' {line_data} style='position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' stroke-opacity='{opacity}' /></svg>"
             )
         lines.extend([
 "</div>", "<script>",

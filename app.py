@@ -518,10 +518,13 @@ class InfoCanvasApp(FramelessWindow):
             line_conf = self.selected_item.config_data
             self.line_thickness_spin.blockSignals(True)
             self.line_z_index_spin.blockSignals(True)
+            self.line_opacity_spin.blockSignals(True)
             self.line_thickness_spin.setValue(int(line_conf.get('thickness', 2)))
             self.line_z_index_spin.setValue(int(line_conf.get('z_index', 0)))
+            self.line_opacity_spin.setValue(float(line_conf.get('opacity', 1.0)))
             self.line_thickness_spin.blockSignals(False)
             self.line_z_index_spin.blockSignals(False)
+            self.line_opacity_spin.blockSignals(False)
             current_color = line_conf.get('line_color', '#00ffff')
             self.line_color_button.setStyleSheet(f"background-color: {current_color};")
             self.line_properties_widget.setVisible(True)
@@ -647,6 +650,12 @@ class InfoCanvasApp(FramelessWindow):
         if isinstance(self.selected_item, ConnectionLineItem):
             val = self.line_z_index_spin.value()
             self.selected_item.set_z_index(val)
+            self.save_config()
+
+    def update_selected_line_opacity(self):
+        if isinstance(self.selected_item, ConnectionLineItem):
+            val = self.line_opacity_spin.value()
+            self.selected_item.set_opacity(val)
             self.save_config()
 
     def choose_line_color(self):
