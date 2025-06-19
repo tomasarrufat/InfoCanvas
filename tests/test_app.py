@@ -102,8 +102,10 @@ def base_app_fixture(qtbot, mock_project_manager_dialog, monkeypatch, tmp_path_f
         self_app.selected_item = None
         self_app.current_mode = "edit" # Initialize current_mode before UI updates
         # Initialize text_style_manager before UIBuilder
-        from src.text_style_manager import TextStyleManager # Local import
+        from src.text_style_manager import TextStyleManager
+        from src.line_style_manager import LineStyleManager
         self_app.text_style_manager = TextStyleManager(self_app)
+        self_app.line_style_manager = LineStyleManager(self_app)
 
         # Patch QWebEngineView used in UIBuilder to avoid heavy initialization
         created_web_view = []
@@ -179,10 +181,11 @@ def app_for_initial_setup_test_environment(monkeypatch, tmp_path):
     monkeypatch.setattr(InfoCanvasApp, 'update_mode_ui', lambda self: None)
     monkeypatch.setattr(InfoCanvasApp, '_update_window_title', lambda self: None)
 
-    # Patch TextStyleManager for the app module so that InfoCanvasApp instances get a mock.
-    # Using a plain MagicMock without spec as a last resort.
-    from src.text_style_manager import TextStyleManager # Still good to have for context, though spec is removed
+    # Patch managers for the app module so that InfoCanvasApp instances get mocks.
+    from src.text_style_manager import TextStyleManager
+    from src.line_style_manager import LineStyleManager
     monkeypatch.setattr('app.TextStyleManager', lambda app_arg: MagicMock())
+    monkeypatch.setattr('app.LineStyleManager', lambda app_arg: MagicMock())
 
     # Ensure scene is at least a MagicMock before ItemOperations is initialized
     monkeypatch.setattr(InfoCanvasApp, 'scene', MagicMock(spec=QGraphicsScene), raising=False)

@@ -373,6 +373,19 @@ class UIBuilder:
         color_layout.addWidget(app.line_color_button)
         line_props_layout.addLayout(color_layout)
 
+        style_layout = QHBoxLayout()
+        style_layout.addWidget(QLabel("Line Style:"))
+        app.line_style_combo = QComboBox()
+        app.line_style_combo.currentIndexChanged.connect(
+            lambda: app.line_style_manager.handle_style_selection(app.line_style_combo.currentText())
+        )
+        style_layout.addWidget(app.line_style_combo)
+        line_props_layout.addLayout(style_layout)
+
+        app.line_save_style_button = QPushButton("Save Current as Style")
+        app.line_save_style_button.clicked.connect(app.line_style_manager.save_current_item_style)
+        line_props_layout.addWidget(app.line_save_style_button)
+
         rect_props_layout.addWidget(app.line_properties_widget)
         app.info_rect_properties_widget.setVisible(False)
         app.line_properties_widget.setVisible(False)
