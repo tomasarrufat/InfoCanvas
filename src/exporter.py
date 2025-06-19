@@ -158,8 +158,9 @@ class HtmlExporter:
             ]
             current_inner_style = "".join(inner_style_list)
             show_on_hover = rect_conf.get('show_on_hover', True)
-            display_style = 'none' if show_on_hover else 'block'
-            text_content_div_style = current_inner_style + f" display: {display_style};"
+            if show_on_hover:
+                outer_style += "opacity:0;"
+            text_content_div_style = current_inner_style
             data_attr = f"data-show-on-hover='{str(show_on_hover).lower()}'"
             extra_data = (
                 f"data-id='{rect_conf.get('id')}' "
@@ -215,11 +216,9 @@ class HtmlExporter:
 "  });",
 "}",
 "document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
-"  var textContentDiv=h.querySelector('.text-content');",
-"  if(!textContentDiv) return;",
 "  if(h.dataset.showOnHover!=='false'){",
-"    h.addEventListener('mouseenter',function(){textContentDiv.style.display='block';});",
-"    h.addEventListener('mouseleave',function(){textContentDiv.style.display='none';});",
+"    h.addEventListener('mouseenter',function(){h.style.opacity='1';});",
+"    h.addEventListener('mouseleave',function(){h.style.opacity='0';});",
 "  }",
 "  var origLeft=parseFloat(h.style.left);",
 "  var origTop=parseFloat(h.style.top);",

@@ -31,14 +31,15 @@ def test_export_to_html_writes_file(tmp_path_factory, tmp_path): # No base_app_f
     assert '<html>' in content
     assert 'hello' in content
     assert 'hotspot' in content
-    assert '.text-content' in content
-    text_content_div_start_str = "<div class='text-content' style='"
-    start_index = content.find(text_content_div_start_str)
+    assert "class='text-content'" in content
+    hotspot_start_str = "<div class='hotspot info-rectangle-export'"
+    start_index = content.find(hotspot_start_str)
     assert start_index != -1
-    style_end = content.find("'>", start_index)
-    assert style_end != -1
-    style_attribute_content = content[start_index + len(text_content_div_start_str):style_end]
-    assert "display: none;" in style_attribute_content
+    style_attr_start = content.find("style='", start_index)
+    assert style_attr_start != -1
+    style_end = content.find("'", style_attr_start + 7)
+    style_attribute_content = content[style_attr_start + 7:style_end]
+    assert "opacity:0;" in style_attribute_content
     assert "data-show-on-hover='true'" in content
     assert "hello</p></div>" in content
 
@@ -75,7 +76,7 @@ def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base
     assert 'align-items:center;' in content
     expected_inner_style_parts = [
         'color:#FF0000;', 'font-size:20px;', 'background-color:transparent;',
-        'padding:10px;', 'text-align:center;', 'display: none;'
+        'padding:10px;', 'text-align:center;'
     ]
     text_content_div_start_str = "<div class='text-content' style='"
     start_index = content.find(text_content_div_start_str)
@@ -85,6 +86,14 @@ def test_export_html_rich_text_formatting(tmp_path_factory, tmp_path): # No base
     style_attribute_content = content[start_index + len(text_content_div_start_str):style_end]
     for part in expected_inner_style_parts:
         assert part in style_attribute_content, f"Expected style part '{part}' not found in '{style_attribute_content}'"
+    hotspot_start_str = "<div class='hotspot info-rectangle-export'"
+    start_index = content.find(hotspot_start_str)
+    assert start_index != -1
+    style_attr_start = content.find("style='", start_index)
+    assert style_attr_start != -1
+    style_end = content.find("'", style_attr_start + 7)
+    outer_style = content[style_attr_start + 7:style_end]
+    assert "opacity:0;" in outer_style
     assert 'Formatted Text With Newlines &amp; &lt;HTML&gt;!' in content
     assert 'data-text="Formatted Text' not in content
     assert "data-show-on-hover='true'" in content
@@ -150,7 +159,7 @@ def test_export_html_always_visible(tmp_path_factory, tmp_path):
     assert exporter.export(str(out_file)) is True
     content = out_file.read_text()
     assert "data-show-on-hover='false'" in content
-    assert "display: block;" in content
+    assert "opacity:0;" not in content
 
 def test_export_to_html_write_error(base_app_fixture, monkeypatch):
     app = base_app_fixture

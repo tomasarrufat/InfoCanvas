@@ -284,7 +284,7 @@ class UIBuilder:
         shape_layout.addWidget(app.area_shape_combo)
         detail_layout.addLayout(shape_layout)
 
-        app.rect_show_on_hover_checkbox = QCheckBox("Show text on hover only")
+        app.rect_show_on_hover_checkbox = QCheckBox("Show info area on hover only")
         app.rect_show_on_hover_checkbox.stateChanged.connect(app.update_selected_rect_show_on_hover)
         detail_layout.addWidget(app.rect_show_on_hover_checkbox)
 
