@@ -91,14 +91,16 @@ class CanvasManager(QObject):
             if 'text_style_ref' in rect_conf:
                 style_name = rect_conf['text_style_ref']
                 found = None
-                for style_obj in config.get('text_styles', []):
+                for style_obj in config.get('info_area_styles', []):
                     if style_obj.get('name') == style_name:
                         found = style_obj
                         break
                 if found:
                     item.apply_style(found)
                 else:
-                    print(f"Warning: InfoRectangle {rect_conf.get('id')} references style '{style_name}' which was not found in text_styles.")
+                    print(
+                        f"Warning: InfoRectangle {rect_conf.get('id')} references style '{style_name}' which was not found in info_area_styles."
+                    )
 
         from .connection_line_item import ConnectionLineItem
         for line_conf in config.get('connections', []):
@@ -108,6 +110,19 @@ class CanvasManager(QObject):
             self.scene.addItem(line_item)
             app.item_map[line_conf['id']] = line_item
             line_item.update_position()
+            if 'line_style_ref' in line_conf:
+                style_name = line_conf['line_style_ref']
+                found = None
+                for style_obj in config.get('line_styles', []):
+                    if style_obj.get('name') == style_name:
+                        found = style_obj
+                        break
+                if found:
+                    line_item.apply_style(found)
+                else:
+                    print(
+                        f"Warning: Connection {line_conf.get('id')} references style '{style_name}' which was not found in line_styles."
+                    )
 
         if selected_item_id and selected_item_id in app.item_map:
             app.selected_item = app.item_map[selected_item_id]

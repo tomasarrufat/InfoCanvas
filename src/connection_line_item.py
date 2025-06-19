@@ -72,3 +72,29 @@ class ConnectionLineItem(QGraphicsObject):
         self.config_data['opacity'] = value
         self._update_pen()
         self.properties_changed.emit(self)
+
+    def apply_style(self, style_config_object):
+        """Apply a line style dictionary to this connection."""
+        if style_config_object and style_config_object.get("name"):
+            self.config_data["line_style_ref"] = style_config_object["name"]
+        else:
+            self.config_data.pop("line_style_ref", None)
+
+        defaults = {
+            "line_color": "#00ffff",
+            "thickness": 2,
+            "opacity": 1.0,
+        }
+
+        if style_config_object:
+            for key in ["line_color", "thickness", "opacity"]:
+                if key in style_config_object:
+                    self.config_data[key] = style_config_object[key]
+                else:
+                    self.config_data[key] = defaults.get(key, self.config_data.get(key))
+        else:
+            for key, val in defaults.items():
+                self.config_data.setdefault(key, val)
+
+        self._update_pen()
+        self.properties_changed.emit(self)

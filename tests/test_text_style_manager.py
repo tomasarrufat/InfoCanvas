@@ -15,7 +15,7 @@ def text_style_manager_fixture(monkeypatch):
     # Especially, ensure defaults are available if methods rely on them via app.config.
     default_config_data = utils.get_default_config()
     mock_app.config = {
-        "text_styles": [],
+        "info_area_styles": [],
         "defaults": default_config_data["defaults"]
     }
 
@@ -64,7 +64,7 @@ def text_style_manager_fixture(monkeypatch):
 # Test for load_styles_into_dropdown
 def test_manager_load_styles_into_dropdown(text_style_manager_fixture):
     manager, mock_app, *_ = text_style_manager_fixture # Use *_ to ignore unused mock dialogs
-    mock_app.config['text_styles'] = [
+    mock_app.config['info_area_styles'] = [
         {'name': 'Style1'},
         {'name': 'Style2', 'font_color': '#FF0000'}
     ]
@@ -131,7 +131,7 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
     # --- Part 2: handle_style_selection (applying a style) ---
     style1_config = {'name': 'TestStyle1', 'font_color': '#112233', 'font_size': '10px'}
-    mock_app.config['text_styles'] = [style1_config]
+    mock_app.config['info_area_styles'] = [style1_config]
     manager.load_styles_into_dropdown() # Ensure styles are in combo for selection
 
     initial_item_conf = {'id': 'rect_select', 'font_color': '#000000'}
@@ -167,8 +167,8 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
     manager.save_current_item_style()
 
-    assert len(mock_app.config['text_styles']) == 2 # Style1 + NewSavedStyle
-    new_style_in_config = next(s for s in mock_app.config['text_styles'] if s['name'] == "NewSavedStyle")
+    assert len(mock_app.config['info_area_styles']) == 2 # Style1 + NewSavedStyle
+    new_style_in_config = next(s for s in mock_app.config['info_area_styles'] if s['name'] == "NewSavedStyle")
     assert new_style_in_config['font_color'] == '#ABCDEF'
     mock_app.save_config.assert_called_once()
     manager.load_styles_into_dropdown.assert_called_once()
@@ -207,8 +207,8 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
     manager.save_current_item_style()
 
-    assert len(mock_app.config['text_styles']) == 2 # Still 2 styles
-    overwritten_style_in_config = next(s for s in mock_app.config['text_styles'] if s['name'] == "NewSavedStyle")
+    assert len(mock_app.config['info_area_styles']) == 2 # Still 2 styles
+    overwritten_style_in_config = next(s for s in mock_app.config['info_area_styles'] if s['name'] == "NewSavedStyle")
     assert overwritten_style_in_config['font_color'] == '#00FF00' # Check updated property
 
     mock_app.save_config.assert_called_once()

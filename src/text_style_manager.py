@@ -27,17 +27,36 @@ class TextStyleManager:
 
     def does_item_match_default_style(self, item_config):
         defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"].copy()
-        style_keys = ["font_color", "font_size",
-                      "horizontal_alignment", "vertical_alignment", "padding"]
+        area_defaults = utils.get_default_config()["defaults"].get("info_area_appearance", {})
+        defaults.update({
+            "fill_color": area_defaults.get("fill_color"),
+            "fill_alpha": area_defaults.get("fill_alpha"),
+        })
+        style_keys = [
+            "font_color",
+            "font_size",
+            "horizontal_alignment",
+            "vertical_alignment",
+            "padding",
+            "fill_color",
+            "fill_alpha",
+        ]
         for key in style_keys:
             if item_config.get(key, defaults.get(key)) != defaults.get(key):
                 return False
         return True
 
     def find_matching_style_name(self, item_config):
-        styles = self.app.config.get('text_styles', [])
-        style_keys_to_check = ["font_color", "font_size",
-                               "horizontal_alignment", "vertical_alignment", "padding"]
+        styles = self.app.config.get('info_area_styles', [])
+        style_keys_to_check = [
+            "font_color",
+            "font_size",
+            "horizontal_alignment",
+            "vertical_alignment",
+            "padding",
+            "fill_color",
+            "fill_alpha",
+        ]
         for style_dict in styles:
             if not isinstance(style_dict, dict): continue
             match = True
@@ -59,7 +78,7 @@ class TextStyleManager:
         self.app.rect_style_combo.addItem("Default")
         self.app.rect_style_combo.addItem("Custom")
 
-        styles = self.app.config.get('text_styles', [])
+        styles = self.app.config.get('info_area_styles', [])
         for style in styles:
             if isinstance(style, dict) and 'name' in style:
                  self.app.rect_style_combo.addItem(style['name'])
@@ -79,16 +98,24 @@ class TextStyleManager:
                 QMessageBox.warning(self.app.main_window if hasattr(self.app, 'main_window') else None, "Save Style", "Style name cannot be empty.")
             return
 
+        area_defaults = utils.get_default_config()["defaults"].get("info_area_appearance", {})
+
         current_style_dict = {
             "name": style_name,
-            "font_color": item_config.get('font_color', default_display_conf['font_color']),
-            "font_size": item_config.get('font_size', default_display_conf['font_size']),
-            "horizontal_alignment": item_config.get('horizontal_alignment', default_display_conf['horizontal_alignment']),
-            "vertical_alignment": item_config.get('vertical_alignment', default_display_conf['vertical_alignment']),
-            "padding": item_config.get('padding', default_display_conf['padding']),
+            "font_color": item_config.get("font_color", default_display_conf["font_color"]),
+            "font_size": item_config.get("font_size", default_display_conf["font_size"]),
+            "horizontal_alignment": item_config.get(
+                "horizontal_alignment", default_display_conf["horizontal_alignment"]
+            ),
+            "vertical_alignment": item_config.get(
+                "vertical_alignment", default_display_conf["vertical_alignment"]
+            ),
+            "padding": item_config.get("padding", default_display_conf["padding"]),
+            "fill_color": item_config.get("fill_color", area_defaults.get("fill_color")),
+            "fill_alpha": item_config.get("fill_alpha", area_defaults.get("fill_alpha")),
         }
 
-        existing_styles = self.app.config.setdefault('text_styles', [])
+        existing_styles = self.app.config.setdefault('info_area_styles', [])
         style_object_updated = None
 
         found_existing_style_for_update = False
@@ -160,7 +187,7 @@ class TextStyleManager:
             item_config.pop('text_style_ref', None)
         else:
             found_style = None
-            for s in self.app.config.get('text_styles', []):
+            for s in self.app.config.get('info_area_styles', []):
                 if isinstance(s, dict) and s.get('name') == style_name:
                     found_style = s
                     break
@@ -170,9 +197,9 @@ class TextStyleManager:
                 self.app.selected_item.apply_style(style_to_apply)
                 style_applied_or_defaulted = True
             else:
-                 if hasattr(self.app, 'rect_style_combo'):
+                if hasattr(self.app, 'rect_style_combo'):
                     self.app.rect_style_combo.setCurrentText("Custom")
-                 item_config.pop('text_style_ref', None)
+                item_config.pop('text_style_ref', None)
 
         for control in controls_to_block:
             control.blockSignals(False)
