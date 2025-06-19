@@ -388,6 +388,8 @@ class InfoCanvasApp(FramelessWindow):
         self.connect_rects_button.setVisible(False)
         if hasattr(self, 'info_rect_detail_widget'):
             self.info_rect_detail_widget.setVisible(False)
+        if hasattr(self, 'rect_show_on_hover_connected_checkbox'):
+            self.rect_show_on_hover_connected_checkbox.setVisible(False)
 
         if not self.selected_item or self.current_mode == "view":
             return
@@ -444,6 +446,15 @@ class InfoCanvasApp(FramelessWindow):
             self.rect_show_on_hover_checkbox.blockSignals(True)
             self.rect_show_on_hover_checkbox.setChecked(rect_conf.get('show_on_hover', True))
             self.rect_show_on_hover_checkbox.blockSignals(False)
+            if hasattr(self, 'rect_show_on_hover_connected_checkbox'):
+                conn_count = self.item_operations._connection_count(rect_conf.get('id'))
+                if not rect_conf.get('show_on_hover', True) and conn_count == 1:
+                    self.rect_show_on_hover_connected_checkbox.blockSignals(True)
+                    self.rect_show_on_hover_connected_checkbox.setChecked(rect_conf.get('show_on_hover_connected', False))
+                    self.rect_show_on_hover_connected_checkbox.setVisible(True)
+                    self.rect_show_on_hover_connected_checkbox.blockSignals(False)
+                else:
+                    self.rect_show_on_hover_connected_checkbox.setVisible(False)
 
             if hasattr(self, 'rect_area_color_button'):
                 current_area_color = rect_conf.get('fill_color', '#007BFF')
@@ -634,6 +645,13 @@ class InfoCanvasApp(FramelessWindow):
             rect_conf = self.selected_item.config_data
             rect_conf['show_on_hover'] = bool(state)
             self.selected_item.update_appearance(self.selected_item.isSelected(), self.current_mode == "view")
+            self.save_config()
+            self.update_properties_panel()
+
+    def update_selected_rect_show_on_hover_connected(self, state):
+        if isinstance(self.selected_item, InfoAreaItem):
+            rect_conf = self.selected_item.config_data
+            rect_conf['show_on_hover_connected'] = bool(state)
             self.save_config()
 
     def update_selected_area_shape(self, shape_label):

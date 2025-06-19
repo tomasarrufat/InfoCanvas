@@ -158,14 +158,32 @@ class HtmlExporter:
             ]
             current_inner_style = "".join(inner_style_list)
             show_on_hover = rect_conf.get('show_on_hover', True)
-            if show_on_hover:
+            hover_connected = rect_conf.get('show_on_hover_connected', False)
+            if show_on_hover or hover_connected:
                 outer_style += "opacity:0;"
             text_content_div_style = current_inner_style
-            data_attr = f"data-show-on-hover='{str(show_on_hover).lower()}'"
+            data_attr = (
+                f"data-show-on-hover='{str(show_on_hover).lower()}' "
+                f"data-show-on-hover-connected='{str(hover_connected).lower()}'"
+            )
+            hover_target_attr = ""
+            if hover_connected:
+                rect_id = rect_conf.get('id')
+                conn = next(
+                    (
+                        c
+                        for c in self.config.get('connections', [])
+                        if (c.get('source') == rect_id or c.get('destination') == rect_id)
+                    ),
+                    None,
+                )
+                if conn:
+                    other = conn.get('destination') if conn.get('source') == rect_id else conn.get('source')
+                    hover_target_attr = f" data-hover-target='{other}'"
             extra_data = (
                 f"data-id='{rect_conf.get('id')}' "
                 f"data-width='{rect_width}' data-height='{rect_height}' "
-                f"data-shape='{rect_conf.get('shape','rectangle')}'"
+                f"data-shape='{rect_conf.get('shape','rectangle')}'" + hover_target_attr
             )
             lines.append(
                 f"<div class='hotspot info-rectangle-export' {extra_data} {data_attr} style='{outer_style}'>"
@@ -216,7 +234,13 @@ class HtmlExporter:
 "  });",
 "}",
 "document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
-"  if(h.dataset.showOnHover!=='false'){",
+"  if(h.dataset.showOnHoverConnected==='true' && h.dataset.hoverTarget){",
+"    var t=document.querySelector('.info-rectangle-export[data-id="'+h.dataset.hoverTarget+'"]');",
+"    if(t){",
+"      t.addEventListener('mouseenter',function(){h.style.opacity='1';});",
+"      t.addEventListener('mouseleave',function(){h.style.opacity='0';});",
+"    }",
+"  }else if(h.dataset.showOnHover!=='false'){",
 "    h.addEventListener('mouseenter',function(){h.style.opacity='1';});",
 "    h.addEventListener('mouseleave',function(){h.style.opacity='0';});",
 "  }",

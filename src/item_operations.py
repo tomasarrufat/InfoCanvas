@@ -211,6 +211,7 @@ class ItemOperations:
             "height": 50, # Default height
             "text": "New Information",
             "show_on_hover": True,
+            "show_on_hover_connected": False,
             "shape": "rectangle",
             "z_index": self._get_next_z_index(), # Local method
             "fill_color": default_area_conf.get("fill_color", "#007BFF"),

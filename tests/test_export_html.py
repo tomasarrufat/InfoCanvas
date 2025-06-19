@@ -362,6 +362,32 @@ def test_export_html_lines_follow_drag(tmp_path_factory, tmp_path):
     assert 'updateConnectionLines()' in content
     assert "stroke-opacity='1.0'" in content
 
+def test_export_html_hover_connected(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_hover_conn")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config.setdefault('info_areas', []).extend([
+        {
+            'id': 'src', 'center_x': 10, 'center_y': 10, 'width': 20, 'height': 20,
+            'text': 'A', 'shape': 'rectangle', 'show_on_hover': False,
+            'show_on_hover_connected': True
+        },
+        {
+            'id': 'dst', 'center_x': 40, 'center_y': 40, 'width': 20, 'height': 20,
+            'text': 'B', 'shape': 'rectangle'
+        },
+    ])
+    sample_config.setdefault('connections', []).append({'id': 'c1', 'source': 'src', 'destination': 'dst'})
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "hover_conn.html"
+
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert "data-show-on-hover-connected='true'" in content
+    assert "data-hover-target='dst'" in content
+
 # Keep other tests like test_export_to_html_write_error,
 # test_export_to_html_uses_dialog, etc., as they are, because they test
 # app.py's handling of HtmlExporter's results or app.py's dialog logic.
