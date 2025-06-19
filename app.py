@@ -57,6 +57,10 @@ class InfoCanvasApp(FramelessWindow):
         self.render_canvas_from_config()
         self.update_mode_ui()
 
+    def statusBar(self):
+        """Return the QStatusBar instance for compatibility with QMainWindow."""
+        return getattr(self, "status_bar", None)
+
     def showEvent(self, event):
         super().showEvent(event)
         # Ensure view scrollbars are positioned at the top-left when the window first shows
@@ -103,7 +107,9 @@ class InfoCanvasApp(FramelessWindow):
             self.edit_mode_controls_widget.setEnabled(False) # Disable edit controls
         self._update_window_title()
         if self.status_bar is not None:
-            self.status_bar.showMessage("No project loaded. Please create or load a project from the File menu.", 2000)
+            self.status_bar.showMessage(
+                "No project loaded. Please create or load a project from the File menu."
+            )
 
         if hasattr(self, 'item_operations'):
             self.item_operations.config = self.config
