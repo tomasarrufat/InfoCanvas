@@ -249,7 +249,7 @@ class HtmlExporter:
 "      var dx=origLeft-l;",
 "      var dy=origTop-t;",
 "      vx+=dx*0.1;",
-"      vy+=dy*0.1+0.5;",
+"      vy+=dy*0.1;",
 "      l+=vx;",
 "      t+=vy;",
 "      vx*=0.8;",
