@@ -128,6 +128,10 @@ class HtmlExporter:
             h_align = rect_conf.get('horizontal_alignment', self.default_text_config['horizontal_alignment'])
             v_align = rect_conf.get('vertical_alignment', self.default_text_config['vertical_alignment'])
             outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex; box-sizing: border-box;"
+            fill_hex = rect_conf.get('fill_color', utils.get_default_config()["defaults"].get("info_area_appearance", {}).get("fill_color", "#007BFF"))
+            fill_alpha = rect_conf.get('fill_alpha', utils.get_default_config()["defaults"].get("info_area_appearance", {}).get("fill_alpha", 25))
+            rgba_color = utils.hex_to_rgba(fill_hex, fill_alpha)
+            outer_style += f"background-color:{rgba_color};"
             if rect_conf.get('shape', 'rectangle') == 'ellipse':
                 outer_style += "border-radius:50%;"
             angle = rect_conf.get('angle', 0)

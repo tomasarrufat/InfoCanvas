@@ -37,6 +37,10 @@ def get_default_config():
                 "padding": "5px",
                 "vertical_alignment": "top",
                 "horizontal_alignment": "left"
+            },
+            "info_area_appearance": {
+                "fill_color": "#007BFF",
+                "fill_alpha": 25
             }
         },
         "text_styles": [],
@@ -49,6 +53,21 @@ def get_default_config():
         "info_areas": [],
         "connections": []
     }
+
+def hex_to_rgba(hex_color, alpha=255):
+    """Converts a hex color and 0-255 alpha to a CSS rgba() string."""
+    try:
+        hex_color = str(hex_color).lstrip('#')
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+    except Exception:
+        r, g, b = 0, 0, 0
+    try:
+        alpha_val = max(0, min(int(alpha), 255)) / 255.0
+    except Exception:
+        alpha_val = 1.0
+    return f"rgba({r},{g},{b},{alpha_val:.3f})"
 
 # --- Z-index Management Helpers ---
 

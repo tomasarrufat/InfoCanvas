@@ -201,6 +201,7 @@ class ItemOperations:
         rect_id = f"rect_{datetime.datetime.now().timestamp()}"
         # Access app's config for defaults, then utils if not found
         default_display_conf = self.config.get("defaults", {}).get("info_rectangle_text_display", utils.get_default_config()["defaults"]["info_rectangle_text_display"])
+        default_area_conf = self.config.get("defaults", {}).get("info_area_appearance", utils.get_default_config()["defaults"].get("info_area_appearance", {}))
 
         new_rect_config = {
             "id": rect_id,
@@ -212,6 +213,8 @@ class ItemOperations:
             "show_on_hover": True,
             "shape": "rectangle",
             "z_index": self._get_next_z_index(), # Local method
+            "fill_color": default_area_conf.get("fill_color", "#007BFF"),
+            "fill_alpha": default_area_conf.get("fill_alpha", 25),
         }
 
         if 'info_areas' not in self.config: self.config['info_areas'] = [] # self.config is app.config

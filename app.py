@@ -434,6 +434,16 @@ class InfoCanvasApp(FramelessWindow):
             self.rect_show_on_hover_checkbox.setChecked(rect_conf.get('show_on_hover', True))
             self.rect_show_on_hover_checkbox.blockSignals(False)
 
+            if hasattr(self, 'rect_area_color_button'):
+                current_area_color = rect_conf.get('fill_color', '#007BFF')
+                contrast = self.text_style_manager.get_contrasting_text_color(current_area_color)
+                self.rect_area_color_button.setStyleSheet(f"background-color: {current_area_color}; color: {contrast};")
+
+            if hasattr(self, 'rect_area_opacity_spin'):
+                self.rect_area_opacity_spin.blockSignals(True)
+                self.rect_area_opacity_spin.setValue(int(rect_conf.get('fill_alpha', 25)))
+                self.rect_area_opacity_spin.blockSignals(False)
+
             # Update new formatting controls
             self.rect_h_align_combo.blockSignals(True)
             self.rect_v_align_combo.blockSignals(True)
@@ -665,6 +675,25 @@ class InfoCanvasApp(FramelessWindow):
             if color.isValid():
                 self.selected_item.set_line_color(color.name())
                 self.save_config()
+
+    def choose_info_area_color(self):
+        if isinstance(self.selected_item, InfoAreaItem):
+            current = QColor(self.selected_item.config_data.get('fill_color', '#007BFF'))
+            color = QColorDialog.getColor(current, self, "Select Area Color")
+            if color.isValid():
+                self.selected_item.config_data['fill_color'] = color.name()
+                contrasting = self.text_style_manager.get_contrasting_text_color(color.name())
+                if hasattr(self, 'rect_area_color_button'):
+                    self.rect_area_color_button.setStyleSheet(f"background-color: {color.name()}; color: {contrasting};")
+                self.selected_item.update_appearance(self.selected_item.isSelected(), self.current_mode == "view")
+                self.save_config()
+
+    def update_selected_area_opacity(self):
+        if isinstance(self.selected_item, InfoAreaItem):
+            val = self.rect_area_opacity_spin.value()
+            self.selected_item.config_data['fill_alpha'] = val
+            self.selected_item.update_appearance(self.selected_item.isSelected(), self.current_mode == "view")
+            self.save_config()
 
     # --- Z-order manipulation ---
     def bring_to_front(self):

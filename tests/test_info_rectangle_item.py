@@ -547,6 +547,15 @@ def test_paint_ellipse_calls_correct_method(create_item_with_scene):
     painter.drawRect.assert_not_called()
 
 
+def test_update_appearance_custom_fill(create_item_with_scene):
+    cfg = {'fill_color': '#00ff00', 'fill_alpha': 128}
+    item, _, _ = create_item_with_scene(custom_config=cfg, add_to_scene=False)
+    item.update_appearance(False, False)
+    color = item._brush.color()
+    assert color.name() == '#00ff00'
+    assert color.alpha() == 128
+
+
 # --- Tests for Angle Functionality ---
 
 def test_info_area_item_initialization_with_angle(create_item_with_scene):
