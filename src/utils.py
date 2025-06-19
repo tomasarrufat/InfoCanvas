@@ -40,7 +40,7 @@ def get_default_config():
             },
             "info_area_appearance": {
                 "fill_color": "#007BFF",
-                "fill_alpha": 25
+                "fill_alpha": 0.1
             }
         },
         "text_styles": [],
@@ -54,8 +54,8 @@ def get_default_config():
         "connections": []
     }
 
-def hex_to_rgba(hex_color, alpha=255):
-    """Converts a hex color and 0-255 alpha to a CSS rgba() string."""
+def hex_to_rgba(hex_color, alpha=1.0):
+    """Converts a hex color and 0-1 alpha to a CSS rgba() string."""
     try:
         hex_color = str(hex_color).lstrip('#')
         r = int(hex_color[0:2], 16)
@@ -64,7 +64,8 @@ def hex_to_rgba(hex_color, alpha=255):
     except Exception:
         r, g, b = 0, 0, 0
     try:
-        alpha_val = max(0, min(int(alpha), 255)) / 255.0
+        alpha_val = float(alpha)
+        alpha_val = max(0.0, min(alpha_val, 1.0))
     except Exception:
         alpha_val = 1.0
     return f"rgba({r},{g},{b},{alpha_val:.3f})"
