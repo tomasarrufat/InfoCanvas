@@ -646,6 +646,24 @@ def test_ctrl_multi_select_info_areas(base_app_fixture, monkeypatch):
     assert app.selected_item is item2, "App's primary selected item should be item2"
 
 
+def test_multi_select_shows_only_align_buttons(base_app_fixture):
+    app = base_app_fixture
+    rect1 = {'id': 'r1', 'width': 50, 'height': 40, 'center_x': 60, 'center_y': 50, 'text': 'A', 'shape': 'rectangle'}
+    rect2 = {'id': 'r2', 'width': 50, 'height': 40, 'center_x': 150, 'center_y': 50, 'text': 'B', 'shape': 'rectangle'}
+    app.config['info_areas'] = [rect1, rect2]
+    app.render_canvas_from_config()
+    item1 = app.item_map['r1']
+    item2 = app.item_map['r2']
+    item1.setSelected(True)
+    item2.setSelected(True)
+    app.canvas_manager.on_scene_selection_changed()
+    app.update_properties_panel()
+    assert app.align_horizontal_button.isVisible()
+    assert app.align_vertical_button.isVisible()
+    assert app.info_rect_properties_widget.isVisible()
+    assert not app.info_rect_detail_widget.isVisible()
+
+
 # --- Tests for Alignment Features --- #
 
 

@@ -173,11 +173,15 @@ class UIBuilder:
         app.align_vertical_button.setVisible(False)
         rect_props_layout.addWidget(app.align_vertical_button)
 
+        # Container for individual info area controls so it can be hidden when multiple items are selected
+        app.info_rect_detail_widget = QWidget()
+        detail_layout = QVBoxLayout(app.info_rect_detail_widget)
+
         app.info_rect_text_input = QTextEdit()
         app.info_rect_text_input.setPlaceholderText("Enter information here...")
         app.info_rect_text_input.setFixedHeight(80)
         app.info_rect_text_input.textChanged.connect(app.update_selected_rect_text)
-        rect_props_layout.addWidget(app.info_rect_text_input)
+        detail_layout.addWidget(app.info_rect_text_input)
 
         text_format_group = QWidget()
         text_format_layout = QVBoxLayout(text_format_group)
@@ -242,7 +246,7 @@ class UIBuilder:
         app.rect_save_style_button.clicked.connect(app.text_style_manager.save_current_item_style)
         text_format_layout.addWidget(app.rect_save_style_button)
 
-        rect_props_layout.addWidget(text_format_group)
+        detail_layout.addWidget(text_format_group)
 
         rect_width_layout = QHBoxLayout()
         rect_width_layout.addWidget(QLabel("Width (px):"))
@@ -251,7 +255,7 @@ class UIBuilder:
         app.info_rect_width_input.setRange(InfoAreaItem.MIN_WIDTH, 2000)
         app.info_rect_width_input.valueChanged.connect(app.update_selected_rect_dimensions)
         rect_width_layout.addWidget(app.info_rect_width_input)
-        rect_props_layout.addLayout(rect_width_layout)
+        detail_layout.addLayout(rect_width_layout)
 
         rect_height_layout = QHBoxLayout()
         rect_height_layout.addWidget(QLabel("Height (px):"))
@@ -259,7 +263,7 @@ class UIBuilder:
         app.info_rect_height_input.setRange(InfoAreaItem.MIN_HEIGHT, 2000)
         app.info_rect_height_input.valueChanged.connect(app.update_selected_rect_dimensions)
         rect_height_layout.addWidget(app.info_rect_height_input)
-        rect_props_layout.addLayout(rect_height_layout)
+        detail_layout.addLayout(rect_height_layout)
 
         # Angle control
         angle_layout = QHBoxLayout()
@@ -270,7 +274,7 @@ class UIBuilder:
         app.info_rect_angle_input.setValue(0.0)
         app.info_rect_angle_input.valueChanged.connect(app.update_selected_item_angle)
         angle_layout.addWidget(app.info_rect_angle_input)
-        rect_props_layout.addLayout(angle_layout)
+        detail_layout.addLayout(angle_layout)
 
         shape_layout = QHBoxLayout()
         shape_layout.addWidget(QLabel("Area Shape:"))
@@ -278,16 +282,16 @@ class UIBuilder:
         app.area_shape_combo.addItems(["Rectangle", "Ellipse"])
         app.area_shape_combo.currentTextChanged.connect(app.update_selected_area_shape)
         shape_layout.addWidget(app.area_shape_combo)
-        rect_props_layout.addLayout(shape_layout)
+        detail_layout.addLayout(shape_layout)
 
         app.rect_show_on_hover_checkbox = QCheckBox("Show text on hover only")
         app.rect_show_on_hover_checkbox.stateChanged.connect(app.update_selected_rect_show_on_hover)
-        rect_props_layout.addWidget(app.rect_show_on_hover_checkbox)
+        detail_layout.addWidget(app.rect_show_on_hover_checkbox)
 
         app.delete_info_rect_button = QPushButton("Delete Selected Info Area")
         app.delete_info_rect_button.setStyleSheet("background-color: #dc3545; color: white;")
         app.delete_info_rect_button.clicked.connect(app.delete_selected_info_rect)
-        rect_props_layout.addWidget(app.delete_info_rect_button)
+        detail_layout.addWidget(app.delete_info_rect_button)
 
         rect_layer_layout_line1 = QHBoxLayout()
         app.rect_to_front = QPushButton("Bring to Front")
@@ -310,7 +314,9 @@ class UIBuilder:
         rect_layer_layout_vertical = QVBoxLayout()
         rect_layer_layout_vertical.addLayout(rect_layer_layout_line1)
         rect_layer_layout_vertical.addLayout(rect_layer_layout_line2)
-        rect_props_layout.addLayout(rect_layer_layout_vertical)
+        detail_layout.addLayout(rect_layer_layout_vertical)
+
+        rect_props_layout.addWidget(app.info_rect_detail_widget)
         app.info_rect_properties_widget.setVisible(False)
         rect_layout.addWidget(app.info_rect_properties_widget)
         edit_mode_layout.addWidget(rect_group)
