@@ -130,6 +130,13 @@ class HtmlExporter:
             outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex; box-sizing: border-box;"
             if rect_conf.get('shape', 'rectangle') == 'ellipse':
                 outer_style += "border-radius:50%;"
+            angle = rect_conf.get('angle', 0)
+            try:
+                angle = float(angle)
+            except (ValueError, TypeError):
+                angle = 0
+            if angle:
+                outer_style += f"transform-origin:center center; transform:rotate({angle}deg);"
             if v_align == "top": outer_style += "align-items:flex-start;"
             elif v_align == "center" or v_align == "middle": outer_style += "align-items:center;"
             elif v_align == "bottom": outer_style += "align-items:flex-end;"

@@ -274,6 +274,24 @@ def test_export_html_ellipse_shape(tmp_path_factory, tmp_path):
     content = out_file.read_text()
     assert "border-radius:50%" in content
 
+
+def test_export_html_rotation(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_rotate")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config.setdefault('info_areas', []).append({
+        'id': 'rot1', 'center_x': 20, 'center_y': 20, 'width': 40, 'height': 30,
+        'angle': 45, 'text': 'rotate', 'shape': 'rectangle'
+    })
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "export_rotate.html"
+
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert 'transform:rotate(45' in content
+
 # Keep other tests like test_export_to_html_write_error,
 # test_export_to_html_uses_dialog, etc., as they are, because they test
 # app.py's handling of HtmlExporter's results or app.py's dialog logic.
