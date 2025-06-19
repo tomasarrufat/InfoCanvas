@@ -307,6 +307,8 @@ class ItemOperations:
         # Prevent duplicate connection
         if self._connection_exists(src_item.config_data.get('id'), dst_item.config_data.get('id')):
             return
+        if not self._connection_allowed(src_item.config_data.get('id'), dst_item.config_data.get('id')):
+            return
         line_id = f"conn_{datetime.datetime.now().timestamp()}"
         line_conf = {
             "id": line_id,
@@ -357,6 +359,48 @@ class ItemOperations:
             d = conn.get('destination')
             if (s == id1 and d == id2) or (s == id2 and d == id1):
                 return True
+        return False
+
+    def _connection_count(self, area_id):
+        count = 0
+        for conn in self.config.get('connections', []):
+            if conn.get('source') == area_id or conn.get('destination') == area_id:
+                count += 1
+        return count
+
+    def _connected_areas(self, area_id):
+        areas = []
+        for conn in self.config.get('connections', []):
+            if conn.get('source') == area_id:
+                areas.append(conn.get('destination'))
+            elif conn.get('destination') == area_id:
+                areas.append(conn.get('source'))
+        return areas
+
+    def _unconnected_to_connected_allowed(self, unconn_id, conn_id):
+        conn_count = self._connection_count(conn_id)
+        if conn_count > 2:
+            return True
+        if conn_count == 1:
+            connected = self._connected_areas(conn_id)
+            other_id = connected[0]
+            if self._connection_count(other_id) == 1:
+                return True
+        return False
+
+    def _connection_allowed(self, id1, id2):
+        count1 = self._connection_count(id1)
+        count2 = self._connection_count(id2)
+
+        if count1 == 0 and count2 == 0:
+            return True
+
+        if count1 == 0 and count2 > 0:
+            return self._unconnected_to_connected_allowed(id1, id2)
+
+        if count2 == 0 and count1 > 0:
+            return self._unconnected_to_connected_allowed(id2, id1)
+
         return False
 
     def copy_selected_item_to_clipboard(self):

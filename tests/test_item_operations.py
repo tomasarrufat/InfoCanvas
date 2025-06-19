@@ -464,4 +464,81 @@ def test_delete_selected_item_on_canvas_wrong_mode(item_ops, mock_app_instance):
     mock_app_instance.current_mode = "view"
     assert item_ops.delete_selected_item_on_canvas() is False
 
+# --- Tests for connection rules ---
+
+def test_connection_allowed_rules(item_ops):
+    cfg = item_ops.config
+
+    cfg['connections'] = []
+    assert item_ops._connection_allowed('a', 'b') is True
+
+    cfg['connections'] = [
+        {'id': 'c1', 'source': 'b', 'destination': 'x'},
+        {'id': 'c2', 'source': 'b', 'destination': 'y'},
+        {'id': 'c3', 'source': 'b', 'destination': 'z'},
+    ]
+    assert item_ops._connection_allowed('a', 'b') is True
+
+    cfg['connections'] = [
+        {'id': 'c1', 'source': 'b', 'destination': 'x'},
+        {'id': 'c2', 'source': 'b', 'destination': 'y'},
+    ]
+    assert item_ops._connection_allowed('a', 'b') is False
+
+    cfg['connections'] = [
+        {'id': 'c1', 'source': 'b', 'destination': 'c'},
+    ]
+    assert item_ops._connection_allowed('a', 'b') is True
+
+    cfg['connections'] = [
+        {'id': 'c1', 'source': 'b', 'destination': 'c'},
+        {'id': 'c2', 'source': 'c', 'destination': 'd'},
+    ]
+    assert item_ops._connection_allowed('a', 'b') is False
+
+    cfg['connections'] = [
+        {'id': 'c1', 'source': 'a', 'destination': 'x'},
+        {'id': 'c2', 'source': 'b', 'destination': 'y'}
+    ]
+    assert item_ops._connection_allowed('a', 'b') is False
+
+
+@patch('src.connection_line_item.ConnectionLineItem')
+def test_connect_selected_info_areas_allows(mock_cli, item_ops, monkeypatch):
+    src_item = MagicMock(spec=InfoAreaItem)
+    dst_item = MagicMock(spec=InfoAreaItem)
+    src_item.config_data = {'id': 'a'}
+    dst_item.config_data = {'id': 'b'}
+    item_ops.scene.selectedItems.return_value = [src_item, dst_item]
+    monkeypatch.setattr(item_ops, '_connection_exists', lambda a, b: False)
+    monkeypatch.setattr(item_ops, '_connection_allowed', lambda a, b: True)
+
+    initial_len = len(item_ops.config.get('connections', []))
+    line_instance = MagicMock()
+    mock_cli.return_value = line_instance
+
+    item_ops.connect_selected_info_areas()
+
+    assert len(item_ops.config.get('connections', [])) == initial_len + 1
+    mock_cli.assert_called_once()
+    item_ops.scene.addItem.assert_called_once_with(line_instance)
+
+
+@patch('src.connection_line_item.ConnectionLineItem')
+def test_connect_selected_info_areas_disallows(mock_cli, item_ops, monkeypatch):
+    src_item = MagicMock(spec=InfoAreaItem)
+    dst_item = MagicMock(spec=InfoAreaItem)
+    src_item.config_data = {'id': 'a'}
+    dst_item.config_data = {'id': 'b'}
+    item_ops.scene.selectedItems.return_value = [src_item, dst_item]
+    monkeypatch.setattr(item_ops, '_connection_exists', lambda a, b: False)
+    monkeypatch.setattr(item_ops, '_connection_allowed', lambda a, b: False)
+
+    initial_len = len(item_ops.config.get('connections', []))
+
+    item_ops.connect_selected_info_areas()
+
+    assert len(item_ops.config.get('connections', [])) == initial_len
+    mock_cli.assert_not_called()
+
 # End of tests
