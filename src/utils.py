@@ -37,6 +37,10 @@ def get_default_config():
                 "padding": "5px",
                 "vertical_alignment": "top",
                 "horizontal_alignment": "left"
+            },
+            "info_area_appearance": {
+                "fill_color": "#007BFF",
+                "fill_alpha": 25
             }
         },
         "text_styles": [],

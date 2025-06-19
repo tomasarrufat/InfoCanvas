@@ -293,6 +293,21 @@ class UIBuilder:
         app.rect_show_on_hover_checkbox.stateChanged.connect(app.update_selected_rect_show_on_hover)
         detail_layout.addWidget(app.rect_show_on_hover_checkbox)
 
+        area_color_layout = QHBoxLayout()
+        area_color_layout.addWidget(QLabel("Area Color:"))
+        app.rect_area_color_button = QPushButton("Select Color")
+        app.rect_area_color_button.clicked.connect(app.choose_info_area_color)
+        area_color_layout.addWidget(app.rect_area_color_button)
+        detail_layout.addLayout(area_color_layout)
+
+        opacity_layout = QHBoxLayout()
+        opacity_layout.addWidget(QLabel("Opacity:"))
+        app.rect_area_opacity_spin = QSpinBox()
+        app.rect_area_opacity_spin.setRange(0, 255)
+        app.rect_area_opacity_spin.valueChanged.connect(app.update_selected_area_opacity)
+        opacity_layout.addWidget(app.rect_area_opacity_spin)
+        detail_layout.addLayout(opacity_layout)
+
         app.delete_info_rect_button = QPushButton("Delete Selected Info Area")
         app.delete_info_rect_button.setStyleSheet("background-color: #dc3545; color: white;")
         app.delete_info_rect_button.clicked.connect(app.delete_selected_info_rect)

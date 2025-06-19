@@ -47,6 +47,11 @@ class InfoAreaItem(BaseDraggableItem):
         self.vertical_alignment = self.config_data.get('vertical_alignment', text_format_defaults['vertical_alignment'])
         self.horizontal_alignment = self.config_data.get('horizontal_alignment', text_format_defaults['horizontal_alignment'])
 
+        # Appearance options
+        area_defaults = utils.get_default_config()["defaults"].get("info_area_appearance", {})
+        self.config_data.setdefault('fill_color', area_defaults.get('fill_color', '#007BFF'))
+        self.config_data.setdefault('fill_alpha', area_defaults.get('fill_alpha', 25))
+
         self.setFlags(QGraphicsItem.ItemIsSelectable |
                       QGraphicsItem.ItemIsMovable |
                       QGraphicsItem.ItemSendsGeometryChanges)
@@ -452,12 +457,17 @@ class InfoAreaItem(BaseDraggableItem):
             self.text_item.setVisible(not self.config_data.get('show_on_hover', True))
         else:
             self.text_item.setVisible(True)
+            pen_color = QColor(self.config_data.get('fill_color', '#007BFF'))
+            fill_color = QColor(self.config_data.get('fill_color', '#007BFF'))
+            fill_alpha = int(self.config_data.get('fill_alpha', 25))
+            fill_color.setAlpha(fill_alpha)
+
             if is_selected:
                 self._pen = QPen(QColor(255, 0, 0, 200), 2, Qt.SolidLine)
-                self._brush = QBrush(QColor(255, 0, 0, 30))
             else:
-                self._pen = QPen(QColor(0, 123, 255, 180), 2, Qt.DashLine)
-                self._brush = QBrush(QColor(0, 123, 255, 25))
+                self._pen = QPen(pen_color, 2, Qt.DashLine)
+
+            self._brush = QBrush(fill_color)
         self.update()
 
     def itemChange(self, change, value):
