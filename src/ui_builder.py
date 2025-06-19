@@ -173,6 +173,11 @@ class UIBuilder:
         app.align_vertical_button.setVisible(False)
         rect_props_layout.addWidget(app.align_vertical_button)
 
+        app.connect_rects_button = QPushButton("Connect Selected Areas")
+        app.connect_rects_button.clicked.connect(app.connect_selected_info_areas)
+        app.connect_rects_button.setVisible(False)
+        rect_props_layout.addWidget(app.connect_rects_button)
+
         # Container for individual info area controls so it can be hidden when multiple items are selected
         app.info_rect_detail_widget = QWidget()
         detail_layout = QVBoxLayout(app.info_rect_detail_widget)
@@ -317,8 +322,37 @@ class UIBuilder:
         detail_layout.addLayout(rect_layer_layout_vertical)
 
         rect_props_layout.addWidget(app.info_rect_detail_widget)
+
+        app.line_properties_widget = QWidget()
+        line_props_layout = QVBoxLayout(app.line_properties_widget)
+        thickness_layout = QHBoxLayout()
+        thickness_layout.addWidget(QLabel("Thickness:"))
+        app.line_thickness_spin = QSpinBox()
+        app.line_thickness_spin.setRange(1, 20)
+        app.line_thickness_spin.valueChanged.connect(app.update_selected_line_thickness)
+        thickness_layout.addWidget(app.line_thickness_spin)
+        line_props_layout.addLayout(thickness_layout)
+
+        z_layout = QHBoxLayout()
+        z_layout.addWidget(QLabel("Z-Index:"))
+        app.line_z_index_spin = QSpinBox()
+        app.line_z_index_spin.setRange(-1000, 1000)
+        app.line_z_index_spin.valueChanged.connect(app.update_selected_line_z_index)
+        z_layout.addWidget(app.line_z_index_spin)
+        line_props_layout.addLayout(z_layout)
+
+        color_layout = QHBoxLayout()
+        color_layout.addWidget(QLabel("Line Color:"))
+        app.line_color_button = QPushButton("Select Color")
+        app.line_color_button.clicked.connect(app.choose_line_color)
+        color_layout.addWidget(app.line_color_button)
+        line_props_layout.addLayout(color_layout)
+
+        rect_props_layout.addWidget(app.line_properties_widget)
         app.info_rect_properties_widget.setVisible(False)
+        app.line_properties_widget.setVisible(False)
         rect_layout.addWidget(app.info_rect_properties_widget)
+        rect_layout.addWidget(app.line_properties_widget)
         edit_mode_layout.addWidget(rect_group)
 
         app.controls_layout.addWidget(app.edit_mode_controls_widget)

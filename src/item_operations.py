@@ -296,6 +296,32 @@ class ItemOperations:
         item.setSelected(True)
         return True # Indicate success
 
+    def connect_selected_info_areas(self):
+        selected = [i for i in self.scene.selectedItems() if isinstance(i, InfoAreaItem)]
+        if len(selected) != 2:
+            return
+        src_item, dst_item = selected[0], selected[1]
+        line_id = f"conn_{datetime.datetime.now().timestamp()}"
+        line_conf = {
+            "id": line_id,
+            "source": src_item.config_data.get('id'),
+            "destination": dst_item.config_data.get('id'),
+            "thickness": 2,
+            "z_index": self._get_next_z_index(),
+            "line_color": "#00ffff",
+        }
+        self.config.setdefault('connections', []).append(line_conf)
+        from .connection_line_item import ConnectionLineItem
+        line_item = ConnectionLineItem(line_conf, self.item_map)
+        line_item.item_selected.connect(self.app.canvas_manager.on_graphics_item_selected)
+        line_item.properties_changed.connect(self.app.canvas_manager.on_graphics_item_properties_changed)
+        self.scene.addItem(line_item)
+        self.item_map[line_id] = line_item
+        line_item.update_position()
+        self.app.save_config()
+        self.scene.clearSelection()
+        line_item.setSelected(True)
+
     def copy_selected_item_to_clipboard(self):
         if self.app.selected_item and isinstance(self.app.selected_item, InfoAreaItem) and \
            self.app.current_mode == "edit": # Check app's current_mode

@@ -154,6 +154,21 @@ class HtmlExporter:
                 f"<div class='hotspot info-rectangle-export' {data_attr} style='{outer_style}'>"
                 f"<div class='text-content' style='{text_content_div_style}'>{text_content}</div></div>"
             )
+        for conn in self.config.get('connections', []):
+            src = next((r for r in self.config.get('info_areas', []) if r.get('id') == conn.get('source')), None)
+            dst = next((r for r in self.config.get('info_areas', []) if r.get('id') == conn.get('destination')), None)
+            if not src or not dst:
+                continue
+            start_x = src.get('center_x', 0)
+            start_y = src.get('center_y', 0)
+            end_x = dst.get('center_x', 0)
+            end_y = dst.get('center_y', 0)
+            color = conn.get('line_color', '#00ffff')
+            thickness = conn.get('thickness', 2)
+            z = conn.get('z_index', 0)
+            lines.append(
+                f"<svg class='connection-line' style='position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' /></svg>"
+            )
         lines.extend([
             "</div>", "<script>",
             "document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",

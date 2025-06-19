@@ -100,6 +100,15 @@ class CanvasManager(QObject):
                 else:
                     print(f"Warning: InfoRectangle {rect_conf.get('id')} references style '{style_name}' which was not found in text_styles.")
 
+        from .connection_line_item import ConnectionLineItem
+        for line_conf in config.get('connections', []):
+            line_item = ConnectionLineItem(line_conf, app.item_map)
+            line_item.item_selected.connect(self.on_graphics_item_selected)
+            line_item.properties_changed.connect(self.on_graphics_item_properties_changed)
+            self.scene.addItem(line_item)
+            app.item_map[line_conf['id']] = line_item
+            line_item.update_position()
+
         if selected_item_id and selected_item_id in app.item_map:
             app.selected_item = app.item_map[selected_item_id]
             if app.selected_item:
@@ -199,11 +208,14 @@ class CanvasManager(QObject):
 
     def on_graphics_item_moved(self, graphics_item):
         self.app.save_config()
+        if isinstance(graphics_item, InfoAreaItem):
+            self.update_connection_lines(graphics_item)
 
     def on_graphics_item_properties_changed(self, graphics_item):
         self.app.save_config()
         if isinstance(graphics_item, InfoAreaItem):
             graphics_item.update_geometry_from_config()
+            self.update_connection_lines(graphics_item)
             self.app.update_properties_panel()
 
     # ---- Alignment Helpers -------------------------------------------
@@ -250,3 +262,13 @@ class CanvasManager(QObject):
             rect.update_geometry_from_config()
             if hasattr(rect, 'properties_changed') and hasattr(rect.properties_changed, 'emit'):
                 rect.properties_changed.emit(rect)
+
+    def update_connection_lines(self, changed_item=None):
+        connections = self.app.config.get('connections', [])
+        for line_conf in connections:
+            if changed_item and line_conf.get('source') != changed_item.config_data.get('id') \
+                    and line_conf.get('destination') != changed_item.config_data.get('id'):
+                continue
+            line_item = self.app.item_map.get(line_conf.get('id'))
+            if line_item:
+                line_item.update_position()
