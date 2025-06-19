@@ -50,7 +50,7 @@ class InfoAreaItem(BaseDraggableItem):
         # Appearance options
         area_defaults = utils.get_default_config()["defaults"].get("info_area_appearance", {})
         self.config_data.setdefault('fill_color', area_defaults.get('fill_color', '#007BFF'))
-        self.config_data.setdefault('fill_alpha', area_defaults.get('fill_alpha', 25))
+        self.config_data.setdefault('fill_alpha', area_defaults.get('fill_alpha', 0.1))
 
         self.setFlags(QGraphicsItem.ItemIsSelectable |
                       QGraphicsItem.ItemIsMovable |
@@ -459,8 +459,15 @@ class InfoAreaItem(BaseDraggableItem):
             self.text_item.setVisible(True)
             pen_color = QColor(self.config_data.get('fill_color', '#007BFF'))
             fill_color = QColor(self.config_data.get('fill_color', '#007BFF'))
-            fill_alpha = int(self.config_data.get('fill_alpha', 25))
-            fill_color.setAlpha(fill_alpha)
+            fill_alpha = self.config_data.get('fill_alpha', 0.1)
+            try:
+                fill_alpha = float(fill_alpha)
+            except Exception:
+                fill_alpha = 0.1
+            if fill_alpha > 1:
+                fill_alpha = fill_alpha / 255.0
+            fill_alpha = max(0.0, min(fill_alpha, 1.0))
+            fill_color.setAlphaF(fill_alpha)
 
             if is_selected:
                 self._pen = QPen(QColor(255, 0, 0, 200), 2, Qt.SolidLine)

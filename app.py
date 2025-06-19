@@ -441,7 +441,14 @@ class InfoCanvasApp(FramelessWindow):
 
             if hasattr(self, 'rect_area_opacity_spin'):
                 self.rect_area_opacity_spin.blockSignals(True)
-                self.rect_area_opacity_spin.setValue(int(rect_conf.get('fill_alpha', 25)))
+                val = rect_conf.get('fill_alpha', 0.1)
+                try:
+                    val = float(val)
+                except Exception:
+                    val = 0.1
+                if val > 1:
+                    val = val / 255.0
+                self.rect_area_opacity_spin.setValue(val)
                 self.rect_area_opacity_spin.blockSignals(False)
 
             # Update new formatting controls
@@ -691,7 +698,7 @@ class InfoCanvasApp(FramelessWindow):
     def update_selected_area_opacity(self):
         if isinstance(self.selected_item, InfoAreaItem):
             val = self.rect_area_opacity_spin.value()
-            self.selected_item.config_data['fill_alpha'] = val
+            self.selected_item.config_data['fill_alpha'] = float(val)
             self.selected_item.update_appearance(self.selected_item.isSelected(), self.current_mode == "view")
             self.save_config()
 

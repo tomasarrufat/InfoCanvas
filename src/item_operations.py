@@ -214,7 +214,7 @@ class ItemOperations:
             "shape": "rectangle",
             "z_index": self._get_next_z_index(), # Local method
             "fill_color": default_area_conf.get("fill_color", "#007BFF"),
-            "fill_alpha": default_area_conf.get("fill_alpha", 25),
+            "fill_alpha": default_area_conf.get("fill_alpha", 0.1),
         }
 
         if 'info_areas' not in self.config: self.config['info_areas'] = [] # self.config is app.config

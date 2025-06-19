@@ -302,8 +302,10 @@ class UIBuilder:
 
         opacity_layout = QHBoxLayout()
         opacity_layout.addWidget(QLabel("Opacity:"))
-        app.rect_area_opacity_spin = QSpinBox()
-        app.rect_area_opacity_spin.setRange(0, 255)
+        app.rect_area_opacity_spin = QDoubleSpinBox()
+        app.rect_area_opacity_spin.setRange(0.0, 1.0)
+        app.rect_area_opacity_spin.setSingleStep(0.05)
+        app.rect_area_opacity_spin.setDecimals(2)
         app.rect_area_opacity_spin.valueChanged.connect(app.update_selected_area_opacity)
         opacity_layout.addWidget(app.rect_area_opacity_spin)
         detail_layout.addLayout(opacity_layout)
