@@ -46,7 +46,8 @@ def get_default_config():
             "color": "#DDDDDD"
         },
         "images": [],
-        "info_areas": []
+        "info_areas": [],
+        "connections": []
     }
 
 # --- Z-index Management Helpers ---
@@ -137,3 +138,46 @@ def send_backward(item):
         item.setZValue(new_z)
         if hasattr(item, "config_data"):
             item.config_data["z_index"] = new_z
+
+
+def compute_connection_points(src_conf, dst_conf):
+    """Returns the start and end points (x1, y1, x2, y2) for a line connecting
+    two info areas without crossing their interiors."""
+    from PyQt5.QtGui import QPainterPath, QTransform
+    from PyQt5.QtCore import QPointF, QRectF, QLineF
+
+    def polygon(conf):
+        w = conf.get('width', 0)
+        h = conf.get('height', 0)
+        cx = conf.get('center_x', 0)
+        cy = conf.get('center_y', 0)
+        angle = conf.get('angle', 0)
+        shape = conf.get('shape', 'rectangle')
+        rect = QRectF(-w / 2, -h / 2, w, h)
+        path = QPainterPath()
+        if shape == 'ellipse':
+            path.addEllipse(rect)
+        else:
+            path.addRect(rect)
+        transform = QTransform()
+        transform.translate(cx, cy)
+        transform.rotate(angle)
+        return transform.map(path).toFillPolygon()
+
+    src_poly = polygon(src_conf)
+    dst_poly = polygon(dst_conf)
+    src_center = QPointF(src_conf.get('center_x', 0), src_conf.get('center_y', 0))
+    dst_center = QPointF(dst_conf.get('center_x', 0), dst_conf.get('center_y', 0))
+    base_line = QLineF(src_center, dst_center)
+
+    def intersect(poly, line):
+        for i in range(len(poly)):
+            edge = QLineF(poly[i], poly[(i + 1) % len(poly)])
+            point = QPointF()
+            if line.intersect(edge, point) == QLineF.BoundedIntersection:
+                return point
+        return line.p1()
+
+    start = intersect(src_poly, base_line)
+    end = intersect(dst_poly, base_line)
+    return start.x(), start.y(), end.x(), end.y()

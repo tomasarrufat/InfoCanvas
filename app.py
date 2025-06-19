@@ -15,6 +15,7 @@ from src.frameless_window import FramelessWindow
 from src import utils
 from src.draggable_image_item import DraggableImageItem
 from src.info_area_item import InfoAreaItem
+from src.connection_line_item import ConnectionLineItem
 from src.project_manager_dialog import ProjectManagerDialog
 from src.project_io import ProjectIO
 from src.ui_builder import UIBuilder
@@ -376,8 +377,10 @@ class InfoCanvasApp(FramelessWindow):
             return
         self.image_properties_widget.setVisible(False)
         self.info_rect_properties_widget.setVisible(False)
+        self.line_properties_widget.setVisible(False)
         self.align_horizontal_button.setVisible(False)
         self.align_vertical_button.setVisible(False)
+        self.connect_rects_button.setVisible(False)
         if hasattr(self, 'info_rect_detail_widget'):
             self.info_rect_detail_widget.setVisible(False)
 
@@ -393,6 +396,13 @@ class InfoCanvasApp(FramelessWindow):
         if selected_info_rect_count >= 2:
             self.align_horizontal_button.setVisible(True)
             self.align_vertical_button.setVisible(True)
+            if selected_info_rect_count == 2:
+                rects = [i for i in self.scene.selectedItems() if isinstance(i, InfoAreaItem)]
+                if len(rects) == 2 and self.connection_exists(rects[0].config_data.get('id'), rects[1].config_data.get('id')):
+                    self.connect_rects_button.setText("Disconnect Areas")
+                else:
+                    self.connect_rects_button.setText("Connect Selected Areas")
+                self.connect_rects_button.setVisible(True)
             self.info_rect_properties_widget.setVisible(True)
             return
 
@@ -504,6 +514,17 @@ class InfoCanvasApp(FramelessWindow):
             if hasattr(self, 'info_rect_detail_widget'):
                 self.info_rect_detail_widget.setVisible(True)
             self.info_rect_properties_widget.setVisible(True)
+        elif isinstance(self.selected_item, ConnectionLineItem):
+            line_conf = self.selected_item.config_data
+            self.line_thickness_spin.blockSignals(True)
+            self.line_z_index_spin.blockSignals(True)
+            self.line_thickness_spin.setValue(int(line_conf.get('thickness', 2)))
+            self.line_z_index_spin.setValue(int(line_conf.get('z_index', 0)))
+            self.line_thickness_spin.blockSignals(False)
+            self.line_z_index_spin.blockSignals(False)
+            current_color = line_conf.get('line_color', '#00ffff')
+            self.line_color_button.setStyleSheet(f"background-color: {current_color};")
+            self.line_properties_widget.setVisible(True)
 
         # Final check: if the main properties widget is hidden, alignment buttons should also be hidden.
         if not self.info_rect_properties_widget.isVisible():
@@ -588,6 +609,53 @@ class InfoCanvasApp(FramelessWindow):
 
     def paste_info_rectangle(self): # Name remains same in app.py for now
         self.item_operations.paste_item_from_clipboard()
+
+    def connect_selected_info_areas(self):
+        self.item_operations.connect_selected_info_areas()
+
+    def disconnect_selected_info_areas(self):
+        self.item_operations.disconnect_selected_info_areas()
+
+    def on_connect_disconnect_clicked(self):
+        if not hasattr(self, 'scene') or not self.scene:
+            return
+        selected = [i for i in self.scene.selectedItems() if isinstance(i, InfoAreaItem)]
+        if len(selected) != 2:
+            return
+        id1 = selected[0].config_data.get('id')
+        id2 = selected[1].config_data.get('id')
+        if self.connection_exists(id1, id2):
+            self.disconnect_selected_info_areas()
+        else:
+            self.connect_selected_info_areas()
+
+    def connection_exists(self, id1, id2):
+        for conn in self.config.get('connections', []):
+            s = conn.get('source')
+            d = conn.get('destination')
+            if (s == id1 and d == id2) or (s == id2 and d == id1):
+                return True
+        return False
+
+    def update_selected_line_thickness(self):
+        if isinstance(self.selected_item, ConnectionLineItem):
+            val = self.line_thickness_spin.value()
+            self.selected_item.set_thickness(val)
+            self.save_config()
+
+    def update_selected_line_z_index(self):
+        if isinstance(self.selected_item, ConnectionLineItem):
+            val = self.line_z_index_spin.value()
+            self.selected_item.set_z_index(val)
+            self.save_config()
+
+    def choose_line_color(self):
+        if isinstance(self.selected_item, ConnectionLineItem):
+            current = QColor(self.selected_item.config_data.get('line_color', '#00ffff'))
+            color = QColorDialog.getColor(current, self, "Select Line Color")
+            if color.isValid():
+                self.selected_item.set_line_color(color.name())
+                self.save_config()
 
     # --- Z-order manipulation ---
     def bring_to_front(self):

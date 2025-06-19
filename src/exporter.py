@@ -150,64 +150,115 @@ class HtmlExporter:
             display_style = 'none' if show_on_hover else 'block'
             text_content_div_style = current_inner_style + f" display: {display_style};"
             data_attr = f"data-show-on-hover='{str(show_on_hover).lower()}'"
+            extra_data = (
+                f"data-id='{rect_conf.get('id')}' "
+                f"data-width='{rect_width}' data-height='{rect_height}' "
+                f"data-shape='{rect_conf.get('shape','rectangle')}'"
+            )
             lines.append(
-                f"<div class='hotspot info-rectangle-export' {data_attr} style='{outer_style}'>"
+                f"<div class='hotspot info-rectangle-export' {extra_data} {data_attr} style='{outer_style}'>"
                 f"<div class='text-content' style='{text_content_div_style}'>{text_content}</div></div>"
             )
+        for conn in self.config.get('connections', []):
+            src = next((r for r in self.config.get('info_areas', []) if r.get('id') == conn.get('source')), None)
+            dst = next((r for r in self.config.get('info_areas', []) if r.get('id') == conn.get('destination')), None)
+            if not src or not dst:
+                continue
+            start_x, start_y, end_x, end_y = utils.compute_connection_points(src, dst)
+            color = conn.get('line_color', '#00ffff')
+            thickness = conn.get('thickness', 2)
+            z = conn.get('z_index', 0)
+            line_data = (
+                f"data-source='{conn.get('source')}' data-destination='{conn.get('destination')}'"
+            )
+            lines.append(
+                f"<svg class='connection-line' {line_data} style='position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' /></svg>"
+            )
         lines.extend([
-            "</div>", "<script>",
-            "document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
-            "  var textContentDiv = h.querySelector('.text-content');",
-            "  if (!textContentDiv) return;",
-            "  if (h.dataset.showOnHover !== 'false') {",
-            "    h.addEventListener('mouseenter', function(e){ textContentDiv.style.display = 'block'; });",
-            "    h.addEventListener('mouseleave', function(e){ textContentDiv.style.display = 'none'; });",
-            "  }",
-            "  var origLeft = h.offsetLeft;",
-            "  var origTop = h.offsetTop;",
-            "  var isDrag = false, animating = false, offX = 0, offY = 0, animId = 0;",
-            "  h.addEventListener('mousedown', function(e){",
-            "    if(animating){ cancelAnimationFrame(animId); animating = false; }",
-            "    isDrag = true;",
-            "    offX = e.clientX - h.offsetLeft;",
-            "    offY = e.clientY - h.offsetTop;",
-            "    h.style.transition = 'none';",
-            "    e.preventDefault();",
-            "  });",
-            "  document.addEventListener('mousemove', function(e){",
-            "    if(!isDrag) return;",
-            "    h.style.left = (e.clientX - offX) + 'px';",
-            "    h.style.top = (e.clientY - offY) + 'px';",
-            "  });",
-            "  document.addEventListener('mouseup', function(){",
-            "    if(!isDrag) return;",
-            "    isDrag = false;",
-            "    var l = parseFloat(h.style.left);",
-            "    var t = parseFloat(h.style.top);",
-            "    var vx = 0, vy = 0;",
-            "    animating = true;",
-            "    function anim(){",
-            "      var dx = origLeft - l;",
-            "      var dy = origTop - t;",
-            "      vx += dx*0.1;",
-            "      vy += dy*0.1 + 0.5;",
-            "      l += vx;",
-            "      t += vy;",
-            "      vx *= 0.8;",
-            "      vy *= 0.8;",
-            "      h.style.left = l + 'px';",
-            "      h.style.top = t + 'px';",
-            "      if(Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 || Math.abs(vx) > 0.5 || Math.abs(vy) > 0.5){",
-            "        animId = requestAnimationFrame(anim);",
-            "      } else {",
-            "        h.style.left = origLeft + 'px';",
-            "        h.style.top = origTop + 'px';",
-            "        animating = false;",
-            "      }",
-            "    }",
-            "    animId = requestAnimationFrame(anim);",
-            "  });",
-            "});", "</script>", "</body></html>"
+"</div>", "<script>",
+"function computeRectBoundaryPoint(rect,target){",
+"  var cx=parseFloat(rect.style.left)+rect.offsetWidth/2;",
+"  var cy=parseFloat(rect.style.top)+rect.offsetHeight/2;",
+"  var tx=parseFloat(target.style.left)+target.offsetWidth/2;",
+"  var ty=parseFloat(target.style.top)+target.offsetHeight/2;",
+"  var dx=tx-cx, dy=ty-cy;",
+"  if(dx===0&&dy===0) return [cx,cy];",
+"  var sx=(rect.offsetWidth/2)/Math.abs(dx||1e-6);",
+"  var sy=(rect.offsetHeight/2)/Math.abs(dy||1e-6);",
+"  var t=Math.min(sx,sy);",
+"  return [cx+dx*t, cy+dy*t];",
+"}",
+"function updateConnectionLines(){",
+            """  document.querySelectorAll('.connection-line').forEach(function(svg){""",
+            """    var src=document.querySelector('.info-rectangle-export[data-id="' + svg.dataset.source + '"]');""",
+            """    var dst=document.querySelector('.info-rectangle-export[data-id="' + svg.dataset.destination + '"]');""",
+            """    if(!src||!dst) return;""",
+            """    var s=computeRectBoundaryPoint(src,dst);""",
+            """    var e=computeRectBoundaryPoint(dst,src);""",
+            "    var line=svg.querySelector('line');",
+"    line.setAttribute('x1',s[0]);",
+"    line.setAttribute('y1',s[1]);",
+"    line.setAttribute('x2',e[0]);",
+"    line.setAttribute('y2',e[1]);",
+"  });",
+"}",
+"document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
+"  var textContentDiv=h.querySelector('.text-content');",
+"  if(!textContentDiv) return;",
+"  if(h.dataset.showOnHover!=='false'){",
+"    h.addEventListener('mouseenter',function(){textContentDiv.style.display='block';});",
+"    h.addEventListener('mouseleave',function(){textContentDiv.style.display='none';});",
+"  }",
+"  var origLeft=h.offsetLeft;",
+"  var origTop=h.offsetTop;",
+"  var isDrag=false,animating=false,offX=0,offY=0,animId=0;",
+"  h.addEventListener('mousedown',function(e){",
+"    if(animating){cancelAnimationFrame(animId);animating=false;}",
+"    isDrag=true;",
+"    offX=e.clientX-h.offsetLeft;",
+"    offY=e.clientY-h.offsetTop;",
+"    h.style.transition='none';",
+"    e.preventDefault();",
+"  });",
+"  document.addEventListener('mousemove',function(e){",
+"    if(!isDrag) return;",
+"    h.style.left=(e.clientX-offX)+'px';",
+"    h.style.top=(e.clientY-offY)+'px';",
+"    updateConnectionLines();",
+"  });",
+"  document.addEventListener('mouseup',function(){",
+"    if(!isDrag) return;",
+"    isDrag=false;",
+"    var l=parseFloat(h.style.left);",
+"    var t=parseFloat(h.style.top);",
+"    var vx=0,vy=0;",
+"    animating = true;",
+"    function anim(){",
+"      var dx=origLeft-l;",
+"      var dy=origTop-t;",
+"      vx+=dx*0.1;",
+"      vy+=dy*0.1+0.5;",
+"      l+=vx;",
+"      t+=vy;",
+"      vx*=0.8;",
+"      vy*=0.8;",
+"      h.style.left=l+'px';",
+"      h.style.top=t+'px';",
+"      updateConnectionLines();",
+"      if(Math.abs(dx)>0.5||Math.abs(dy)>0.5||Math.abs(vx)>0.5||Math.abs(vy)>0.5){",
+"        animId=requestAnimationFrame(anim);",
+"      }else{",
+"        h.style.left=origLeft+'px';",
+"        h.style.top=origTop+'px';",
+"        updateConnectionLines();",
+"        animating=false;",
+"      }",
+"    }",
+"    animId=requestAnimationFrame(anim);",
+"  });",
+"});",
+"updateConnectionLines();",
+"</script>", "</body></html>",
         ])
         return "\n".join(lines)
 
