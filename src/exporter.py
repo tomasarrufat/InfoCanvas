@@ -181,11 +181,14 @@ class HtmlExporter:
             thickness = conn.get('thickness', 2)
             opacity = conn.get('opacity', 1.0)
             z = conn.get('z_index', 0)
+            src_hover = src.get('show_on_hover', True)
+            dst_hover = dst.get('show_on_hover', True)
+            initial_display = 'none' if src_hover and dst_hover else 'block'
             line_data = (
                 f"data-source='{conn.get('source')}' data-destination='{conn.get('destination')}'"
             )
             lines.append(
-                f"<svg class='connection-line' {line_data} style='position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' stroke-opacity='{opacity}' /></svg>"
+                f"<svg class='connection-line' {line_data} style='position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};display:{initial_display};'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' stroke-opacity='{opacity}' /></svg>"
             )
         lines.extend([
 "</div>", "<script>",
@@ -215,10 +218,21 @@ class HtmlExporter:
 "    line.setAttribute('y2',e[1]);",
 "  });",
 "}",
+"function setLineDisplay(rectId, visible){",
+"  document.querySelectorAll('.connection-line').forEach(function(svg){",
+"    if(svg.dataset.source===rectId||svg.dataset.destination===rectId){",
+"      if(visible){svg.style.display='block';}else{",
+"        var other=svg.dataset.source===rectId?svg.dataset.destination:svg.dataset.source;",
+"        var o=document.querySelector('.info-rectangle-export[data-id="'+other+'"]');",
+"        if(!o|| (o.dataset.showOnHover!=='false' && o.style.opacity==='0')){svg.style.display='none';}",
+"      }",
+"    }",
+"  });",
+"}",
 "document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
 "  if(h.dataset.showOnHover!=='false'){",
-"    h.addEventListener('mouseenter',function(){h.style.opacity='1';});",
-"    h.addEventListener('mouseleave',function(){h.style.opacity='0';});",
+"    h.addEventListener('mouseenter',function(){h.style.opacity='1'; setLineDisplay(h.dataset.id,true); updateConnectionLines();});",
+"    h.addEventListener('mouseleave',function(){h.style.opacity='0'; setLineDisplay(h.dataset.id,false); updateConnectionLines();});",
 "  }",
 "  var origLeft=parseFloat(h.style.left);",
 "  var origTop=parseFloat(h.style.top);",
@@ -267,6 +281,7 @@ class HtmlExporter:
 "    }",
 "    animId=requestAnimationFrame(anim);",
 "  });",
+"  setLineDisplay(h.dataset.id, h.dataset.showOnHover==='false');",
 "});",
 "updateConnectionLines();",
 "</script>", "</body></html>",
