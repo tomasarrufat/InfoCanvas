@@ -387,6 +387,11 @@ def test_export_html_hover_connected(tmp_path_factory, tmp_path):
     content = out_file.read_text()
     assert "data-show-on-hover-connected='true'" in content
     assert "data-hover-target='dst'" in content
+    src_index = content.find("data-id='src'")
+    style_start = content.find("style='", src_index)
+    style_end = content.find("'", style_start + 7)
+    src_style = content[style_start + 7:style_end]
+    assert "pointer-events:none" in src_style
 
 # Keep other tests like test_export_to_html_write_error,
 # test_export_to_html_uses_dialog, etc., as they are, because they test

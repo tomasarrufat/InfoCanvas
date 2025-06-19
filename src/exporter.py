@@ -161,6 +161,8 @@ class HtmlExporter:
             hover_connected = rect_conf.get('show_on_hover_connected', False)
             if show_on_hover or hover_connected:
                 outer_style += "opacity:0;"
+            if hover_connected and not show_on_hover:
+                outer_style += "pointer-events:none;"
             text_content_div_style = current_inner_style
             data_attr = (
                 f"data-show-on-hover='{str(show_on_hover).lower()}' "
@@ -237,8 +239,9 @@ class HtmlExporter:
 "  if(h.dataset.showOnHoverConnected==='true' && h.dataset.hoverTarget){",
 "    var t=document.querySelector('.info-rectangle-export[data-id="'+h.dataset.hoverTarget+'"]');",
 "    if(t){",
-"      t.addEventListener('mouseenter',function(){h.style.opacity='1';});",
-"      t.addEventListener('mouseleave',function(){h.style.opacity='0';});",
+"      h.style.pointerEvents='none';",
+"      t.addEventListener('mouseenter',function(){h.style.opacity='1';h.style.pointerEvents='auto';});",
+"      t.addEventListener('mouseleave',function(){h.style.opacity='0';h.style.pointerEvents='none';});",
 "    }",
 "  }else if(h.dataset.showOnHover!=='false'){",
 "    h.addEventListener('mouseenter',function(){h.style.opacity='1';});",
