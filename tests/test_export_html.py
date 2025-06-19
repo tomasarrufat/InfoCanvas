@@ -292,6 +292,23 @@ def test_export_html_rotation(tmp_path_factory, tmp_path):
     content = out_file.read_text()
     assert 'transform:rotate(45' in content
 
+def test_export_html_area_fill_and_opacity(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_fill")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config.setdefault('info_areas', []).append({
+        'id': 'fill1', 'center_x': 10, 'center_y': 10, 'width': 30, 'height': 20,
+        'text': 'c', 'shape': 'rectangle', 'fill_color': '#ff0000', 'fill_alpha': 128
+    })
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "export_fill.html"
+
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert 'background-color:rgba(255,0,0,0.502)' in content
+
 def test_export_html_connections(tmp_path_factory, tmp_path):
     project_path = tmp_path_factory.mktemp("project_conn")
     os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
