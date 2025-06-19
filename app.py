@@ -9,6 +9,7 @@ from PyQt5.QtGui import (
     QColor, QBrush, QPalette
 )
 from PyQt5.QtCore import Qt, QTimer, QUrl
+from PyQt5.sip import isdeleted
 
 from src.frameless_window import FramelessWindow
 from src import utils
@@ -368,7 +369,11 @@ class InfoCanvasApp(FramelessWindow):
         self.canvas_manager.on_scene_selection_changed()
 
     def update_properties_panel(self):
-        if not hasattr(self, 'image_properties_widget'): return # UI not fully set up
+        if not hasattr(self, 'image_properties_widget'):
+            return  # UI not fully set up
+        # Avoid manipulating widgets that might have been deleted during shutdown
+        if isdeleted(self.image_properties_widget) or isdeleted(self.info_rect_properties_widget):
+            return
         self.image_properties_widget.setVisible(False)
         self.info_rect_properties_widget.setVisible(False)
         if not self.selected_item or self.current_mode == "view":
