@@ -35,7 +35,6 @@ class InfoCanvasApp(FramelessWindow):
         self.config_snapshot_stack = []
         self.clipboard_data = None
         self.chronologically_first_selected_item = None
-        self.dark_mode_enabled = False
 
         self.apply_dark_palette()
 
@@ -698,9 +697,7 @@ class InfoCanvasApp(FramelessWindow):
         palette.setColor(QPalette.Link, QColor(42, 130, 218))
         palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
         palette.setColor(QPalette.HighlightedText, Qt.black)
-        qapp.setStyle("Fusion")
         qapp.setPalette(palette)
-        self.dark_mode_enabled = True
 
 if __name__ == '__main__':
     app = QApplication.instance() or QApplication(sys.argv)
