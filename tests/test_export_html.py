@@ -1,5 +1,6 @@
 import os
 from unittest.mock import MagicMock, patch # Keep patch if other tests use it
+import re
 from PyQt5.QtWidgets import QMessageBox # Keep if other tests use it
 # Import base_app_fixture if any test still needs it.
 from tests.test_app import base_app_fixture
@@ -340,6 +341,46 @@ def test_export_html_connections(tmp_path_factory, tmp_path):
     assert '<svg' in content and 'line' in content
     assert '#ff0000' in content
     assert "stroke-opacity='0.5'" in content
+
+def test_export_html_connection_line_initially_hidden(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_conn_hide")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config.setdefault('info_areas', []).extend([
+        {'id': 'h1', 'center_x': 10, 'center_y': 10, 'width': 20, 'height': 20,
+         'text': 'a', 'shape': 'rectangle', 'show_on_hover': True},
+        {'id': 'h2', 'center_x': 40, 'center_y': 40, 'width': 20, 'height': 20,
+         'text': 'b', 'shape': 'rectangle', 'show_on_hover': True},
+    ])
+    sample_config.setdefault('connections', []).append({'id': 'c1', 'source': 'h1', 'destination': 'h2'})
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "conn_hide.html"
+
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert re.search(r"<svg class='connection-line'[^>]*display:none", content)
+
+def test_export_html_connection_line_visible_when_one_always(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_conn_vis")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config.setdefault('info_areas', []).extend([
+        {'id': 'v1', 'center_x': 10, 'center_y': 10, 'width': 20, 'height': 20,
+         'text': 'a', 'shape': 'rectangle', 'show_on_hover': False},
+        {'id': 'v2', 'center_x': 40, 'center_y': 40, 'width': 20, 'height': 20,
+         'text': 'b', 'shape': 'rectangle', 'show_on_hover': True},
+    ])
+    sample_config.setdefault('connections', []).append({'id': 'c1', 'source': 'v1', 'destination': 'v2'})
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "conn_vis.html"
+
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert not re.search(r"<svg class='connection-line'[^>]*display:none", content)
 
 def test_export_html_lines_follow_drag(tmp_path_factory, tmp_path):
     project_path = tmp_path_factory.mktemp("project_follow")
