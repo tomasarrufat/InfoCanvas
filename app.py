@@ -376,8 +376,26 @@ class InfoCanvasApp(FramelessWindow):
             return
         self.image_properties_widget.setVisible(False)
         self.info_rect_properties_widget.setVisible(False)
+        self.align_horizontal_button.setVisible(False)
+        self.align_vertical_button.setVisible(False)
+        if hasattr(self, 'info_rect_detail_widget'):
+            self.info_rect_detail_widget.setVisible(False)
+
         if not self.selected_item or self.current_mode == "view":
             return
+
+        selected_info_rect_count = 0
+        if hasattr(self, 'scene') and self.scene:
+            selected_info_rect_count = sum(
+                1 for i in self.scene.selectedItems() if isinstance(i, InfoAreaItem)
+            )
+
+        if selected_info_rect_count >= 2:
+            self.align_horizontal_button.setVisible(True)
+            self.align_vertical_button.setVisible(True)
+            self.info_rect_properties_widget.setVisible(True)
+            return
+
         if isinstance(self.selected_item, DraggableImageItem):
             img_conf = self.selected_item.config_data
             self.img_scale_input.blockSignals(True)
@@ -483,44 +501,11 @@ class InfoCanvasApp(FramelessWindow):
             self.info_rect_text_input.blockSignals(False)
             self.info_rect_width_input.blockSignals(False)
             self.info_rect_height_input.blockSignals(False)
+            if hasattr(self, 'info_rect_detail_widget'):
+                self.info_rect_detail_widget.setVisible(True)
             self.info_rect_properties_widget.setVisible(True)
 
-        # Alignment buttons visibility
-        if hasattr(self, 'scene') and self.scene:
-            selected_graphics_items = self.scene.selectedItems()
-            selected_info_rect_count = 0
-            for item in selected_graphics_items:
-                if isinstance(item, InfoAreaItem):
-                    selected_info_rect_count += 1
-
-            if selected_info_rect_count >= 2: # Changed condition from > 2 to >= 2
-                self.align_horizontal_button.setVisible(True)
-                self.align_vertical_button.setVisible(True)
-            else:
-                self.align_horizontal_button.setVisible(False)
-                self.align_vertical_button.setVisible(False)
-        else:
-            self.align_horizontal_button.setVisible(False)
-            self.align_vertical_button.setVisible(False)
-
-        if not isinstance(self.selected_item, InfoAreaItem) or self.current_mode == "view": # Also hide if not an InfoRect or in view mode
-             # This check is a bit redundant if info_rect_properties_widget is already hidden,
-             # but ensures buttons are hidden if the main widget for them is hidden.
-             self.align_horizontal_button.setVisible(False)
-             self.align_vertical_button.setVisible(False)
-             # The rest of the else block for non-InfoAreaItem selection
-             if hasattr(self, 'rect_h_align_combo'): # Check if one of the new controls exists
-                # Find the parent QWidget for the text_format_group to hide it
-                # Assuming rect_props_layout.itemAt(1) is text_format_group (index might change based on final layout)
-                # A safer way would be to keep a reference to text_format_group if it's complex
-                # For now, let's assume it's the second direct widget in rect_props_layout (after text input)
-                # Or, more simply, hide specific controls or the entire info_rect_properties_widget if no item is selected
-                # The existing logic already hides info_rect_properties_widget if no item is selected or item is not InfoRect.
-                # So, specific hiding of text_format_group might not be needed if it's part of info_rect_properties_widget.
-                pass
         # Final check: if the main properties widget is hidden, alignment buttons should also be hidden.
-        # This handles cases where self.selected_item might be None or not an InfoAreaItem,
-        # leading to info_rect_properties_widget being hidden earlier in this method.
         if not self.info_rect_properties_widget.isVisible():
             self.align_horizontal_button.setVisible(False)
             self.align_vertical_button.setVisible(False)
