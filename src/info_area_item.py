@@ -488,14 +488,21 @@ class InfoAreaItem(BaseDraggableItem):
         self._style_config_ref = style_config_object
 
         if style_config_object and style_config_object.get('name'):
-            self.config_data['text_style_ref'] = style_config_object['name']
+            self.config_data['style_ref'] = style_config_object['name']
         else:
-            self.config_data.pop('text_style_ref', None)
+            self.config_data.pop('style_ref', None)
 
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
+        area_defaults = utils.get_default_config()["defaults"].get("info_area_appearance", {})
         all_style_keys = [
-            'text', 'font_color', 'font_size',
-            'vertical_alignment', 'horizontal_alignment', 'padding'
+            'text',
+            'font_color',
+            'font_size',
+            'vertical_alignment',
+            'horizontal_alignment',
+            'padding',
+            'fill_color',
+            'fill_alpha',
         ]
 
         if style_config_object:
@@ -507,10 +514,9 @@ class InfoAreaItem(BaseDraggableItem):
                     if key != 'name': # 'name' is metadata for the style object itself
                         self._applied_style_values[key] = style_config_object[key]
                 elif key in text_format_defaults:
-                    # If style doesn't have this key, config_data property reverts to global default.
-                    # (This includes 'text' if it's in text_format_defaults and not in style_config_object,
-                    # though 'text' often has special handling or might not be in text_format_defaults.)
                     self.config_data[key] = text_format_defaults[key]
+                elif key in area_defaults:
+                    self.config_data[key] = area_defaults[key]
                 elif key == 'text':
                     # This case ensures that if 'text' is not in style_config_object AND
                     # not in text_format_defaults (which would be unusual for 'text'),
@@ -526,8 +532,10 @@ class InfoAreaItem(BaseDraggableItem):
                 for key, style_set_value in self._applied_style_values.items():
                     # Only revert if current config value is THE SAME as what the style had set
                     if key in self.config_data and self.config_data[key] == style_set_value:
-                        if key in text_format_defaults: # Revert to default
+                        if key in text_format_defaults:
                             self.config_data[key] = text_format_defaults[key]
+                        elif key in area_defaults:
+                            self.config_data[key] = area_defaults[key]
                         else: # Should not happen if keys are well-defined
                             # If a key was defined by style but has no default, remove it.
                             self.config_data.pop(key, None)

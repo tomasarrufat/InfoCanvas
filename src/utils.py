@@ -43,7 +43,8 @@ def get_default_config():
                 "fill_alpha": 0.1
             }
         },
-        "text_styles": [],
+        "info_area_styles": [],
+        "line_styles": [],
         "background": {
             "width": 800,
             "height": 600,

@@ -21,6 +21,7 @@ from src.project_io import ProjectIO
 from src.ui_builder import UIBuilder
 from src.item_operations import ItemOperations
 from src.text_style_manager import TextStyleManager
+from src.line_style_manager import LineStyleManager
 from src.exporter import HtmlExporter # <--- NEW IMPORT
 from src.input_handler import InputHandler
 from src.canvas_manager import CanvasManager
@@ -47,13 +48,15 @@ class InfoCanvasApp(FramelessWindow):
         self.current_mode = "edit"
         self.selected_item = None
         self.item_map = {}
-        self.text_style_manager = TextStyleManager(self) # Moved up
+        self.text_style_manager = TextStyleManager(self)
+        self.line_style_manager = LineStyleManager(self)
         UIBuilder(self).build()
 
         self.canvas_manager = CanvasManager(self)
         self.item_operations = ItemOperations(self)
         self.input_handler = InputHandler(self)
-        self.text_style_manager.load_styles_into_dropdown() # Ensure dropdown is populated early
+        self.text_style_manager.load_styles_into_dropdown()
+        self.line_style_manager.load_styles_into_dropdown()
         self.populate_controls_from_config()
         self.render_canvas_from_config()
         self.update_mode_ui()
@@ -191,8 +194,10 @@ class InfoCanvasApp(FramelessWindow):
             self._update_window_title()
             if hasattr(self, 'edit_mode_controls_widget'):
                 self.edit_mode_controls_widget.setEnabled(True)
-            if hasattr(self, 'text_style_manager') and self.text_style_manager: # Defensive check
+            if hasattr(self, 'text_style_manager') and self.text_style_manager:
                 self.text_style_manager.load_styles_into_dropdown()
+            if hasattr(self, 'line_style_manager') and self.line_style_manager:
+                self.line_style_manager.load_styles_into_dropdown()
             # Reset snapshot history to the loaded project's state
             self.config_snapshot_stack = [copy.deepcopy(self.config)]
             if hasattr(self, 'item_operations'):
@@ -464,23 +469,23 @@ class InfoCanvasApp(FramelessWindow):
             self.rect_style_combo.blockSignals(True)
 
             default_text_config = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
-            current_style_ref = rect_conf.get('text_style_ref')
+            current_style_ref = rect_conf.get('style_ref')
 
             # Set style combo based on item's state
             determined_style_name = "Custom" # Default to custom
             if current_style_ref:
                 # Ensure 's' is a dictionary before calling get()
-                style_exists = any(isinstance(s, dict) and s is not None and s.get('name') == current_style_ref for s in self.config.get('text_styles', []))
+                style_exists = any(isinstance(s, dict) and s is not None and s.get('name') == current_style_ref for s in self.config.get('info_area_styles', []))
                 if style_exists:
-                    # If text_style_ref is present and valid, use it.
-                    # Changes by manager methods would clear text_style_ref if current props don't match.
+                # If style_ref is present and valid, use it.
+                # Changes by manager methods would clear style_ref if current props don't match.
                     determined_style_name = current_style_ref
                 else:
                     # Referenced style does not exist, clear the reference
-                    rect_conf.pop('text_style_ref', None)
+                    rect_conf.pop('style_ref', None)
                     # Fall through to determine if it's Default or matches another saved style or Custom
 
-            if not rect_conf.get('text_style_ref'): # If no ref, or ref was just cleared
+            if not rect_conf.get('style_ref'): # If no ref, or ref was just cleared
                 if self.text_style_manager.does_item_match_default_style(rect_conf):
                     determined_style_name = "Default"
                 else:
@@ -489,7 +494,7 @@ class InfoCanvasApp(FramelessWindow):
                         determined_style_name = matched_style_name
                         # If it matches a style, the manager might have already re-linked it.
                         # Or, if we want to ensure it's linked when panel updates:
-                        # rect_conf['text_style_ref'] = matched_style_name
+                        # rect_conf['style_ref'] = matched_style_name
                     else:
                         determined_style_name = "Custom"
 
@@ -550,6 +555,26 @@ class InfoCanvasApp(FramelessWindow):
             self.line_opacity_spin.blockSignals(False)
             current_color = line_conf.get('line_color', '#00ffff')
             self.line_color_button.setStyleSheet(f"background-color: {current_color};")
+            if hasattr(self, 'line_style_combo'):
+                self.line_style_combo.blockSignals(True)
+                determined = 'Custom'
+                current_style_ref = line_conf.get('line_style_ref')
+                if current_style_ref:
+                    if any(
+                        isinstance(s, dict) and s.get('name') == current_style_ref
+                        for s in self.config.get('line_styles', [])
+                    ):
+                        determined = current_style_ref
+                    else:
+                        line_conf.pop('line_style_ref', None)
+                idx = self.line_style_combo.findText(determined)
+                if idx != -1:
+                    self.line_style_combo.setCurrentIndex(idx)
+                else:
+                    custom_idx = self.line_style_combo.findText('Custom')
+                    if custom_idx != -1:
+                        self.line_style_combo.setCurrentIndex(custom_idx)
+                self.line_style_combo.blockSignals(False)
             self.line_properties_widget.setVisible(True)
 
         # Final check: if the main properties widget is hidden, alignment buttons should also be hidden.
@@ -666,18 +691,21 @@ class InfoCanvasApp(FramelessWindow):
     def update_selected_line_thickness(self):
         if isinstance(self.selected_item, ConnectionLineItem):
             val = self.line_thickness_spin.value()
+            self.selected_item.config_data.pop('line_style_ref', None)
             self.selected_item.set_thickness(val)
             self.save_config()
 
     def update_selected_line_z_index(self):
         if isinstance(self.selected_item, ConnectionLineItem):
             val = self.line_z_index_spin.value()
+            self.selected_item.config_data.pop('line_style_ref', None)
             self.selected_item.set_z_index(val)
             self.save_config()
 
     def update_selected_line_opacity(self):
         if isinstance(self.selected_item, ConnectionLineItem):
             val = self.line_opacity_spin.value()
+            self.selected_item.config_data.pop('line_style_ref', None)
             self.selected_item.set_opacity(val)
             self.save_config()
 
@@ -686,6 +714,7 @@ class InfoCanvasApp(FramelessWindow):
             current = QColor(self.selected_item.config_data.get('line_color', '#00ffff'))
             color = QColorDialog.getColor(current, self, "Select Line Color")
             if color.isValid():
+                self.selected_item.config_data.pop('line_style_ref', None)
                 self.selected_item.set_line_color(color.name())
                 self.save_config()
 

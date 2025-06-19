@@ -15,7 +15,7 @@ def text_style_manager_fixture(monkeypatch):
     # Especially, ensure defaults are available if methods rely on them via app.config.
     default_config_data = utils.get_default_config()
     mock_app.config = {
-        "text_styles": [],
+        "info_area_styles": [],
         "defaults": default_config_data["defaults"]
     }
 
@@ -64,7 +64,7 @@ def text_style_manager_fixture(monkeypatch):
 # Test for load_styles_into_dropdown
 def test_manager_load_styles_into_dropdown(text_style_manager_fixture):
     manager, mock_app, *_ = text_style_manager_fixture # Use *_ to ignore unused mock dialogs
-    mock_app.config['text_styles'] = [
+    mock_app.config['info_area_styles'] = [
         {'name': 'Style1'},
         {'name': 'Style2', 'font_color': '#FF0000'}
     ]
@@ -106,7 +106,7 @@ def test_manager_font_color_change(text_style_manager_fixture):
 
     mock_qcolordialog.getColor.assert_called_once()
     assert mock_app.selected_item.config_data['font_color'] == new_qcolor.name()
-    assert 'text_style_ref' not in mock_app.selected_item.config_data # Should be removed
+    assert 'style_ref' not in mock_app.selected_item.config_data # Should be removed
 
     # Check that apply_style was called on the item with the updated config
     # The argument to apply_style should be the item_config itself after modification
@@ -131,7 +131,7 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
     # --- Part 2: handle_style_selection (applying a style) ---
     style1_config = {'name': 'TestStyle1', 'font_color': '#112233', 'font_size': '10px'}
-    mock_app.config['text_styles'] = [style1_config]
+    mock_app.config['info_area_styles'] = [style1_config]
     manager.load_styles_into_dropdown() # Ensure styles are in combo for selection
 
     initial_item_conf = {'id': 'rect_select', 'font_color': '#000000'}
@@ -141,8 +141,8 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
     # apply_style should be called with the style object from app.config
     mock_app.selected_item.apply_style.assert_called_with(style1_config)
-    # Check that text_style_ref was added to item's config
-    assert mock_app.selected_item.config_data['text_style_ref'] == 'TestStyle1'
+    # Check that style_ref was added to item's config
+    assert mock_app.selected_item.config_data['style_ref'] == 'TestStyle1'
     mock_app.update_properties_panel.assert_called()
 
 
@@ -167,14 +167,14 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
     manager.save_current_item_style()
 
-    assert len(mock_app.config['text_styles']) == 2 # Style1 + NewSavedStyle
-    new_style_in_config = next(s for s in mock_app.config['text_styles'] if s['name'] == "NewSavedStyle")
+    assert len(mock_app.config['info_area_styles']) == 2 # Style1 + NewSavedStyle
+    new_style_in_config = next(s for s in mock_app.config['info_area_styles'] if s['name'] == "NewSavedStyle")
     assert new_style_in_config['font_color'] == '#ABCDEF'
     mock_app.save_config.assert_called_once()
     manager.load_styles_into_dropdown.assert_called_once()
-    # Selected item should have the new style object applied, and its text_style_ref updated
+    # Selected item should have the new style object applied, and its style_ref updated
     mock_app.selected_item.apply_style.assert_called_with(new_style_in_config)
-    assert mock_app.selected_item.config_data['text_style_ref'] == "NewSavedStyle"
+    assert mock_app.selected_item.config_data['style_ref'] == "NewSavedStyle"
     mock_app.rect_style_combo.setCurrentText.assert_called_with("NewSavedStyle")
 
     # Test overwriting an existing style
@@ -192,11 +192,11 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
     # Mock item map for testing update propagation
     mock_rect_refing_style = MagicMock(spec=InfoAreaItem)
-    mock_rect_refing_style.config_data = {'id': 'rect_ref1', 'text_style_ref': 'NewSavedStyle'}
+    mock_rect_refing_style.config_data = {'id': 'rect_ref1', 'style_ref': 'NewSavedStyle'}
     mock_rect_refing_style.apply_style = MagicMock()
 
     mock_rect_not_refing_style = MagicMock(spec=InfoAreaItem)
-    mock_rect_not_refing_style.config_data = {'id': 'rect_other', 'text_style_ref': 'SomeOtherStyle'}
+    mock_rect_not_refing_style.config_data = {'id': 'rect_other', 'style_ref': 'SomeOtherStyle'}
     mock_rect_not_refing_style.apply_style = MagicMock()
 
     mock_app.item_map = {
@@ -207,8 +207,8 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
     manager.save_current_item_style()
 
-    assert len(mock_app.config['text_styles']) == 2 # Still 2 styles
-    overwritten_style_in_config = next(s for s in mock_app.config['text_styles'] if s['name'] == "NewSavedStyle")
+    assert len(mock_app.config['info_area_styles']) == 2 # Still 2 styles
+    overwritten_style_in_config = next(s for s in mock_app.config['info_area_styles'] if s['name'] == "NewSavedStyle")
     assert overwritten_style_in_config['font_color'] == '#00FF00' # Check updated property
 
     mock_app.save_config.assert_called_once()
@@ -216,7 +216,7 @@ def test_manager_style_application_and_updates(text_style_manager_fixture):
 
     # Selected item should have the overwritten style object applied
     mock_app.selected_item.apply_style.assert_called_with(overwritten_style_in_config)
-    assert mock_app.selected_item.config_data['text_style_ref'] == "NewSavedStyle"
+    assert mock_app.selected_item.config_data['style_ref'] == "NewSavedStyle"
     mock_app.rect_style_combo.setCurrentText.assert_called_with("NewSavedStyle")
 
     # Check propagation to other items

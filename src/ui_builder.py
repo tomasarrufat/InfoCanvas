@@ -237,19 +237,14 @@ class UIBuilder:
         text_format_layout.addLayout(font_color_layout)
 
         style_selection_layout = QHBoxLayout()
-        style_selection_layout.addWidget(QLabel("Text Style:"))
+        style_selection_layout.addWidget(QLabel("Area Style:"))
         app.rect_style_combo = QComboBox()
-        # Changed: Connect to text_style_manager.handle_style_selection
         app.rect_style_combo.currentIndexChanged.connect(
             lambda: app.text_style_manager.handle_style_selection(app.rect_style_combo.currentText())
         )
         style_selection_layout.addWidget(app.rect_style_combo)
-        text_format_layout.addLayout(style_selection_layout)
-
-        app.rect_save_style_button = QPushButton("Save Current as Style") # Renamed from save_style_button for clarity
-        # Changed: Connect to text_style_manager.save_current_item_style
+        app.rect_save_style_button = QPushButton("Save Current as Style")
         app.rect_save_style_button.clicked.connect(app.text_style_manager.save_current_item_style)
-        text_format_layout.addWidget(app.rect_save_style_button)
 
         detail_layout.addWidget(text_format_group)
 
@@ -309,6 +304,9 @@ class UIBuilder:
         app.rect_area_opacity_spin.valueChanged.connect(app.update_selected_area_opacity)
         opacity_layout.addWidget(app.rect_area_opacity_spin)
         detail_layout.addLayout(opacity_layout)
+
+        detail_layout.addLayout(style_selection_layout)
+        detail_layout.addWidget(app.rect_save_style_button)
 
         app.delete_info_rect_button = QPushButton("Delete Selected Info Area")
         app.delete_info_rect_button.setStyleSheet("background-color: #dc3545; color: white;")
@@ -374,6 +372,19 @@ class UIBuilder:
         app.line_color_button.clicked.connect(app.choose_line_color)
         color_layout.addWidget(app.line_color_button)
         line_props_layout.addLayout(color_layout)
+
+        style_layout = QHBoxLayout()
+        style_layout.addWidget(QLabel("Line Style:"))
+        app.line_style_combo = QComboBox()
+        app.line_style_combo.currentIndexChanged.connect(
+            lambda: app.line_style_manager.handle_style_selection(app.line_style_combo.currentText())
+        )
+        style_layout.addWidget(app.line_style_combo)
+        line_props_layout.addLayout(style_layout)
+
+        app.line_save_style_button = QPushButton("Save Current as Style")
+        app.line_save_style_button.clicked.connect(app.line_style_manager.save_current_item_style)
+        line_props_layout.addWidget(app.line_save_style_button)
 
         rect_props_layout.addWidget(app.line_properties_widget)
         app.info_rect_properties_widget.setVisible(False)
