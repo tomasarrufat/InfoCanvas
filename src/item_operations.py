@@ -312,6 +312,7 @@ class ItemOperations:
             "thickness": 2,
             "z_index": self._get_next_z_index(),
             "line_color": "#00ffff",
+            "opacity": 1.0,
         }
         self.config.setdefault('connections', []).append(line_conf)
         from .connection_line_item import ConnectionLineItem

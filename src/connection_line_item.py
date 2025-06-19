@@ -14,6 +14,7 @@ class ConnectionLineItem(QGraphicsObject):
     def __init__(self, line_config, item_map, parent=None):
         super().__init__(parent)
         self.config_data = line_config
+        self.config_data.setdefault('opacity', 1.0)
         self.item_map = item_map
         self.setFlags(QGraphicsItem.ItemIsSelectable)
         self.setZValue(self.config_data.get('z_index', utils.Z_VALUE_INFO_RECT))
@@ -24,6 +25,8 @@ class ConnectionLineItem(QGraphicsObject):
 
     def _update_pen(self):
         color = QColor(self.config_data.get('line_color', '#00ffff'))
+        opacity = float(self.config_data.get('opacity', 1.0))
+        color.setAlphaF(opacity)
         thickness = self.config_data.get('thickness', 2)
         self._pen = QPen(color, thickness)
         self.update()
@@ -63,4 +66,9 @@ class ConnectionLineItem(QGraphicsObject):
     def set_z_index(self, z):
         self.config_data['z_index'] = z
         self.setZValue(z)
+        self.properties_changed.emit(self)
+
+    def set_opacity(self, value):
+        self.config_data['opacity'] = value
+        self._update_pen()
         self.properties_changed.emit(self)

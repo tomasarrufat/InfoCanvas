@@ -302,7 +302,8 @@ def test_export_html_connections(tmp_path_factory, tmp_path):
         {'id': 'a2', 'center_x': 40, 'center_y': 40, 'width': 20, 'height': 20, 'text': 'b', 'shape': 'rectangle'},
     ])
     sample_config.setdefault('connections', []).append({
-        'id': 'c1', 'source': 'a1', 'destination': 'a2', 'thickness': 3, 'z_index': 5, 'line_color': '#ff0000'
+        'id': 'c1', 'source': 'a1', 'destination': 'a2',
+        'thickness': 3, 'z_index': 5, 'line_color': '#ff0000', 'opacity': 0.5
     })
 
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
@@ -312,6 +313,7 @@ def test_export_html_connections(tmp_path_factory, tmp_path):
     content = out_file.read_text()
     assert '<svg' in content and 'line' in content
     assert '#ff0000' in content
+    assert "stroke-opacity='0.5'" in content
 
 def test_export_html_lines_follow_drag(tmp_path_factory, tmp_path):
     project_path = tmp_path_factory.mktemp("project_follow")
@@ -332,6 +334,7 @@ def test_export_html_lines_follow_drag(tmp_path_factory, tmp_path):
     assert exporter.export(str(out_file)) is True
     content = out_file.read_text()
     assert 'updateConnectionLines()' in content
+    assert "stroke-opacity='1.0'" in content
 
 # Keep other tests like test_export_to_html_write_error,
 # test_export_to_html_uses_dialog, etc., as they are, because they test
