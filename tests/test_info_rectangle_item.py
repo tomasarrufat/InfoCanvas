@@ -433,7 +433,7 @@ def test_apply_style_with_name(item_fixture):
     item = item_fixture
     style = {"name": "MyStyle", "font_color": "#111111", "font_size": "16px"}
     item.apply_style(style)
-    assert item.config_data['text_style_ref'] == "MyStyle"
+    assert item.config_data['style_ref'] == "MyStyle"
     assert item._style_config_ref == style
     assert item.config_data['font_color'] == "#111111"
     assert item.text_item.defaultTextColor() == QColor("#111111")
@@ -443,12 +443,12 @@ def test_apply_style_none_removes_ref(item_fixture, default_text_config_values):
     item = item_fixture
     style = {"name": "MyStyle", "font_color": "#123456", "font_size": "22px"}
     item.apply_style(style)
-    assert item.config_data.get('text_style_ref') == "MyStyle"
+    assert item.config_data.get('style_ref') == "MyStyle"
 
     item.config_data['font_color'] = "#ABCDEF"
     item.apply_style(None)
 
-    assert 'text_style_ref' not in item.config_data
+    assert 'style_ref' not in item.config_data
     assert item._style_config_ref is None
     assert item.text_item.defaultTextColor() == QColor("#ABCDEF")
     expected_default_size = int(default_text_config_values['font_size'].replace('px',''))

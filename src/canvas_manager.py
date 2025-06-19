@@ -88,8 +88,8 @@ class CanvasManager(QObject):
             self.scene.addItem(item)
             app.item_map[rect_conf['id']] = item
 
-            if 'text_style_ref' in rect_conf:
-                style_name = rect_conf['text_style_ref']
+            if 'style_ref' in rect_conf:
+                style_name = rect_conf['style_ref']
                 found = None
                 for style_obj in config.get('info_area_styles', []):
                     if style_obj.get('name') == style_name:

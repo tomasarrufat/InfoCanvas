@@ -458,23 +458,23 @@ class InfoCanvasApp(FramelessWindow):
             self.rect_style_combo.blockSignals(True)
 
             default_text_config = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
-            current_style_ref = rect_conf.get('text_style_ref')
+            current_style_ref = rect_conf.get('style_ref')
 
             # Set style combo based on item's state
             determined_style_name = "Custom" # Default to custom
             if current_style_ref:
                 # Ensure 's' is a dictionary before calling get()
-                style_exists = any(isinstance(s, dict) and s is not None and s.get('name') == current_style_ref for s in self.config.get('text_styles', []))
+                style_exists = any(isinstance(s, dict) and s is not None and s.get('name') == current_style_ref for s in self.config.get('info_area_styles', []))
                 if style_exists:
-                    # If text_style_ref is present and valid, use it.
-                    # Changes by manager methods would clear text_style_ref if current props don't match.
+                # If style_ref is present and valid, use it.
+                # Changes by manager methods would clear style_ref if current props don't match.
                     determined_style_name = current_style_ref
                 else:
                     # Referenced style does not exist, clear the reference
-                    rect_conf.pop('text_style_ref', None)
+                    rect_conf.pop('style_ref', None)
                     # Fall through to determine if it's Default or matches another saved style or Custom
 
-            if not rect_conf.get('text_style_ref'): # If no ref, or ref was just cleared
+            if not rect_conf.get('style_ref'): # If no ref, or ref was just cleared
                 if self.text_style_manager.does_item_match_default_style(rect_conf):
                     determined_style_name = "Default"
                 else:
@@ -483,7 +483,7 @@ class InfoCanvasApp(FramelessWindow):
                         determined_style_name = matched_style_name
                         # If it matches a style, the manager might have already re-linked it.
                         # Or, if we want to ensure it's linked when panel updates:
-                        # rect_conf['text_style_ref'] = matched_style_name
+                        # rect_conf['style_ref'] = matched_style_name
                     else:
                         determined_style_name = "Custom"
 

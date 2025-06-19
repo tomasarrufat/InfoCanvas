@@ -92,7 +92,7 @@ class TextStyleManager:
         item_config = self.app.selected_item.config_data
         default_display_conf = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
 
-        style_name, ok = QInputDialog.getText(self.app.main_window if hasattr(self.app, 'main_window') else None, "Save Text Style", "Enter style name:")
+        style_name, ok = QInputDialog.getText(self.app.main_window if hasattr(self.app, 'main_window') else None, "Save Area Style", "Enter style name:")
         if not ok or not style_name:
             if ok and not style_name:
                 QMessageBox.warning(self.app.main_window if hasattr(self.app, 'main_window') else None, "Save Style", "Style name cannot be empty.")
@@ -145,11 +145,11 @@ class TextStyleManager:
 
         for item_in_map in self.app.item_map.values():
             if isinstance(item_in_map, InfoAreaItem):
-                if item_in_map.config_data.get('text_style_ref') == style_name:
+                if item_in_map.config_data.get('style_ref') == style_name:
                     item_in_map.apply_style(style_object_updated)
 
         if self.app.selected_item:
-            self.app.selected_item.config_data['text_style_ref'] = style_name
+            self.app.selected_item.config_data['style_ref'] = style_name
             self.app.selected_item.apply_style(style_object_updated)
 
 
@@ -159,7 +159,7 @@ class TextStyleManager:
             self.app.rect_style_combo.blockSignals(False)
 
         if hasattr(self.app, 'statusBar'):
-            self.app.statusBar().showMessage(f"Text style '{style_name}' saved and applied.", 2000)
+            self.app.statusBar().showMessage(f"Area style '{style_name}' saved and applied.", 2000)
 
     def handle_style_selection(self, style_name):
         if not isinstance(self.app.selected_item, InfoAreaItem) or not style_name :
@@ -180,11 +180,11 @@ class TextStyleManager:
         if style_name == "Default":
             default_settings = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
             style_to_apply = default_settings.copy()
-            item_config.pop('text_style_ref', None)
+            item_config.pop('style_ref', None)
             self.app.selected_item.apply_style(style_to_apply)
             style_applied_or_defaulted = True
         elif style_name == "Custom":
-            item_config.pop('text_style_ref', None)
+            item_config.pop('style_ref', None)
         else:
             found_style = None
             for s in self.app.config.get('info_area_styles', []):
@@ -193,13 +193,13 @@ class TextStyleManager:
                     break
             if found_style:
                 style_to_apply = found_style.copy()
-                item_config['text_style_ref'] = style_name
+                item_config['style_ref'] = style_name
                 self.app.selected_item.apply_style(style_to_apply)
                 style_applied_or_defaulted = True
             else:
                 if hasattr(self.app, 'rect_style_combo'):
                     self.app.rect_style_combo.setCurrentText("Custom")
-                item_config.pop('text_style_ref', None)
+                item_config.pop('style_ref', None)
 
         for control in controls_to_block:
             control.blockSignals(False)
@@ -235,7 +235,7 @@ class TextStyleManager:
                     self.app.rect_font_size_combo.setCurrentText(default_display_conf["font_size"].replace("px",""))
                     self.app.rect_font_size_combo.blockSignals(False)
 
-            config.pop('text_style_ref', None)
+            config.pop('style_ref', None)
             self.app.selected_item.apply_style(config) # This will trigger properties_changed -> update_properties_panel
 
             # Update style combo based on new state
@@ -246,7 +246,7 @@ class TextStyleManager:
                 else:
                     matched_style_name = self.find_matching_style_name(config)
                     if matched_style_name:
-                        config['text_style_ref'] = matched_style_name # Restore ref if it matches a style
+                        config['style_ref'] = matched_style_name # Restore ref if it matches a style
                         self.app.rect_style_combo.setCurrentText(matched_style_name)
                     else:
                         self.app.rect_style_combo.setCurrentText("Custom")
@@ -271,7 +271,7 @@ class TextStyleManager:
         if color.isValid():
             new_color_hex = color.name()
             item_config['font_color'] = new_color_hex
-            item_config.pop('text_style_ref', None)
+            item_config.pop('style_ref', None)
 
             # apply_style expects a complete style dictionary.
             # We should pass the modified item_config directly if it's what apply_style expects,
@@ -292,7 +292,7 @@ class TextStyleManager:
                 else:
                     matched_style_name = self.find_matching_style_name(item_config) # Use item_config post-change
                     if matched_style_name:
-                        item_config['text_style_ref'] = matched_style_name # Restore ref
+                        item_config['style_ref'] = matched_style_name # Restore ref
                         self.app.rect_style_combo.setCurrentText(matched_style_name)
                     else:
                         self.app.rect_style_combo.setCurrentText("Custom")

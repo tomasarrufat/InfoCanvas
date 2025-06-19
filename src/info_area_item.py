@@ -488,9 +488,9 @@ class InfoAreaItem(BaseDraggableItem):
         self._style_config_ref = style_config_object
 
         if style_config_object and style_config_object.get('name'):
-            self.config_data['text_style_ref'] = style_config_object['name']
+            self.config_data['style_ref'] = style_config_object['name']
         else:
-            self.config_data.pop('text_style_ref', None)
+            self.config_data.pop('style_ref', None)
 
         text_format_defaults = utils.get_default_config()["defaults"]["info_rectangle_text_display"]
         area_defaults = utils.get_default_config()["defaults"].get("info_area_appearance", {})
