@@ -321,6 +321,8 @@ class ItemOperations:
         self.app.save_config()
         self.scene.clearSelection()
         line_item.setSelected(True)
+        self.app.selected_item = line_item
+        self.app.update_properties_panel()
 
     def copy_selected_item_to_clipboard(self):
         if self.app.selected_item and isinstance(self.app.selected_item, InfoAreaItem) and \

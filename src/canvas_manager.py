@@ -167,6 +167,11 @@ class CanvasManager(QObject):
             app.update_properties_panel()
             return
 
+        if graphics_item is None:
+            app.selected_item = None
+            app.update_properties_panel()
+            return
+
         ctrl_pressed = QApplication.keyboardModifiers() & Qt.ControlModifier
         if ctrl_pressed and isinstance(graphics_item, InfoAreaItem):
             if graphics_item.isSelected():
@@ -196,9 +201,10 @@ class CanvasManager(QObject):
                         item_in_scene.setSelected(False)
                         if isinstance(item_in_scene, InfoAreaItem):
                             item_in_scene.update_appearance(False, app.current_mode == "view")
-                app.selected_item.setSelected(True)
-                if isinstance(app.selected_item, InfoAreaItem):
-                    app.selected_item.update_appearance(True, app.current_mode == "view")
+                if app.selected_item:
+                    app.selected_item.setSelected(True)
+                    if isinstance(app.selected_item, InfoAreaItem):
+                        app.selected_item.update_appearance(True, app.current_mode == "view")
                 try:
                     self.scene.selectionChanged.connect(self.on_scene_selection_changed)
                 except TypeError:
