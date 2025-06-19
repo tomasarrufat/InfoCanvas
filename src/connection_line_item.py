@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QGraphicsObject, QGraphicsItem
-from PyQt5.QtGui import QPen, QColor, QPainter
-from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QLineF
+from PyQt5.QtGui import QPen, QColor
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QLineF, QPointF
 
 from .info_area_item import InfoAreaItem
 from . import utils
@@ -32,10 +32,9 @@ class ConnectionLineItem(QGraphicsObject):
         src_item = self.item_map.get(self.config_data.get('source'))
         dst_item = self.item_map.get(self.config_data.get('destination'))
         if isinstance(src_item, InfoAreaItem) and isinstance(dst_item, InfoAreaItem):
-            src_center = src_item.mapToScene(src_item.boundingRect().center())
-            dst_center = dst_item.mapToScene(dst_item.boundingRect().center())
+            x1, y1, x2, y2 = utils.compute_connection_points(src_item.config_data, dst_item.config_data)
             self.prepareGeometryChange()
-            self._line = QLineF(src_center, dst_center)
+            self._line = QLineF(QPointF(x1, y1), QPointF(x2, y2))
             self.update()
 
     def boundingRect(self):

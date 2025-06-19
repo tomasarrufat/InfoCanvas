@@ -159,10 +159,7 @@ class HtmlExporter:
             dst = next((r for r in self.config.get('info_areas', []) if r.get('id') == conn.get('destination')), None)
             if not src or not dst:
                 continue
-            start_x = src.get('center_x', 0)
-            start_y = src.get('center_y', 0)
-            end_x = dst.get('center_x', 0)
-            end_y = dst.get('center_y', 0)
+            start_x, start_y, end_x, end_y = utils.compute_connection_points(src, dst)
             color = conn.get('line_color', '#00ffff')
             thickness = conn.get('thickness', 2)
             z = conn.get('z_index', 0)
