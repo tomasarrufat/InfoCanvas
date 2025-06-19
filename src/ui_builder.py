@@ -341,6 +341,16 @@ class UIBuilder:
         z_layout.addWidget(app.line_z_index_spin)
         line_props_layout.addLayout(z_layout)
 
+        opacity_layout = QHBoxLayout()
+        opacity_layout.addWidget(QLabel("Opacity:"))
+        app.line_opacity_spin = QDoubleSpinBox()
+        app.line_opacity_spin.setRange(0.0, 1.0)
+        app.line_opacity_spin.setSingleStep(0.05)
+        app.line_opacity_spin.setDecimals(2)
+        app.line_opacity_spin.valueChanged.connect(app.update_selected_line_opacity)
+        opacity_layout.addWidget(app.line_opacity_spin)
+        line_props_layout.addLayout(opacity_layout)
+
         color_layout = QHBoxLayout()
         color_layout.addWidget(QLabel("Line Color:"))
         app.line_color_button = QPushButton("Select Color")
