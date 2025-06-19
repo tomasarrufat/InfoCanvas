@@ -379,7 +379,7 @@ class ItemOperations:
 
     def _unconnected_to_connected_allowed(self, unconn_id, conn_id):
         conn_count = self._connection_count(conn_id)
-        if conn_count > 2:
+        if conn_count >= 2:
             return True
         if conn_count == 1:
             connected = self._connected_areas(conn_id)

@@ -398,11 +398,17 @@ class InfoCanvasApp(FramelessWindow):
             self.align_vertical_button.setVisible(True)
             if selected_info_rect_count == 2:
                 rects = [i for i in self.scene.selectedItems() if isinstance(i, InfoAreaItem)]
-                if len(rects) == 2 and self.connection_exists(rects[0].config_data.get('id'), rects[1].config_data.get('id')):
-                    self.connect_rects_button.setText("Disconnect Areas")
-                else:
-                    self.connect_rects_button.setText("Connect Selected Areas")
-                self.connect_rects_button.setVisible(True)
+                if len(rects) == 2:
+                    id1 = rects[0].config_data.get('id')
+                    id2 = rects[1].config_data.get('id')
+                    if self.connection_exists(id1, id2):
+                        self.connect_rects_button.setText("Disconnect Areas")
+                        self.connect_rects_button.setVisible(True)
+                    elif self.item_operations._connection_allowed(id1, id2):
+                        self.connect_rects_button.setText("Connect Selected Areas")
+                        self.connect_rects_button.setVisible(True)
+                    else:
+                        self.connect_rects_button.setVisible(False)
             self.info_rect_properties_widget.setVisible(True)
             return
 

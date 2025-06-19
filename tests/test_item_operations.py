@@ -483,7 +483,7 @@ def test_connection_allowed_rules(item_ops):
         {'id': 'c1', 'source': 'b', 'destination': 'x'},
         {'id': 'c2', 'source': 'b', 'destination': 'y'},
     ]
-    assert item_ops._connection_allowed('a', 'b') is False
+    assert item_ops._connection_allowed('a', 'b') is True
 
     cfg['connections'] = [
         {'id': 'c1', 'source': 'b', 'destination': 'c'},

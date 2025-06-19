@@ -664,6 +664,42 @@ def test_multi_select_shows_only_align_buttons(base_app_fixture):
     assert not app.info_rect_detail_widget.isVisible()
 
 
+def test_connect_button_visibility_based_on_rules(base_app_fixture):
+    app = base_app_fixture
+    rect1 = {'id': 'r1', 'width': 50, 'height': 40, 'center_x': 60, 'center_y': 50, 'text': 'A', 'shape': 'rectangle'}
+    rect2 = {'id': 'r2', 'width': 50, 'height': 40, 'center_x': 150, 'center_y': 50, 'text': 'B', 'shape': 'rectangle'}
+    rect3 = {'id': 'r3', 'width': 50, 'height': 40, 'center_x': 240, 'center_y': 50, 'text': 'C', 'shape': 'rectangle'}
+    rect4 = {'id': 'r4', 'width': 50, 'height': 40, 'center_x': 330, 'center_y': 50, 'text': 'D', 'shape': 'rectangle'}
+
+    app.config['info_areas'] = [rect1, rect2, rect3, rect4]
+    app.config['connections'] = [
+        {'id': 'c1', 'source': 'r2', 'destination': 'r3'},
+        {'id': 'c2', 'source': 'r3', 'destination': 'r4'},
+    ]
+    app.render_canvas_from_config()
+    item1 = app.item_map['r1']
+    item2 = app.item_map['r2']
+    item1.setSelected(True)
+    item2.setSelected(True)
+    app.canvas_manager.on_scene_selection_changed()
+    app.update_properties_panel()
+    assert not app.connect_rects_button.isVisible()
+
+    app.config['connections'] = [
+        {'id': 'c1', 'source': 'r2', 'destination': 'r3'},
+        {'id': 'c2', 'source': 'r2', 'destination': 'r4'},
+    ]
+    app.render_canvas_from_config()
+    item1 = app.item_map['r1']
+    item2 = app.item_map['r2']
+    item1.setSelected(True)
+    item2.setSelected(True)
+    app.canvas_manager.on_scene_selection_changed()
+    app.update_properties_panel()
+    assert app.connect_rects_button.isVisible()
+    assert app.connect_rects_button.text() == "Connect Selected Areas"
+
+
 # --- Tests for Alignment Features --- #
 
 
