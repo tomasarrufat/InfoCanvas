@@ -179,13 +179,25 @@ class HtmlExporter:
             start_x, start_y, end_x, end_y = utils.compute_connection_points(src, dst)
             color = conn.get('line_color', '#00ffff')
             thickness = conn.get('thickness', 2)
-            opacity = conn.get('opacity', 1.0)
+            opacity = conn.get('opacity', 1.0) # Default line opacity if not hidden
             z = conn.get('z_index', 0)
+
+            src_show_on_hover = src.get('show_on_hover', True)
+            dst_show_on_hover = dst.get('show_on_hover', True)
+
+            initial_line_style = f"position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};"
+            if src_show_on_hover and dst_show_on_hover:
+                initial_line_style += "opacity:0;"
+            else:
+                # Respect the line's own opacity if it's not meant to be hidden initially
+                initial_line_style += f"opacity:{opacity};"
+
+
             line_data = (
                 f"data-source='{conn.get('source')}' data-destination='{conn.get('destination')}'"
             )
             lines.append(
-                f"<svg class='connection-line' {line_data} style='position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' stroke-opacity='{opacity}' /></svg>"
+                f"<svg class='connection-line' {line_data} style='{initial_line_style}'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' /></svg>" # stroke-opacity removed here, handled by SVG style
             )
         lines.extend([
 "</div>", "<script>",
@@ -217,8 +229,31 @@ class HtmlExporter:
 "}",
 "document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
 "  if(h.dataset.showOnHover!=='false'){",
-"    h.addEventListener('mouseenter',function(){h.style.opacity='1';});",
-"    h.addEventListener('mouseleave',function(){h.style.opacity='0';});",
+"    h.addEventListener('mouseenter',function(){",
+"      h.style.opacity='1';",
+"      var hotspotId = h.dataset.id;",
+"      document.querySelectorAll('.connection-line').forEach(function(line){",
+"        if(line.dataset.source === hotspotId || line.dataset.destination === hotspotId){",
+"          line.style.opacity = '1';",
+"        }",
+"      });",
+"    });",
+"    h.addEventListener('mouseleave',function(){",
+"      h.style.opacity='0';",
+"      var hotspotId = h.dataset.id;",
+"      document.querySelectorAll('.connection-line').forEach(function(line){",
+"        if(line.dataset.source === hotspotId || line.dataset.destination === hotspotId){",
+"          var otherHotspotId = line.dataset.source === hotspotId ? line.dataset.destination : line.dataset.source;",
+"          var otherHotspot = document.querySelector(`.hotspot.info-rectangle-export[data-id='${otherHotspotId}']`);",
+"          if(otherHotspot){",
+"            var otherHotspotVisible = otherHotspot.dataset.showOnHover === 'false' || otherHotspot.style.opacity === '1';",
+"            if(!otherHotspotVisible){",
+"              line.style.opacity = '0';",
+"            }",
+"          }",
+"        }",
+"      });",
+"    });",
 "  }",
 "  var origLeft=0,origTop=0;",
 "  var isDrag=false,animating=false,offX=0,offY=0,animId=0;",
