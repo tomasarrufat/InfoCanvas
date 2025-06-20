@@ -158,10 +158,12 @@ class HtmlExporter:
             ]
             current_inner_style = "".join(inner_style_list)
             show_on_hover = rect_conf.get('show_on_hover', True)
-            if show_on_hover:
+            show_on_hover_connected = rect_conf.get('show_on_hover_connected', False) # New
+            if show_on_hover or (not show_on_hover and show_on_hover_connected): # Updated logic
                 outer_style += "opacity:0;"
             text_content_div_style = current_inner_style
-            data_attr = f"data-show-on-hover='{str(show_on_hover).lower()}'"
+            # Updated data_attr to include the new property
+            data_attr = f"data-show-on-hover='{str(show_on_hover).lower()}' data-show-on-hover-connected='{str(show_on_hover_connected).lower()}'"
             extra_data = (
                 f"data-id='{rect_conf.get('id')}' "
                 f"data-width='{rect_width}' data-height='{rect_height}' "
@@ -182,15 +184,34 @@ class HtmlExporter:
             configured_opacity = conn.get('opacity', 1.0) # Store configured opacity
             z = conn.get('z_index', 0)
 
-            src_show_on_hover = src.get('show_on_hover', True)
-            dst_show_on_hover = dst.get('show_on_hover', True)
+            info_areas_list = self.config.get('info_areas', [])
 
-            initial_line_style = f"position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};"
-            if src_show_on_hover and dst_show_on_hover:
-                initial_line_style += "opacity:0;" # Initially hidden
+            src_conf = next((r for r in info_areas_list if r.get('id') == conn.get('source')), None)
+            dst_conf = next((r for r in info_areas_list if r.get('id') == conn.get('destination')), None)
+
+            src_initially_hidden = False
+            if src_conf:
+                src_show_on_hover_val = src_conf.get('show_on_hover', True)
+                src_show_on_hover_connected_val = src_conf.get('show_on_hover_connected', False)
+                if src_show_on_hover_val or (not src_show_on_hover_val and src_show_on_hover_connected_val):
+                    src_initially_hidden = True
+
+            dst_initially_hidden = False
+            if dst_conf:
+                dst_show_on_hover_val = dst_conf.get('show_on_hover', True)
+                dst_show_on_hover_connected_val = dst_conf.get('show_on_hover_connected', False)
+                if dst_show_on_hover_val or (not dst_show_on_hover_val and dst_show_on_hover_connected_val):
+                    dst_initially_hidden = True
+
+            base_style_part = f"position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};"
+            opacity_part_for_line = ""
+            if src_initially_hidden or dst_initially_hidden:
+                opacity_part_for_line = "opacity:0;"
             else:
-                # Initially visible, use its configured opacity
-                initial_line_style += f"opacity:{configured_opacity};"
+                line_opacity_val = conn.get('opacity', 1.0) # Use the line's own configured opacity
+                opacity_part_for_line = f"opacity:{line_opacity_val};"
+
+            initial_line_style = f"{base_style_part}{opacity_part_for_line}"
 
             line_data = (
                 f"data-source='{conn.get('source')}' data-destination='{conn.get('destination')}' "
@@ -227,34 +248,71 @@ class HtmlExporter:
 "    line.setAttribute('y2',e[1]);",
 "  });",
 "}",
-"document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
-"  if(h.dataset.showOnHover!=='false'){",
-"    h.addEventListener('mouseenter',function(){",
-"      h.style.opacity='1';",
-"      var hotspotId = h.dataset.id;",
-"      document.querySelectorAll('.connection-line').forEach(function(line){",
-"        if(line.dataset.source === hotspotId || line.dataset.destination === hotspotId){",
-"          line.style.opacity = line.dataset.originalOpacity; // Use original opacity",
+"function updateAllVisibilities(currentlyHoveredItemId = null) {",
+"    // First, reset all hover-dependent items to hidden (opacity 0)",
+"    document.querySelectorAll('.hotspot.info-rectangle-export').forEach(h => {",
+"        // An item is hover-dependent if show_on_hover is true, OR if show_on_hover is false but show_on_hover_connected is true",
+"        if (h.dataset.showOnHover !== 'false' || (h.dataset.showOnHover === 'false' && h.dataset.showOnHoverConnected === 'true')) {",
+"            h.style.opacity = '0';",
 "        }",
-"      });",
 "    });",
-"    h.addEventListener('mouseleave',function(){",
-"      h.style.opacity='0';",
-"      var hotspotId = h.dataset.id;",
-"      document.querySelectorAll('.connection-line').forEach(function(line){",
-"        if(line.dataset.source === hotspotId || line.dataset.destination === hotspotId){",
-"          var otherHotspotId = line.dataset.source === hotspotId ? line.dataset.destination : line.dataset.source;",
-"          var otherHotspot = document.querySelector(`.hotspot.info-rectangle-export[data-id='${otherHotspotId}']`);",
-"          if(otherHotspot){",
-"            var otherHotspotVisible = otherHotspot.dataset.showOnHover === 'false' || otherHotspot.style.opacity === '1';",
-"            if(!otherHotspotVisible){",
-"              line.style.opacity = '0';",
+"    // Also reset all connection lines to hidden (opacity 0) initially for this update cycle",
+"    document.querySelectorAll('.connection-line').forEach(line => {",
+"        line.style.opacity = '0';",
+"    });",
+"",
+"    // If an item is actually being hovered:",
+"    if (currentlyHoveredItemId) {",
+"        const hoveredHotspot = document.querySelector(`.hotspot.info-rectangle-export[data-id='${currentlyHoveredItemId}']`);",
+"        if (hoveredHotspot) {",
+"            // Make the directly hovered item visible if it's meant to be shown on any kind of hover.",
+"            if (hoveredHotspot.dataset.showOnHover !== 'false' || (hoveredHotspot.dataset.showOnHover === 'false' && hoveredHotspot.dataset.showOnHoverConnected === 'true')) {",
+"                hoveredHotspot.style.opacity = '1';",
 "            }",
-"          }",
+"",
+"            // Now, find items connected to 'hoveredHotspot' that have 'show_on_hover_connected=\"true\"' and 'show_on_hover=\"false\"'",
+"            document.querySelectorAll('.connection-line').forEach(line => {",
+"                let otherItemId = null;",
+"                if (line.dataset.source === currentlyHoveredItemId) {",
+"                    otherItemId = line.dataset.destination;",
+"                } else if (line.dataset.destination === currentlyHoveredItemId) {",
+"                    otherItemId = line.dataset.source;",
+"                }",
+"",
+"                if (otherItemId) {",
+"                    const otherHotspot = document.querySelector(`.hotspot.info-rectangle-export[data-id='${otherItemId}']`);",
+"                    if (otherHotspot && otherHotspot.dataset.showOnHover === 'false' && otherHotspot.dataset.showOnHoverConnected === 'true') {",
+"                        otherHotspot.style.opacity = '1';",
+"                    }",
+"                }",
+"            });",
 "        }",
-"      });",
+"    }",
+"",
+"    // Second pass: Ensure items that are *always* visible (not hover-dependent at all) are set to opacity 1.",
+"    document.querySelectorAll('.hotspot.info-rectangle-export').forEach(h => {",
+"        if (h.dataset.showOnHover === 'false' && h.dataset.showOnHoverConnected === 'false') {",
+"            h.style.opacity = '1';",
+"        }",
 "    });",
-"  }",
+"",
+"    // Final pass for connection lines: A line is visible if both its source and destination hotspots are currently visible (opacity 1).",
+"    document.querySelectorAll('.connection-line').forEach(line => {",
+"        const srcHotspot = document.querySelector(`.hotspot.info-rectangle-export[data-id='${line.dataset.source}']`);",
+"        const dstHotspot = document.querySelector(`.hotspot.info-rectangle-export[data-id='${line.dataset.destination}']`);",
+"",
+"        if (srcHotspot && dstHotspot && srcHotspot.style.opacity === '1' && dstHotspot.style.opacity === '1') {",
+"            line.style.opacity = line.dataset.originalOpacity;",
+"        } else {",
+"            line.style.opacity = '0';",
+"        }",
+"    });",
+"}",
+"",
+"// Event listeners for DRAGGING hotspots (preserving existing dragging logic)",
+"document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
+"  // OLD HOVER MOUSEENTER/MOUSELEAVE LISTENERS ARE REMOVED FROM HERE",
+"",
 "  var origLeft=0,origTop=0;",
 "  var isDrag=false,animating=false,offX=0,offY=0,animId=0;",
 "  h.addEventListener('mousedown',function(e){",
@@ -304,7 +362,27 @@ class HtmlExporter:
 "    animId=requestAnimationFrame(anim);",
 "  });",
 "});",
-"updateConnectionLines();",
+"",
+"// Event listeners for HOVER effects (NEW - using updateAllVisibilities)",
+"document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h) {",
+"    h.addEventListener('mouseenter', function() {",
+"        updateAllVisibilities(h.dataset.id);",
+"    });",
+"    h.addEventListener('mouseleave', function() {",
+"        setTimeout(() => {",
+"            const activeElement = document.querySelector(\":hover\");",
+"            let newHoveredItemId = null;",
+"            if (activeElement && activeElement.matches && activeElement.matches('.hotspot.info-rectangle-export')) {",
+"                 newHoveredItemId = activeElement.dataset.id;",
+"            }",
+"            updateAllVisibilities(newHoveredItemId);",
+"        }, 0);",
+"    });",
+"});",
+"",
+"// Initial setup calls",
+"updateConnectionLines();", // For draggable items initial positioning
+"updateAllVisibilities();",  // Set initial visibility of all items and lines
 "</script>", "</body></html>",
         ])
         return "\n".join(lines)

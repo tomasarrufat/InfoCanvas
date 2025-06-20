@@ -33,6 +33,7 @@ class InfoAreaItem(BaseDraggableItem):
         super().__init__(parent_item)
         self.config_data = rect_config
         self.config_data.setdefault('show_on_hover', True)
+        self.config_data.setdefault('show_on_hover_connected', False)
         self._style_config_ref = None
         self._w = self.config_data.get('width', 100)
         self._h = self.config_data.get('height', 50)
