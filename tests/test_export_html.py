@@ -362,6 +362,58 @@ def test_export_html_lines_follow_drag(tmp_path_factory, tmp_path):
     assert 'updateConnectionLines()' in content
     assert "stroke-opacity='1.0'" in content
 
+def test_connection_lines_hidden_when_both_hover(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_hover_line")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config.setdefault('info_areas', []).extend([
+        {
+            'id': 'h1', 'center_x': 10, 'center_y': 10,
+            'width': 20, 'height': 20, 'text': 'a',
+            'shape': 'rectangle', 'show_on_hover': True
+        },
+        {
+            'id': 'h2', 'center_x': 40, 'center_y': 40,
+            'width': 20, 'height': 20, 'text': 'b',
+            'shape': 'rectangle', 'show_on_hover': True
+        },
+    ])
+    sample_config.setdefault('connections', []).append({
+        'id': 'c1', 'source': 'h1', 'destination': 'h2'
+    })
+
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "hover_line.html"
+
+    assert exporter.export(str(out_file)) is True
+    html = out_file.read_text()
+    idx = html.find("class='connection-line'")
+    assert idx != -1
+    style_start = html.find("style='", idx)
+    assert style_start != -1
+    style_end = html.find("'", style_start + 7)
+    style_content = html[style_start + 7:style_end]
+    assert "opacity:0;" in style_content
+
+def test_export_html_contains_line_visibility_js(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_line_js")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    sample_config = utils.get_default_config()
+    sample_config.setdefault('info_areas', []).append({
+        'id': 'r1', 'center_x': 10, 'center_y': 10,
+        'width': 20, 'height': 20, 'text': 'a',
+        'shape': 'rectangle'
+    })
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    out_file = tmp_path / "line_js.html"
+
+    assert exporter.export(str(out_file)) is True
+    html = out_file.read_text()
+    assert 'function updateLineVisibility()' in html
+    assert 'updateLineVisibility();' in html
+
 # Keep other tests like test_export_to_html_write_error,
 # test_export_to_html_uses_dialog, etc., as they are, because they test
 # app.py's handling of HtmlExporter's results or app.py's dialog logic.

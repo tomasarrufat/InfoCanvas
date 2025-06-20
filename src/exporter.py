@@ -184,8 +184,15 @@ class HtmlExporter:
             line_data = (
                 f"data-source='{conn.get('source')}' data-destination='{conn.get('destination')}'"
             )
+            line_style = (
+                f"position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};"
+            )
+            src_hover = src.get('show_on_hover', True)
+            dst_hover = dst.get('show_on_hover', True)
+            if src_hover and dst_hover:
+                line_style += "opacity:0;"
             lines.append(
-                f"<svg class='connection-line' {line_data} style='position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' stroke-opacity='{opacity}' /></svg>"
+                f"<svg class='connection-line' {line_data} style='{line_style}'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' stroke-opacity='{opacity}' /></svg>"
             )
         lines.extend([
 "</div>", "<script>",
@@ -215,10 +222,20 @@ class HtmlExporter:
 "    line.setAttribute('y2',e[1]);",
 "  });",
 "}",
+"function updateLineVisibility(){",
+"  document.querySelectorAll('.connection-line').forEach(function(svg){",
+"    var src=document.querySelector('.info-rectangle-export[data-id=\"' + svg.dataset.source + '\"]');",
+"    var dst=document.querySelector('.info-rectangle-export[data-id=\"' + svg.dataset.destination + '\"]');",
+"    if(!src||!dst) return;",
+"    var srcVisible=src.dataset.showOnHover==='false'||src.style.opacity!=='0';",
+"    var dstVisible=dst.dataset.showOnHover==='false'||dst.style.opacity!=='0';",
+"    svg.style.opacity=(srcVisible&&dstVisible)?'1':'0';",
+"  });",
+"}",
 "document.querySelectorAll('.hotspot.info-rectangle-export').forEach(function(h){",
 "  if(h.dataset.showOnHover!=='false'){",
-"    h.addEventListener('mouseenter',function(){h.style.opacity='1';});",
-"    h.addEventListener('mouseleave',function(){h.style.opacity='0';});",
+"    h.addEventListener('mouseenter',function(){h.style.opacity='1';updateLineVisibility();});",
+"    h.addEventListener('mouseleave',function(){h.style.opacity='0';updateLineVisibility();});",
 "  }",
 "  var origLeft=0,origTop=0;",
 "  var isDrag=false,animating=false,offX=0,offY=0,animId=0;",
@@ -270,6 +287,7 @@ class HtmlExporter:
 "  });",
 "});",
 "updateConnectionLines();",
+"updateLineVisibility();",
 "</script>", "</body></html>",
         ])
         return "\n".join(lines)
