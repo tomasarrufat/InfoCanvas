@@ -1046,3 +1046,11 @@ def test_rotation_handle_in_bounding_rect(create_item_with_scene):
     item, _, _ = create_item_with_scene()
     handle_center = item._get_rotation_handle_rect().center()
     assert item.boundingRect().contains(handle_center)
+
+
+def test_info_area_item_default_show_on_hover_connected(qtbot):
+    # Basic config for an InfoAreaItem
+    rect_config = {"id": "rect1", "width": 100, "height": 50, "center_x": 50, "center_y": 25}
+    item = InfoAreaItem(rect_config)
+    assert item.config_data.get('show_on_hover_connected') == False, \
+        "InfoAreaItem should have 'show_on_hover_connected' as False by default."

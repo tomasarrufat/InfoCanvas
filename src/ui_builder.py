@@ -288,6 +288,11 @@ class UIBuilder:
         app.rect_show_on_hover_checkbox.stateChanged.connect(app.update_selected_rect_show_on_hover)
         detail_layout.addWidget(app.rect_show_on_hover_checkbox)
 
+        app.rect_show_on_hover_connected_checkbox = QCheckBox("Show info area on hover on connected")
+        # We will connect its stateChanged signal later in app.py
+        detail_layout.addWidget(app.rect_show_on_hover_connected_checkbox)
+        app.rect_show_on_hover_connected_checkbox.setVisible(False) # Initially hidden
+
         area_color_layout = QHBoxLayout()
         area_color_layout.addWidget(QLabel("Area Color:"))
         app.rect_area_color_button = QPushButton("Select Color")

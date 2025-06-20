@@ -247,17 +247,80 @@ class ItemOperations:
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
         if reply == QMessageBox.Yes:
-            if rect_conf in self.config.get('info_areas', []): # self.config is app.config
+            item_id_to_delete = rect_conf.get('id')
+
+            # First, remove all connections associated with this item
+            connections_were_removed = self.remove_connections_for_item(item_id_to_delete)
+            # remove_connections_for_item handles saving config if connections changed,
+            # and calls self.app.update_hover_connected_checkbox_visibility()
+
+            # Then, remove the item itself from config
+            item_removed_from_config = False
+            if rect_conf in self.config.get('info_areas', []):
                 self.config['info_areas'].remove(rect_conf)
+                item_removed_from_config = True
 
-            self.scene.removeItem(self.app.selected_item) # self.scene is app.scene
-            if rect_conf.get('id') in self.item_map: del self.item_map[rect_conf['id']] # self.item_map is app.item_map
+            # Remove InfoAreaItem from scene and item_map
+            if self.app.selected_item and self.app.selected_item.config_data.get('id') == item_id_to_delete:
+                self.scene.removeItem(self.app.selected_item)
+                if item_id_to_delete in self.item_map: del self.item_map[item_id_to_delete]
+                self.app.selected_item = None
+            else:
+                # Fallback if selected_item is somehow not the one we got rect_conf from
+                item_to_remove_from_scene = self.item_map.get(item_id_to_delete)
+                if item_to_remove_from_scene:
+                    self.scene.removeItem(item_to_remove_from_scene)
+                    if item_id_to_delete in self.item_map: del self.item_map[item_id_to_delete]
+                if self.app.selected_item and self.app.selected_item.config_data.get('id') == item_id_to_delete:
+                    self.app.selected_item = None
 
-            self.app.selected_item = None # Update app's selected_item
+            # Save config if the item itself was removed from the list,
+            # (remove_connections_for_item would have saved if only connections were removed)
+            if item_removed_from_config:
+                self.app.save_config()
+
+            self.app.update_properties_panel() # Refresh UI (this will also trigger on_scene_selection_changed)
+            self.app.statusBar().showMessage(f"Info area {item_id_to_delete} and its connections deleted.", 2000)
+            # update_hover_connected_checkbox_visibility is called by remove_connections_for_item
+            # and will also be called by update_properties_panel / on_scene_selection_changed
+
+    def remove_connections_for_item(self, item_id):
+        """Removes all connections associated with a given item ID from config and scene."""
+        if 'connections' not in self.config or not item_id:
+            return False # Return whether changes were made
+
+        initial_connection_count = len(self.config.get('connections', []))
+
+        connections_to_keep = []
+        removed_connection_line_items_ids = []
+        for conn in self.config.get('connections', []):
+            if conn.get('source') == item_id or conn.get('destination') == item_id:
+                removed_connection_line_items_ids.append(conn.get('id'))
+            else:
+                connections_to_keep.append(conn)
+
+        connections_changed = len(connections_to_keep) != initial_connection_count
+
+        if connections_changed:
+            self.config['connections'] = connections_to_keep # Update the config
+
+            # Remove from scene and item_map
+            if hasattr(self.app, 'scene') and self.app.scene: # Ensure scene exists
+                for conn_line_id in removed_connection_line_items_ids:
+                    line_item = self.item_map.get(conn_line_id) # Use self.item_map
+                    if line_item:
+                        self.scene.removeItem(line_item) # Use self.scene
+                        if conn_line_id in self.item_map:
+                            del self.item_map[conn_line_id]
 
             self.app.save_config() # Call app's save_config
-            self.app.update_properties_panel() # Call app's method
-            self.app.statusBar().showMessage("Info rectangle deleted.", 2000) # app's statusBar
+
+        # Always call visibility update on app, as selection or context might change
+        # This is crucial for the new checkbox logic.
+        if hasattr(self.app, 'update_hover_connected_checkbox_visibility'):
+            self.app.update_hover_connected_checkbox_visibility()
+
+        return connections_changed
 
     def paste_item_from_clipboard(self): # Renamed and refactored
         """Pastes an item from the app's clipboard."""

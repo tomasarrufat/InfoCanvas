@@ -57,6 +57,15 @@ class InfoCanvasApp(FramelessWindow):
         self.input_handler = InputHandler(self)
         self.text_style_manager.load_styles_into_dropdown()
         self.line_style_manager.load_styles_into_dropdown()
+
+        # Connect the new checkbox signal AFTER UI is built and element exists
+        if hasattr(self, 'rect_show_on_hover_connected_checkbox'):
+            self.rect_show_on_hover_connected_checkbox.stateChanged.connect(
+                self.update_selected_rect_show_on_hover_connected_state
+            )
+        # else: # This case should ideally not be hit if UIBuilder works as expected.
+            # print("DEBUG: rect_show_on_hover_connected_checkbox not found during app init for signal connection.")
+
         self.populate_controls_from_config()
         self.render_canvas_from_config()
         self.update_mode_ui()
@@ -373,8 +382,16 @@ class InfoCanvasApp(FramelessWindow):
 
     def on_scene_selection_changed(self):
         self.canvas_manager.on_scene_selection_changed()
+        # This is a primary trigger for updating the checkbox visibility
+        if hasattr(self, 'update_hover_connected_checkbox_visibility'):
+            self.update_hover_connected_checkbox_visibility()
 
     def update_properties_panel(self):
+        # Call this at the beginning of updating properties panel as well,
+        # as selection might make the checkbox (in)visible or change its state.
+        if hasattr(self, 'update_hover_connected_checkbox_visibility'):
+            self.update_hover_connected_checkbox_visibility()
+
         if not hasattr(self, 'image_properties_widget'):
             return  # UI not fully set up
         # Avoid manipulating widgets that might have been deleted during shutdown
@@ -635,6 +652,63 @@ class InfoCanvasApp(FramelessWindow):
             rect_conf['show_on_hover'] = bool(state)
             self.selected_item.update_appearance(self.selected_item.isSelected(), self.current_mode == "view")
             self.save_config()
+            if hasattr(self, 'update_hover_connected_checkbox_visibility'):
+                self.update_hover_connected_checkbox_visibility()
+
+    def update_selected_rect_show_on_hover_connected_state(self, state):
+        if not hasattr(self, 'scene') or not self.scene or not self.selected_item:
+            return
+        if isinstance(self.selected_item, InfoAreaItem):
+            rect_conf = self.selected_item.config_data
+            is_checked = bool(state == Qt.Checked)
+            # Only update and save if the value actually changed
+            if rect_conf.get('show_on_hover_connected') != is_checked:
+                rect_conf['show_on_hover_connected'] = is_checked
+                # Emit properties_changed which should lead to save_config via on_graphics_item_properties_changed
+                self.selected_item.properties_changed.emit(self.selected_item)
+
+    def count_connections_for_item(self, item_id):
+        count = 0
+        if not item_id: return 0
+        for connection in self.config.get('connections', []):
+            if connection.get('source') == item_id or connection.get('destination') == item_id:
+                count += 1
+        return count
+
+    def update_hover_connected_checkbox_visibility(self):
+        if not hasattr(self, 'rect_show_on_hover_connected_checkbox') or \
+           not hasattr(self, 'rect_show_on_hover_checkbox') or \
+           not hasattr(self, 'scene') or not self.scene:
+            # This can happen if called too early or if UI elements are missing
+            # print("DEBUG: update_hover_connected_checkbox_visibility prerequisites not met.")
+            return
+
+        selected_items = self.scene.selectedItems()
+        if len(selected_items) == 1 and isinstance(selected_items[0], InfoAreaItem):
+            selected_item = selected_items[0]
+            item_id = selected_item.config_data.get('id')
+
+            main_hover_checked = self.rect_show_on_hover_checkbox.isChecked()
+            connection_count = self.count_connections_for_item(item_id)
+
+            # Show the new checkbox only if the main "show on hover" is UNCHECKED and there's exactly ONE connection
+            if not main_hover_checked and connection_count == 1:
+                self.rect_show_on_hover_connected_checkbox.setVisible(True)
+                # Set its state based on item's config, block signals to prevent immediate callback
+                current_val = selected_item.config_data.get('show_on_hover_connected', False)
+                self.rect_show_on_hover_connected_checkbox.blockSignals(True)
+                self.rect_show_on_hover_connected_checkbox.setChecked(current_val)
+                self.rect_show_on_hover_connected_checkbox.blockSignals(False)
+            else:
+                self.rect_show_on_hover_connected_checkbox.setVisible(False)
+                self.rect_show_on_hover_connected_checkbox.blockSignals(True)
+                self.rect_show_on_hover_connected_checkbox.setChecked(False) # Reset when hidden
+                self.rect_show_on_hover_connected_checkbox.blockSignals(False)
+        else:
+            self.rect_show_on_hover_connected_checkbox.setVisible(False)
+            self.rect_show_on_hover_connected_checkbox.blockSignals(True)
+            self.rect_show_on_hover_connected_checkbox.setChecked(False) # Reset when hidden
+            self.rect_show_on_hover_connected_checkbox.blockSignals(False)
 
     def update_selected_area_shape(self, shape_label):
         if isinstance(self.selected_item, InfoAreaItem):
@@ -676,9 +750,14 @@ class InfoCanvasApp(FramelessWindow):
         id1 = selected[0].config_data.get('id')
         id2 = selected[1].config_data.get('id')
         if self.connection_exists(id1, id2):
-            self.disconnect_selected_info_areas()
+            self.disconnect_selected_info_areas() # This calls item_operations
         else:
-            self.connect_selected_info_areas()
+            self.connect_selected_info_areas()    # This calls item_operations
+
+        # Call after connect/disconnect operations which are handled by item_operations.
+        # These operations should ideally manage saving config and then the app can update UI state.
+        if hasattr(self, 'update_hover_connected_checkbox_visibility'):
+            self.update_hover_connected_checkbox_visibility()
 
     def connection_exists(self, id1, id2):
         for conn in self.config.get('connections', []):

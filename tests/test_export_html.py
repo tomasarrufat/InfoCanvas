@@ -3,9 +3,10 @@ import re # For more flexible style checking
 from unittest.mock import MagicMock, patch # Keep patch if other tests use it
 from PyQt5.QtWidgets import QMessageBox # Keep if other tests use it
 # Import base_app_fixture if any test still needs it.
-from tests.test_app import base_app_fixture
+# from tests.test_app import base_app_fixture # Not used in these new tests
 from src import utils
-from src.exporter import HtmlExporter # <--- NEW IMPORT
+from src.exporter import HtmlExporter
+from bs4 import BeautifulSoup # <--- NEW IMPORT
 
 # (pytest fixtures tmp_path, tmp_path_factory are function-scoped by default)
 
@@ -421,6 +422,131 @@ def test_export_html_connection_line_visibility_on_hover(tmp_path_factory, tmp_p
 
     line_svg_regex = rf"<svg class='connection-line' data-source='ia1' data-destination='ia2' {expected_line_data_attr} style='{initial_expected_style}'>"
     assert re.search(line_svg_regex, content), f"SVG line for conn1 not found with correct data-original-opacity and initial style. Searched for: {line_svg_regex}"
+
+
+# --- New tests for show_on_hover_connected ---
+
+def test_export_data_attributes_for_hover_connected(tmp_path_factory):
+    project_path = tmp_path_factory.mktemp("project_data_attr")
+    sample_config = utils.get_default_config()
+    sample_config['info_areas'] = [{
+        'id': 'rect1', 'center_x': 10, 'center_y': 10, 'width': 20, 'height': 20,
+        'text': 'Test Area', 'shape': 'rectangle',
+        'show_on_hover': False,
+        'show_on_hover_connected': True
+    }]
+    exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
+    html_content = exporter._generate_html_content()
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    rect_div = soup.find('div', attrs={'data-id': 'rect1'})
+    assert rect_div is not None, "Could not find info area div for rect1"
+    assert rect_div.get('data-show-on-hover') == 'false', \
+        "data-show-on-hover attribute is incorrect"
+    assert rect_div.get('data-show-on-hover-connected') == 'true', \
+        "data-show-on-hover-connected attribute is incorrect"
+
+def test_export_initial_visibility_info_areas(tmp_path_factory):
+    project_path_base = tmp_path_factory.mktemp("project_visibility_areas")
+
+    scenarios = [
+        ("scenario1_hover_true", {'show_on_hover': True, 'show_on_hover_connected': False}, "opacity:0;"),
+        ("scenario2_all_false", {'show_on_hover': False, 'show_on_hover_connected': False}, None), # None means opacity:0 should NOT be present
+        ("scenario3_connected_true", {'show_on_hover': False, 'show_on_hover_connected': True}, "opacity:0;")
+    ]
+
+    for name, props, expected_style_part in scenarios:
+        project_path = project_path_base / name
+        os.makedirs(project_path, exist_ok=True) # Ensure subdirectory exists if needed by exporter logic for images etc.
+
+        config = utils.get_default_config()
+        info_area_config = {
+            'id': 'area1', 'center_x': 50, 'center_y': 50, 'width': 100, 'height': 50,
+            'text': f'Test {name}', 'shape': 'rectangle',
+        }
+        info_area_config.update(props)
+        config['info_areas'] = [info_area_config]
+
+        exporter = HtmlExporter(config=config, project_path=str(project_path))
+        html_content = exporter._generate_html_content()
+        soup = BeautifulSoup(html_content, 'html.parser')
+
+        area_div = soup.find('div', attrs={'data-id': 'area1'})
+        assert area_div is not None, f"Info area div not found for {name}"
+
+        style_attr = area_div.get('style', '').replace(' ', '').lower()
+
+        if expected_style_part:
+            assert expected_style_part in style_attr, \
+                f"Expected style '{expected_style_part}' not found in '{style_attr}' for {name}"
+        else:
+            assert "opacity:0;" not in style_attr, \
+                f"Style 'opacity:0;' should not be present in '{style_attr}' for {name}"
+
+
+def test_export_initial_visibility_connection_lines(tmp_path_factory):
+    project_path_base = tmp_path_factory.mktemp("project_visibility_lines")
+    default_bg_config = utils.get_default_config()['background']
+
+    base_config_info_areas = [
+        {'id': 'ia1', 'center_x': 50, 'center_y': 50, 'width': 100, 'height': 50, 'text': 'Area 1', 'shape': 'rectangle'},
+        {'id': 'ia2', 'center_x': 250, 'center_y': 50, 'width': 100, 'height': 50, 'text': 'Area 2', 'shape': 'rectangle'}
+    ]
+    base_config_connections = [{
+        'id': 'conn1', 'source': 'ia1', 'destination': 'ia2',
+        'line_color': '#FF0000', 'thickness': 2, 'opacity': 0.8, 'z_index': 1
+    }]
+
+    scenarios = [
+        ("case_A_both_visible",
+            {'ia1': {'show_on_hover': False, 'show_on_hover_connected': False},
+             'ia2': {'show_on_hover': False, 'show_on_hover_connected': False}},
+            f"opacity:{base_config_connections[0]['opacity']};"),
+        ("case_B_ia1_hidden_hover",
+            {'ia1': {'show_on_hover': True, 'show_on_hover_connected': False},
+             'ia2': {'show_on_hover': False, 'show_on_hover_connected': False}},
+            "opacity:0;"),
+        ("case_C_ia2_hidden_connected",
+            {'ia1': {'show_on_hover': False, 'show_on_hover_connected': False},
+             'ia2': {'show_on_hover': False, 'show_on_hover_connected': True}},
+            "opacity:0;"),
+        ("case_D_both_hidden_mix",
+            {'ia1': {'show_on_hover': True, 'show_on_hover_connected': False},
+             'ia2': {'show_on_hover': False, 'show_on_hover_connected': True}},
+            "opacity:0;")
+    ]
+
+    for name, area_props_map, expected_line_style_part in scenarios:
+        project_path = project_path_base / name
+        os.makedirs(project_path, exist_ok=True)
+
+        config = utils.get_default_config()
+        config['info_areas'] = []
+        for area_base_conf in base_config_info_areas:
+            new_area_conf = area_base_conf.copy()
+            if area_base_conf['id'] in area_props_map:
+                new_area_conf.update(area_props_map[area_base_conf['id']])
+            config['info_areas'].append(new_area_conf)
+
+        config['connections'] = base_config_connections
+
+        exporter = HtmlExporter(config=config, project_path=str(project_path))
+        html_content = exporter._generate_html_content()
+        soup = BeautifulSoup(html_content, 'html.parser')
+
+        line_svg = soup.find('svg', attrs={'data-id': None, 'data-source': 'ia1', 'data-destination': 'ia2'}) # Connections don't have data-id in current exporter
+        assert line_svg is not None, f"Connection line svg not found for {name}"
+
+        style_attr = line_svg.get('style', '').replace(' ', '').lower()
+
+        # Normalize expected part for robust comparison
+        normalized_expected_part = expected_line_style_part.replace(' ', '').lower()
+        assert normalized_expected_part in style_attr, \
+            f"Expected style part '{normalized_expected_part}' not found in '{style_attr}' for {name}"
+
+        # Additionally, if opacity is not 0, ensure it's not accidentally 0
+        if "opacity:0;" not in normalized_expected_part:
+            assert "opacity:0;" not in style_attr, f"Line style should not be opacity:0 for {name}, got '{style_attr}'"
 
 
     # 2. Assert JavaScript logic for mouseenter/mouseleave
