@@ -179,7 +179,7 @@ class HtmlExporter:
             start_x, start_y, end_x, end_y = utils.compute_connection_points(src, dst)
             color = conn.get('line_color', '#00ffff')
             thickness = conn.get('thickness', 2)
-            opacity = conn.get('opacity', 1.0) # Default line opacity if not hidden
+            configured_opacity = conn.get('opacity', 1.0) # Store configured opacity
             z = conn.get('z_index', 0)
 
             src_show_on_hover = src.get('show_on_hover', True)
@@ -187,17 +187,17 @@ class HtmlExporter:
 
             initial_line_style = f"position:absolute;left:0;top:0;width:{bg.get('width',800)}px;height:{bg.get('height',600)}px;pointer-events:none;z-index:{z};"
             if src_show_on_hover and dst_show_on_hover:
-                initial_line_style += "opacity:0;"
+                initial_line_style += "opacity:0;" # Initially hidden
             else:
-                # Respect the line's own opacity if it's not meant to be hidden initially
-                initial_line_style += f"opacity:{opacity};"
-
+                # Initially visible, use its configured opacity
+                initial_line_style += f"opacity:{configured_opacity};"
 
             line_data = (
-                f"data-source='{conn.get('source')}' data-destination='{conn.get('destination')}'"
+                f"data-source='{conn.get('source')}' data-destination='{conn.get('destination')}' "
+                f"data-original-opacity='{configured_opacity}'" # Add data attribute
             )
             lines.append(
-                f"<svg class='connection-line' {line_data} style='{initial_line_style}'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' /></svg>" # stroke-opacity removed here, handled by SVG style
+                f"<svg class='connection-line' {line_data} style='{initial_line_style}'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' /></svg>"
             )
         lines.extend([
 "</div>", "<script>",
@@ -234,7 +234,7 @@ class HtmlExporter:
 "      var hotspotId = h.dataset.id;",
 "      document.querySelectorAll('.connection-line').forEach(function(line){",
 "        if(line.dataset.source === hotspotId || line.dataset.destination === hotspotId){",
-"          line.style.opacity = '1';",
+"          line.style.opacity = line.dataset.originalOpacity; // Use original opacity",
 "        }",
 "      });",
 "    });",

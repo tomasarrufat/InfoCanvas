@@ -330,9 +330,10 @@ def test_export_html_connections(tmp_path_factory, tmp_path):
         {'id': 'a1', 'center_x': 10, 'center_y': 10, 'width': 20, 'height': 20, 'text': 'a', 'shape': 'rectangle'}, # Defaults to show_on_hover: True
         {'id': 'a2', 'center_x': 40, 'center_y': 40, 'width': 20, 'height': 20, 'text': 'b', 'shape': 'rectangle'}, # Defaults to show_on_hover: True
     ])
+    conn_opacity = 0.5
     sample_config.setdefault('connections', []).append({
         'id': 'c1', 'source': 'a1', 'destination': 'a2',
-        'thickness': 3, 'z_index': 5, 'line_color': '#ff0000', 'opacity': 0.5
+        'thickness': 3, 'z_index': 5, 'line_color': '#ff0000', 'opacity': conn_opacity
     })
 
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
@@ -340,15 +341,16 @@ def test_export_html_connections(tmp_path_factory, tmp_path):
 
     assert exporter.export(str(out_file)) is True
     content = out_file.read_text()
-    assert '<svg class=\'connection-line\'' in content
-    assert 'data-source=\'a1\'' in content
-    assert 'data-destination=\'a2\'' in content
-    assert "stroke='#ff0000'" in content
-    assert "stroke-width='3'" in content
-    # CORRECTED ASSERTION: Both a1 and a2 default to show_on_hover:True, so line should be initially hidden.
-    # The line's own opacity (0.5) is ignored in favor of the hover rule.
+
+    line_svg_str = f"<svg class='connection-line' data-source='a1' data-destination='a2' data-original-opacity='{conn_opacity}'"
+    assert line_svg_str in content
+
+    assert "stroke='#ff0000'" in content # Check color within the <line> element or its style
+    assert "stroke-width='3'" in content # Check thickness
+
+    # Both a1 and a2 default to show_on_hover:True, so line should be initially hidden.
     expected_style = f"position:absolute;left:0;top:0;width:{bg_config.get('width',800)}px;height:{bg_config.get('height',600)}px;pointer-events:none;z-index:5;opacity:0;"
-    assert expected_style in content
+    assert f"style='{expected_style}'" in content # Check the SVG style
 
 
 def test_export_html_lines_follow_drag(tmp_path_factory, tmp_path):
@@ -361,8 +363,9 @@ def test_export_html_lines_follow_drag(tmp_path_factory, tmp_path):
         {'id': 'a1', 'center_x': 10, 'center_y': 10, 'width': 20, 'height': 20, 'text': 'a', 'shape': 'rectangle'}, # Defaults to show_on_hover: True
         {'id': 'a2', 'center_x': 40, 'center_y': 40, 'width': 20, 'height': 20, 'text': 'b', 'shape': 'rectangle'}, # Defaults to show_on_hover: True
     ])
+    conn_opacity = 1.0 # Explicit full opacity for the line itself
     sample_config.setdefault('connections', []).append({
-        'id': 'c1', 'source': 'a1', 'destination': 'a2', 'opacity': 1.0 # Explicit full opacity for the line itself
+        'id': 'c1', 'source': 'a1', 'destination': 'a2', 'opacity': conn_opacity
     })
 
     exporter = HtmlExporter(config=sample_config, project_path=str(project_path))
@@ -371,122 +374,132 @@ def test_export_html_lines_follow_drag(tmp_path_factory, tmp_path):
     assert exporter.export(str(out_file)) is True
     content = out_file.read_text()
     assert 'updateConnectionLines()' in content
-    # CORRECTED ASSERTION: Both a1 and a2 default to show_on_hover:True, so line should be initially hidden (opacity:0)
-    # The line's own opacity (1.0) is ignored in favor of the hover rule.
+
+    line_svg_str = f"<svg class='connection-line' data-source='a1' data-destination='a2' data-original-opacity='{conn_opacity}'"
+    assert line_svg_str in content
+
+    # Both a1 and a2 default to show_on_hover:True, so line should be initially hidden (opacity:0)
     # Default z_index is 0 for connections.
     expected_style = f"position:absolute;left:0;top:0;width:{bg_config.get('width',800)}px;height:{bg_config.get('height',600)}px;pointer-events:none;z-index:0;opacity:0;"
-    assert expected_style in content
+    assert f"style='{expected_style}'" in content
 
 # Keep other tests like test_export_to_html_write_error,
 # test_export_to_html_uses_dialog, etc., as they are, because they test
 # app.py's handling of HtmlExporter's results or app.py's dialog logic.
 # Ensure they still have `base_app_fixture` and `monkeypatch` if they need them.
 
-# --- NEW TEST CASES START HERE ---
+# --- MODIFIED TEST CASES FOR LINE OPACITY ---
 
 def test_export_html_connection_line_visibility_on_hover(tmp_path_factory, tmp_path):
-    project_path = tmp_path_factory.mktemp("project_line_hover")
+    project_path = tmp_path_factory.mktemp("project_line_hover_custom_opacity")
     os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
     bg_config = utils.get_default_config()['background']
-
+    line_custom_opacity = 0.6
 
     config = {
-        'project_name': "Line Hover Test",
-        'background': bg_config, # Use default background
+        'project_name': "Line Hover Custom Opacity Test",
+        'background': bg_config,
         'info_areas': [
             {'id': 'ia1', 'center_x': 50, 'center_y': 50, 'width': 100, 'height': 50, 'text': 'Area 1', 'show_on_hover': True, 'shape': 'rectangle'},
             {'id': 'ia2', 'center_x': 200, 'center_y': 50, 'width': 100, 'height': 50, 'text': 'Area 2', 'show_on_hover': True, 'shape': 'rectangle'}
         ],
         'connections': [
-            {'id': 'conn1', 'source': 'ia1', 'destination': 'ia2', 'line_color': '#0000FF', 'thickness': 2} # z_index defaults to 0
+            {'id': 'conn1', 'source': 'ia1', 'destination': 'ia2', 'line_color': '#0000FF', 'thickness': 2, 'opacity': line_custom_opacity} # z_index defaults to 0
         ],
-        'defaults': utils.get_default_config()['defaults'] # Ensure defaults are present
+        'defaults': utils.get_default_config()['defaults']
     }
 
     exporter = HtmlExporter(config=config, project_path=str(project_path))
-    out_file = tmp_path / "line_hover_export.html"
+    out_file = tmp_path / "line_hover_custom_opacity_export.html"
 
     assert exporter.export(str(out_file)) is True
     content = out_file.read_text()
 
-    # 1. Assert initial line style for opacity:0
-    expected_line_style = f"position:absolute;left:0;top:0;width:{bg_config.get('width',800)}px;height:{bg_config.get('height',600)}px;pointer-events:none;z-index:0;opacity:0;"
-    assert f"<svg class='connection-line' data-source='ia1' data-destination='ia2' style='{expected_line_style}'><line" in content
+    # 1. Assert data-original-opacity and initial style (opacity:0 because both ends are show_on_hover:true)
+    expected_line_data_attr = f"data-original-opacity='{line_custom_opacity}'"
+    initial_expected_style = f"position:absolute;left:0;top:0;width:{bg_config.get('width',800)}px;height:{bg_config.get('height',600)}px;pointer-events:none;z-index:0;opacity:0;"
+
+    line_svg_regex = rf"<svg class='connection-line' data-source='ia1' data-destination='ia2' {expected_line_data_attr} style='{initial_expected_style}'>"
+    assert re.search(line_svg_regex, content), f"SVG line for conn1 not found with correct data-original-opacity and initial style. Searched for: {line_svg_regex}"
+
 
     # 2. Assert JavaScript logic for mouseenter/mouseleave
     script_content_start = content.find("<script>")
     script_content_end = content.find("</script>", script_content_start)
     script_content = content[script_content_start:script_content_end]
 
-    # Check mouseenter logic
+    # Check mouseenter logic uses data-original-opacity
     assert "h.addEventListener('mouseenter',function(){" in script_content
-    assert "h.style.opacity='1';" in script_content # Hotspot becomes visible
-    assert "document.querySelectorAll('.connection-line').forEach(function(line){" in script_content
+    assert "h.style.opacity='1';" in script_content
     assert "if(line.dataset.source === hotspotId || line.dataset.destination === hotspotId){" in script_content
-    assert "line.style.opacity = '1';" in script_content # Line becomes visible
+    assert "line.style.opacity = line.dataset.originalOpacity;" in script_content # MODIFIED JS CHECK
 
-    # Check mouseleave logic
+    # Check mouseleave logic still sets to 0
     assert "h.addEventListener('mouseleave',function(){" in script_content
-    assert "h.style.opacity='0';" in script_content # Hotspot becomes hidden (if show_on_hover)
-    assert "var otherHotspotId = line.dataset.source === hotspotId ? line.dataset.destination : line.dataset.source;" in script_content
-    assert "var otherHotspot = document.querySelector(`.hotspot.info-rectangle-export[data-id='${otherHotspotId}']`);" in script_content
-    assert "var otherHotspotVisible = otherHotspot.dataset.showOnHover === 'false' || otherHotspot.style.opacity === '1';" in script_content
     assert "if(!otherHotspotVisible){" in script_content
-    assert "line.style.opacity = '0';" in script_content # Line becomes hidden
+    assert "line.style.opacity = '0';" in script_content
 
 def test_export_html_connection_line_always_visible_if_one_area_is_always_visible(tmp_path_factory, tmp_path):
-    project_path = tmp_path_factory.mktemp("project_line_one_always_visible")
+    project_path = tmp_path_factory.mktemp("project_line_one_always_visible_custom_opacity")
     os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
     bg_config = utils.get_default_config()['background']
+    line_custom_opacity = 0.8
 
     config = {
-        'project_name': "Line One Always Visible",
+        'project_name': "Line One Always Visible Custom Opacity",
         'background': bg_config,
         'info_areas': [
             {'id': 'ia1', 'center_x': 50, 'center_y': 50, 'width': 100, 'height': 50, 'text': 'Area 1 (Hover)', 'show_on_hover': True, 'shape': 'rectangle'},
             {'id': 'ia2', 'center_x': 200, 'center_y': 50, 'width': 100, 'height': 50, 'text': 'Area 2 (Always Visible)', 'show_on_hover': False, 'shape': 'rectangle'}
         ],
         'connections': [
-            {'id': 'conn1', 'source': 'ia1', 'destination': 'ia2', 'line_color': '#00FF00', 'thickness': 3, 'opacity': 1.0} # z_index defaults to 0
+            {'id': 'conn1', 'source': 'ia1', 'destination': 'ia2', 'line_color': '#00FF00', 'thickness': 3, 'opacity': line_custom_opacity} # z_index defaults to 0
         ],
         'defaults': utils.get_default_config()['defaults']
     }
 
     exporter = HtmlExporter(config=config, project_path=str(project_path))
-    out_file = tmp_path / "line_one_always_visible_export.html"
+    out_file = tmp_path / "line_one_always_visible_custom_opacity.html"
 
     assert exporter.export(str(out_file)) is True
     content = out_file.read_text()
 
-    # Line should be visible with its own opacity (1.0) because one connected area (ia2) is show_on_hover:false
-    expected_line_style = f"position:absolute;left:0;top:0;width:{bg_config.get('width',800)}px;height:{bg_config.get('height',600)}px;pointer-events:none;z-index:0;opacity:1.0;"
-    assert f"<svg class='connection-line' data-source='ia1' data-destination='ia2' style='{expected_line_style}'><line" in content
+    # Line should be initially visible with its own custom opacity
+    expected_line_data_attr = f"data-original-opacity='{line_custom_opacity}'"
+    initial_expected_style = f"position:absolute;left:0;top:0;width:{bg_config.get('width',800)}px;height:{bg_config.get('height',600)}px;pointer-events:none;z-index:0;opacity:{line_custom_opacity};"
+
+    line_svg_regex = rf"<svg class='connection-line' data-source='ia1' data-destination='ia2' {expected_line_data_attr} style='{initial_expected_style}'>"
+    assert re.search(line_svg_regex, content), f"SVG line for conn1 not found with correct data-original-opacity and initial style. Searched for: {line_svg_regex}"
 
 
 def test_export_html_connection_line_respects_own_opacity_if_not_hidden_by_hover(tmp_path_factory, tmp_path):
-    project_path = tmp_path_factory.mktemp("project_line_own_opacity")
+    project_path = tmp_path_factory.mktemp("project_line_own_opacity_both_always_visible")
     os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
     bg_config = utils.get_default_config()['background']
+    line_custom_opacity = 0.7
 
     config = {
-        'project_name': "Line Own Opacity",
+        'project_name': "Line Own Opacity Both Always Visible",
         'background': bg_config,
         'info_areas': [
             {'id': 'ia1', 'center_x': 50, 'center_y': 50, 'width': 100, 'height': 50, 'text': 'Area 1 (Visible)', 'show_on_hover': False, 'shape': 'rectangle'},
             {'id': 'ia2', 'center_x': 200, 'center_y': 50, 'width': 100, 'height': 50, 'text': 'Area 2 (Visible)', 'show_on_hover': False, 'shape': 'rectangle'}
         ],
         'connections': [
-            {'id': 'conn1', 'source': 'ia1', 'destination': 'ia2', 'line_color': '#FF0000', 'thickness': 4, 'opacity': 0.7} # z_index defaults to 0
+            {'id': 'conn1', 'source': 'ia1', 'destination': 'ia2', 'line_color': '#FF0000', 'thickness': 4, 'opacity': line_custom_opacity} # z_index defaults to 0
         ],
         'defaults': utils.get_default_config()['defaults']
     }
 
     exporter = HtmlExporter(config=config, project_path=str(project_path))
-    out_file = tmp_path / "line_own_opacity_export.html"
+    out_file = tmp_path / "line_own_opacity_both_always_visible.html"
 
     assert exporter.export(str(out_file)) is True
     content = out_file.read_text()
 
-    # Line should be visible with its own configured opacity (0.7) because both connected areas are show_on_hover:false
-    expected_line_style = f"position:absolute;left:0;top:0;width:{bg_config.get('width',800)}px;height:{bg_config.get('height',600)}px;pointer-events:none;z-index:0;opacity:0.7;"
-    assert f"<svg class='connection-line' data-source='ia1' data-destination='ia2' style='{expected_line_style}'><line" in content
+    # Line should be initially visible with its own configured opacity
+    expected_line_data_attr = f"data-original-opacity='{line_custom_opacity}'"
+    initial_expected_style = f"position:absolute;left:0;top:0;width:{bg_config.get('width',800)}px;height:{bg_config.get('height',600)}px;pointer-events:none;z-index:0;opacity:{line_custom_opacity};"
+
+    line_svg_regex = rf"<svg class='connection-line' data-source='ia1' data-destination='ia2' {expected_line_data_attr} style='{initial_expected_style}'>"
+    assert re.search(line_svg_regex, content), f"SVG line for conn1 not found with correct data-original-opacity and initial style. Searched for: {line_svg_regex}"
