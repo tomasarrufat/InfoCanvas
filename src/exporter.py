@@ -384,8 +384,8 @@ class HtmlExporter:
 "});",
 "",
 "// Initial setup calls",
-"updateConnectionLines();", // For draggable items initial positioning
-"updateAllVisibilities();",  // Set initial visibility of all items and lines
+"updateConnectionLines();",
+"updateAllVisibilities();",
 "</script>", "</body></html>",
         ])
         return "\n".join(lines)
