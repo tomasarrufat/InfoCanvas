@@ -1,13 +1,11 @@
 __pycache__/
 *.pyc
-# Virtual environments
 venv/
 .venv/
 env/
 .env/
 *.html
-*.json
 .coverage
 *.jpeg
 *.jpg
-*.png
+
