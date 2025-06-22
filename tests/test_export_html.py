@@ -629,3 +629,17 @@ def test_export_html_connection_line_respects_own_opacity_if_not_hidden_by_hover
 
     line_svg_regex = rf"<svg class='connection-line' data-source='ia1' data-destination='ia2' {expected_line_data_attr} style='{initial_expected_style}'>"
     assert re.search(line_svg_regex, content), f"SVG line for conn1 not found with correct data-original-opacity and initial style. Searched for: {line_svg_regex}"
+
+
+def test_export_html_contains_toggle_button(tmp_path_factory, tmp_path):
+    project_path = tmp_path_factory.mktemp("project_toggle")
+    os.makedirs(project_path / utils.PROJECT_IMAGES_DIRNAME, exist_ok=True)
+
+    config = utils.get_default_config()
+    exporter = HtmlExporter(config=config, project_path=str(project_path))
+    out_file = tmp_path / "toggle.html"
+
+    assert exporter.export(str(out_file)) is True
+    content = out_file.read_text()
+    assert "<button id='toggle-all-info'" in content
+    assert "var showAllInfo" in content
