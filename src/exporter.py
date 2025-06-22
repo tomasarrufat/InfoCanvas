@@ -220,8 +220,18 @@ class HtmlExporter:
             lines.append(
                 f"<svg class='connection-line' {line_data} style='{initial_line_style}'><line x1='{start_x}' y1='{start_y}' x2='{end_x}' y2='{end_y}' stroke='{color}' stroke-width='{thickness}' /></svg>"
             )
+        lines.append(
+            "<button id='toggle-all-info' style='position:absolute;right:10px;bottom:10px;z-index:1000;'>Show All Info</button>"
+        )
         lines.extend([
 "</div>", "<script>",
+"var showAllInfo=false;",
+"document.getElementById('toggle-all-info').addEventListener('click',function(){",
+"  showAllInfo=!showAllInfo;",
+"  this.textContent=showAllInfo?'Hide All Info':'Show All Info';",
+"  updateAllVisibilities();",
+"  updateConnectionLines();",
+"});",
 "function computeRectBoundaryPoint(rect,target){",
 "  var cx=parseFloat(rect.style.left)+rect.offsetWidth/2;",
 "  var cy=parseFloat(rect.style.top)+rect.offsetHeight/2;",
@@ -249,6 +259,11 @@ class HtmlExporter:
 "  });",
 "}",
 "function updateAllVisibilities(currentlyHoveredItemId = null) {",
+"    if(showAllInfo){",
+"        document.querySelectorAll('.hotspot.info-rectangle-export').forEach(h=>h.style.opacity='1');",
+"        document.querySelectorAll('.connection-line').forEach(line=>line.style.opacity=line.dataset.originalOpacity);",
+"        return;",
+"    }",
 "    // First, reset all hover-dependent items to hidden (opacity 0)",
 "    document.querySelectorAll('.hotspot.info-rectangle-export').forEach(h => {",
 "        // An item is hover-dependent if show_on_hover is true, OR if show_on_hover is false but show_on_hover_connected is true",
