@@ -127,7 +127,8 @@ class HtmlExporter:
             else: padding = padding_str
             h_align = rect_conf.get('horizontal_alignment', self.default_text_config['horizontal_alignment'])
             v_align = rect_conf.get('vertical_alignment', self.default_text_config['vertical_alignment'])
-            outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex; box-sizing: border-box;"
+            z_index = rect_conf.get('z_index', utils.Z_VALUE_INFO_RECT)
+            outer_style = f"position:absolute; left:{left}px; top:{top}px; width:{rect_width}px; height:{rect_height}px; display:flex; box-sizing: border-box; z-index:{z_index};"
             fill_hex = rect_conf.get('fill_color', utils.get_default_config()["defaults"].get("info_area_appearance", {}).get("fill_color", "#007BFF"))
             fill_alpha = rect_conf.get('fill_alpha', utils.get_default_config()["defaults"].get("info_area_appearance", {}).get("fill_alpha", 0.1))
             try:
@@ -371,14 +372,17 @@ class HtmlExporter:
 "    h.addEventListener('mouseenter', function() {",
 "        updateAllVisibilities(h.dataset.id);",
 "    });",
-"    h.addEventListener('mouseleave', function() {",
+"    h.addEventListener('mouseleave', function(e) {",
+"        const leaveX = e.clientX;",
+"        const leaveY = e.clientY;",
 "        setTimeout(() => {",
-"            const activeElement = document.querySelector(\":hover\");",
 "            let newHoveredItemId = null;",
-"            if (activeElement) {",
-"                const hotspot = activeElement.closest('.hotspot.info-rectangle-export');",
+"            const elems = document.elementsFromPoint(leaveX, leaveY);",
+"            for (const el of elems) {",
+"                const hotspot = el.closest ? el.closest('.hotspot.info-rectangle-export') : null;",
 "                if (hotspot) {",
 "                    newHoveredItemId = hotspot.dataset.id;",
+"                    break;",
 "                }",
 "            }",
 "            updateAllVisibilities(newHoveredItemId);",
