@@ -50,7 +50,7 @@ The project follows this basic structure:
 
 -   **`.gitignore`**: Specifies intentionally untracked files that Git should ignore (e.g., `venv/`, `__pycache__/`).
 -   **`app.py`**: Main entry point for the PyQt5 application. It initializes and runs the application defined in the `src/` directory.
--   **`requirements.txt`**: Lists the Python packages needed to run the application (e.g., PyQt5).
+-   **`requirements.txt`**: Lists the Python packages needed to run the application (e.g., PyQt5) and development dependencies like BeautifulSoup for HTML export tests.
 -   **`README.md`**: This file.
 -   **`src/`**: This directory contains all the core Python source code for the application, organized into modules (e.g., `canvas_manager.py`, `ui_builder.py`, etc.).
 -   **`static/`**: This directory serves as the root for storing all project-specific data. It and its subdirectories are created automatically by the application if they don't already exist.
@@ -85,7 +85,7 @@ The project follows this basic structure:
     ```bash
     pip install -r requirements.txt
     ```
-    *(The repository's `requirements.txt` already includes PyQt5.)*
+    *(The repository's `requirements.txt` already includes PyQt5 and BeautifulSoup.)*
 
 ## Usage
 

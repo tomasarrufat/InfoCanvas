@@ -3,3 +3,4 @@ PyQtWebEngine
 pytest
 pytest-qt
 pytest-cov
+beautifulsoup4
