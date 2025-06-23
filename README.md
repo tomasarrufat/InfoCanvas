@@ -10,7 +10,7 @@
 
 ## Basic Purpose
 
-This tool is a desktop application built with PyQt5 for creating interactive learning materials. Users can create projects, add images to a canvas, position and scale them, and then define rectangular "hotspot" areas over these images. In "View Mode", hovering over these hotspots displays associated explanatory text. This is useful for applications like labeling anatomical diagrams, explaining parts of a machine, or creating simple interactive guides.
+This tool is a desktop application built with PyQt5 for creating interactive learning materials. Users create projects, add images, and define hotspot areas that reveal explanatory text. Newer versions also support drawing connection lines between hotspots, customizing text and line styles, and exporting the project to standalone HTML for sharing. In "View Mode" the canvas behaves as an interactive guide, ideal for diagrams or simple tutorials.
 
 ## File Structure
 
@@ -23,12 +23,16 @@ The project follows this basic structure:
 |-- requirements.txt       # Python package dependencies
 |-- README.md              # This file
 |-- /src/                  # Contains all core Python source code for the application
+|   |-- base_draggable_item.py
 |   |-- canvas_manager.py
+|   |-- connection_line_item.py
 |   |-- draggable_image_item.py
 |   |-- exporter.py
-|   |-- info_rectangle_item.py
+|   |-- frameless_window.py
+|   |-- info_area_item.py
 |   |-- input_handler.py
 |   |-- item_operations.py
+|   |-- line_style_manager.py
 |   |-- project_io.py
 |   |-- project_manager_dialog.py
 |   |-- text_style_manager.py
@@ -50,12 +54,12 @@ The project follows this basic structure:
 
 -   **`.gitignore`**: Specifies intentionally untracked files that Git should ignore (e.g., `venv/`, `__pycache__/`).
 -   **`app.py`**: Main entry point for the PyQt5 application. It initializes and runs the application defined in the `src/` directory.
--   **`requirements.txt`**: Lists the Python packages needed to run the application (e.g., PyQt5).
+-   **`requirements.txt`**: Lists the Python packages needed to run the application (PyQt5, PyQtWebEngine, pytest, etc.).
 -   **`README.md`**: This file.
--   **`src/`**: This directory contains all the core Python source code for the application, organized into modules (e.g., `canvas_manager.py`, `ui_builder.py`, etc.).
+-   **`src/`**: Directory containing all application code. Key modules include `canvas_manager.py`, `info_area_item.py`, `connection_line_item.py`, the style managers, and supporting utilities.
 -   **`static/`**: This directory serves as the root for storing all project-specific data. It and its subdirectories are created automatically by the application if they don't already exist.
     -   **`/<project_name>/`**: Each sub-directory within `static/` represents an individual project.
-        -   **`config.json`**: Located within each project's folder, this file stores the specific configuration for that project, including background settings, image details (paths, positions, scales), and info area data.
+        -   **`config.json`**: Located within each project's folder, this file stores the full configuration for that project, including background settings, images, info areas, connection lines, and saved style definitions.
         -   **`images/`**: Also within each project's folder, this sub-directory holds all images uploaded by the user for that particular project.
 -   **`doc/`**: Contains additional documentation for the project.
     -   **`toolRequirements.md`**: Describes the (original) requirements for the tool.
@@ -80,12 +84,12 @@ The project follows this basic structure:
     - On Windows: `venv\Scripts\activate`
     - On macOS/Linux: `source venv/bin/activate`
     
-4.  **Install Requirements:** Install the necessary Python packages using pip and the `requirements.txt` file. This will install PyQt5 and any other dependencies.
+4.  **Install Requirements:** Install the necessary Python packages using pip and the `requirements.txt` file. This installs PyQt5, PyQtWebEngine, and the testing dependencies.
     
     ```bash
     pip install -r requirements.txt
     ```
-    *(The repository's `requirements.txt` already includes PyQt5.)*
+    *(The repository's `requirements.txt` lists all required packages.)*
 
 ## Usage
 
@@ -117,12 +121,15 @@ The project follows this basic structure:
             -   Drag selected hotspots to reposition them.
             -   Adjust layering using the same buttons available for images.
             -   Resize selected hotspots by dragging their handles.
+            -   Draw connection lines between hotspots using the connection tool.
+            -   Customize text and line styles through the style managers.
             -   Copy (Ctrl+C) and Paste (Ctrl+V) selected hotspots (when an input field is not focused).
             -   Delete selected hotspots or images using the 'Delete' key (when an input field is not focused) or the respective delete buttons in the control panel (confirmation may be required).
         -   **Saving:** All changes to a project (background, images, hotspots) are automatically saved to its `config.json` file. You can also manually save using "File > Save Configuration" (Ctrl+S).
+        -   **Exporting:** Choose "File > Export to HTML" to create a standalone HTML version of the project.
     -   **View Mode:**
-        -   In this mode, the canvas is not editable.
-        -   Hover your mouse cursor over the areas where you defined info rectangles (hotspots) to see their associated text appear in a pop-up.
+        -   The canvas becomes read-only and shows connection lines and hotspots.
+        -   Hover your mouse cursor over info areas to see their associated text pop up.
         -   The control panel is mostly hidden or shows a brief message; editing controls are disabled.
 
 ## Project Management
