@@ -1,4 +1,7 @@
 # InfoCanvas
+---
+![Demo](doc/demo.gif)
+---
 
 * [Basic Purpose](#basic-purpose)
 * [File Structure](#file-structure)
