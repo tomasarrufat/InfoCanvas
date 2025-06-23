@@ -148,3 +148,19 @@ This document outlines the requirements for a web-based Python tool designed for
     * `width`, `height`: Dimensions of the hoverable rectangle.
     * `text`: The informational string.
         *(Note: `text_display_options` is no longer part of individual info_rectangles; styling is handled globally via `defaults.info_rectangle_text_display`)*
+
+## VI. Python Package Requirements
+
+The application relies on several Python packages which are listed in `requirements.txt`. Install them using:
+
+```bash
+pip install -r requirements.txt
+```
+
+Required packages include:
+
+- **PyQt5>=5.15** – provides the core GUI framework.
+- **PyQtWebEngine** – enables HTML export previews.
+- **pytest**, **pytest-qt**, **pytest-cov** – used for running the test suite and measuring coverage.
+- **beautifulsoup4** – parses exported HTML in tests.
+
