@@ -1,15 +1,23 @@
+import os
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QComboBox, QSpinBox, QTextEdit, QGraphicsScene,
     QGraphicsView, QDoubleSpinBox, QMessageBox, QStackedLayout, QCheckBox,
     QScrollArea, QStatusBar
 )
-try:
-    from PyQt5.QtWebEngineWidgets import QWebEngineView
-except Exception:  # pragma: no cover - optional dependency
-    class QWebEngineView(QWidget):
-        def setHtml(self, *args, **kwargs):
-            pass
+
+# When running as root (e.g., in certain test environments), Qt WebEngine
+# requires sandboxing to be disabled.  Set the environment variables now so that
+# if the real WebEngine is used later it won't fail.
+if os.geteuid() == 0:
+    os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--no-sandbox")
+    os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
+
+# Provide a lightweight stub for QWebEngineView.  The real class will be
+# imported on demand in ``build`` if the environment allows it.
+class QWebEngineView(QWidget):
+    def setHtml(self, *args, **kwargs):
+        pass
 from PyQt5.QtGui import QColor, QBrush, QPainter
 from PyQt5.QtCore import Qt
 
@@ -444,7 +452,16 @@ class UIBuilder:
         app.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         app.central_layout.addWidget(app.view)
 
-        app.web_view = QWebEngineView()
+        webengine_disabled = os.environ.get("QT_QPA_PLATFORM") == "offscreen" or \
+            os.environ.get("INFOCANVAS_NO_WEBENGINE") == "1"
+        if not webengine_disabled:
+            try:
+                from PyQt5.QtWebEngineWidgets import QWebEngineView as RealWebView
+                app.web_view = RealWebView()
+            except Exception:
+                webengine_disabled = True
+        if webengine_disabled:
+            app.web_view = QWebEngineView()
         app.central_layout.addWidget(app.web_view)
         app.central_layout.setCurrentWidget(app.view)
 

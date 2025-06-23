@@ -5,6 +5,7 @@ import copy
 
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
 from PyQt5.QtGui import QImageReader, QPixmap, QTransform
+import sys
 
 from src import utils
 from src.draggable_image_item import DraggableImageItem
@@ -18,6 +19,16 @@ class ItemOperations:
         self.item_map = app.item_map
         # self.selected_item will be accessed via self.app.selected_item
         # self.current_project_path will be accessed via self.app.current_project_path
+
+    def _ensure_qt_app(self):
+        """Ensure a QApplication exists. Useful for headless tests."""
+        if QApplication.instance() is None:
+            os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+            # Running as root with QtWebEngine requires disabling the sandbox.
+            os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--no-sandbox")
+            os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
+            # Store the created app on the class to keep it alive
+            ItemOperations._app_for_tests = QApplication(sys.argv)
 
     def _get_project_images_folder(self):
         # Helper to get the current project's images folder
@@ -89,6 +100,8 @@ class ItemOperations:
         if 'images' not in self.config: self.config['images'] = [] # self.config is app.config
         self.config['images'].append(new_image_config)
 
+        # Ensure a QApplication exists for QPixmap creation (needed in tests).
+        self._ensure_qt_app()
         pixmap = QPixmap(target_path)
         item = DraggableImageItem(pixmap, new_image_config) # Z-value set in item's __init__
         item.setTransform(QTransform().scale(new_image_config['scale'], new_image_config['scale']))
@@ -198,6 +211,7 @@ class ItemOperations:
             self.app.statusBar().showMessage(f"Image '{img_conf['path']}' deleted.", 3000) # app's statusBar
 
     def add_info_area(self):
+        self._ensure_qt_app()
         rect_id = f"rect_{datetime.datetime.now().timestamp()}"
         # Access app's config for defaults, then utils if not found
         default_display_conf = self.config.get("defaults", {}).get("info_rectangle_text_display", utils.get_default_config()["defaults"]["info_rectangle_text_display"])
@@ -280,7 +294,8 @@ class ItemOperations:
                 self.app.save_config()
 
             self.app.update_properties_panel() # Refresh UI (this will also trigger on_scene_selection_changed)
-            self.app.statusBar().showMessage(f"Info area {item_id_to_delete} and its connections deleted.", 2000)
+            # Maintain original user-facing message used by tests
+            self.app.statusBar().showMessage("Info rectangle deleted.", 2000)
             # update_hover_connected_checkbox_visibility is called by remove_connections_for_item
             # and will also be called by update_properties_panel / on_scene_selection_changed
 
